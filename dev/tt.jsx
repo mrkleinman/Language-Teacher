@@ -6793,7 +6793,7 @@ function thaiPhrasePlan(vocab, today, eligibleIds, o) {
   const none = { open: null, close: null, newPhrase: null, review: [], newCount: 0, dueGreetings: 0, duePhrases: 0, newAvailable: 0 }
   if (!THAI_PHRASE_SPLIT.on) return none
   const ph = (vocab || []).filter(w => isThaiPhraseEntry(w) && !w.duplicateOf && (!eligibleIds || eligibleIds.has(w.id)) && w.status !== 'locked')
-  const rank = currentRankName(vocab), ri = rank === 'Shodan' ? 99 : Math.max(0, CURRICULUM_BELTS.findIndex(b => b.name === rank))
+  const rank = currentRankName((o && o.rankVocab) || vocab), ri = rank === 'Shodan' ? 99 : Math.max(0, CURRICULUM_BELTS.findIndex(b => b.name === rank))
   const isNew = w => isGenuinelyNew(w), isDue = w => !isNew(w) && w.dueDate && w.dueDate <= today
   const kind = w => thaiGreetKindOf(w.thai), cfg = Object.assign({}, THAI_PHRASE_SCHEDULE, o || {})
   const byDue = (a, b) => String(a.dueDate).localeCompare(String(b.dueDate)) || a.id - b.id
@@ -7103,7 +7103,7 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap, opts) {
   const _elig = opts && opts.eligible ? opts.eligible : null
   const usable = (vocab || []).filter(w => isUsableWord(w) && w.status !== 'locked')
   const activeBelt = earliestIncompleteBelt(usable)
-  const _quota = newWordQuotaFor(vocab, 'th')   // v683: HOW MANY new words = the learner's rank; activeBelt = WHICH words
+  const _quota = newWordQuotaFor((opts && opts.quotaVocab) || vocab, 'th')   // v683: HOW MANY new words = the learner's rank; activeBelt = WHICH words
   const diag = { activeBelt, unfinishedInBelt: 0, newAvailableInBelt: 0,
                  selectedNew: [], selectedReinforce: [], spilloverReason: null, beyondAdmitted: [] }
   const out = []
@@ -7280,7 +7280,11 @@ const THAI_TRACK_TARGET_COUNT = 30
 // shared vocab eligibility layer at admission; an ineligible word is a skipped candidate
 // and the next candidate in the same priority order takes the slot. The full priority
 // order beyond the first 30 is returned as `reserve` for backfill.
-function pickWords(vocab, mode, todayNewWords) {
+// popts.rankVocab: the learner's FULL word list. The Daily screen hands pickWords a list with the words that sit in unrated tracks taken out; the
+// learner's RANK (and so the new-word allowance and the phrase gate) must still be read from the full list, or two unrated tracks can make an
+// 8th Kyu learner read as Mukyu and get 3 new words instead of 7 (11 Nov report).
+function pickWords(vocab, mode, todayNewWords, popts) {
+  const rankV = (popts && popts.rankVocab) || vocab
   const today = new Date().toISOString().slice(0, 10)
   const N = THAI_TRACK_TARGET_COUNT
   const pool = thaiEligibleCandidatePool(vocab, today)
@@ -7302,10 +7306,10 @@ function pickWords(vocab, mode, todayNewWords) {
     let pos = 0
     ordered = weak.filter(w => { const ok = eligLog(w, 'weak', pos); if (ok) { w._selectorStage = 'weak'; pos++ } return ok })
     const have = new Set(ordered.map(w => w.id))
-    ordered = ordered.concat(pickBeltPriorityTargets(vocab, [], today, 400, { eligible: (w, st, p) => eligLog(w, st, ordered.length + (p || 0)) })
+    ordered = ordered.concat(pickBeltPriorityTargets(vocab, [], today, 400, { quotaVocab: rankV, eligible: (w, st, p) => eligLog(w, st, ordered.length + (p || 0)) })
       .filter(w => !have.has(w.id) && !isGenuinelyNew(w)))
   } else {
-    ordered = pickBeltPriorityTargets(vocab, todayNewWords, today, 400, { eligible: eligLog })
+    ordered = pickBeltPriorityTargets(vocab, todayNewWords, today, 400, { quotaVocab: rankV, eligible: eligLog })
   }
   // ── BACKFILL CASCADE (v645.1) ── the ranked pool reaches the whole eligible bank, so the
   // lesson is ALWAYS filled to 30 with valid words. Tiers after the belt/SRS order:
@@ -7348,7 +7352,7 @@ function pickWords(vocab, mode, todayNewWords) {
   if (mode === 'daily') {
     const qAll = (vocab || []).filter(w => w && w.queuedNext && !w.duplicateOf && pool.eligibleIds.has(w.id) && !isThaiPhraseEntry(w)).sort((a, b) => String(a.queuedNext).localeCompare(String(b.queuedNext)) || a.id - b.id)
     if (qAll.length) {
-      let limit = 5; try { limit = getBeltConfig(currentRankName(vocab)).newWordLimit } catch (e) {}
+      let limit = 5; try { limit = getBeltConfig(currentRankName(rankV)).newWordLimit } catch (e) {}
       const qNew = qAll.filter(w => isGenuinelyNew(w)).slice(0, limit), qOld = qAll.filter(w => !isGenuinelyNew(w))
       const picks = qNew.concat(qOld).slice(0, N).map(w => { w._selectorStage = 'queued'; return w })
       const pickIds = new Set(picks.map(w => w.id)); let newLeft = Math.max(0, limit - qNew.length)
@@ -7361,7 +7365,7 @@ function pickWords(vocab, mode, todayNewWords) {
   if (THAI_PHRASE_SPLIT.on) {
     ordered = ordered.filter(w => !isThaiPhraseEntry(w))
     if (mode === 'daily') {
-      const pp = thaiPhrasePlan(vocab, today, pool.eligibleIds)
+      const pp = thaiPhrasePlan(vocab, today, pool.eligibleIds, { rankVocab: rankV })
       framing.open = pp.open; framing.close = pp.close
       phraseNew = pp.newPhrases.map(w => ({ ...w, _selectorStage: 'phrase-new' }))
       phraseReview = pp.review.map(w => ({ ...w, _selectorStage: 'phrase-review', _phraseReview: true }))
@@ -35692,7 +35696,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
 
     // Slot words bypass the pending-track exclusion so they persist across same-day tracks
     const filteredVocab = vocab.filter(w => !usedWordIds.has(w.id) || slotIdSet.has(w.id))
-    return { ...pickWords(filteredVocab, mode, slotWords), lockedByUnratedTracks: usedWordIds.size, contract: true }
+    return { ...pickWords(filteredVocab, mode, slotWords, { rankVocab: vocab }), lockedByUnratedTracks: usedWordIds.size, contract: true }
   }, [vocab, mode, customTargets, tracks, dailyNewWords, topic])
   // Every Thai target — Daily and Revision alike — passes through the shared canonical
   // resolver BEFORE any prompt is built: learner state from saved vocab, lexical

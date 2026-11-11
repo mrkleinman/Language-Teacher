@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v743"/>
+<meta name="app-version" content="v744"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v743';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v743').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v744';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v744').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -6797,13 +6797,13 @@ function thaiPhraseSplitApply(raw) {
   const plan = thaiPhraseSplitPlan(raw); if (plan.problems.length) { try { console.warn('[phrase-split] not applied: ' + plan.problems.slice(0, 4).join('; ')) } catch (e) {} return plan }
   const byId = new Map(raw.map(d => [d.id, d]))
   plan.phrases.forEach(x => { const d = byId.get(x.id); if (d._ci0 == null) d._ci0 = d.curriculumIndex || 0; d.curriculumIndex = 0; d.beltOrder = 0; d.homeBelt = x.homeBelt; d.entryType = 'phrase' })
-  plan.words.forEach(x => { const d = byId.get(x.id); if (d._ci0 == null) d._ci0 = d.curriculumIndex || 0; d.curriculumIndex = x.curriculumIndex; d.belt = x.belt; d.beltOrder = beltOrderForCurriculumIndex(x.curriculumIndex); d.entryType = 'word'; d.tierProposed = x.tier })
+  plan.words.forEach(x => { const d = byId.get(x.id); if (d._ci0 == null) { d._ci0 = d.curriculumIndex || 0; d._belt0 = d.belt } d.curriculumIndex = x.curriculumIndex; d.belt = x.belt; d.beltOrder = beltOrderForCurriculumIndex(x.curriculumIndex); d.entryType = 'word'; d.tierProposed = x.tier })
   return plan
 }
 // puts the bank back as it was before the split (tests and a quick rollback: set THAI_PHRASE_SPLIT.on = false, call this, and reload)
 function thaiPhraseSplitRevert(raw) {
   ;(raw || []).forEach(d => { if (d._ci0 == null) return
-    d.curriculumIndex = d._ci0; d.beltOrder = beltOrderForCurriculumIndex(d._ci0); delete d._ci0; delete d.homeBelt; delete d.entryType; delete d.tierProposed })
+    d.curriculumIndex = d._ci0; d.beltOrder = beltOrderForCurriculumIndex(d._ci0); if (d._belt0 !== undefined) { d.belt = d._belt0; delete d._belt0 } delete d._ci0; delete d.homeBelt; delete d.entryType; delete d.tierProposed })
   try { _thaiCanonById = null } catch (e) {}
 }
 // a promoted word takes its new belt's tier in the module tags (the owner's file says which)
@@ -6837,7 +6837,7 @@ function thaiPhrasePlan(vocab, today, eligibleIds, o) {
   const raw = new Map(RAW_VOCAB.map(d => [d.id, d])), pos = w => { const d = raw.get(w.id); return (d && d._ci0) || 1e6 }
   const fresh = ph.filter(w => isNew(w) && thaiPhraseHomeIndex(w) <= ri).sort((a, b) => (kind(b) ? 1 : 0) - (kind(a) ? 1 : 0) || pos(a) - pos(b) || a.id - b.id)
   // a QUEUED phrase ("Next in queue" in the vocab bank) goes first: a learned one is the opening / closing (a greeting) or a review phrase, a new one is taught inside the new words
-  const queued = ph.filter(w => w.queuedNext).sort((x, y) => String(x.queuedNext).localeCompare(String(y.queuedNext)))
+  const queued = ph.filter(w => w.queuedNext).sort((x, y) => String(x.queuedNext).localeCompare(String(y.queuedNext)) || x.id - y.id)
   const qOld = queued.filter(w => !isNew(w)), qNew = queued.filter(isNew).slice(0, 3)
   const out = { ...none, dueGreetings: dueList.filter(kind).length, duePhrases: dueList.filter(w => !kind(w)).length, newAvailable: fresh.length }
   out.open = qOld.find(w => kind(w) === 'open') || dueList.find(w => kind(w) === 'open') || null
@@ -7382,7 +7382,7 @@ function pickWords(vocab, mode, todayNewWords) {
   // "Next in queue" (vocab bank): the words the learner put in the queue come FIRST in the next Daily (not Revision / weak). A queued NEW word takes one of the belt's new places (the
   // last new words give way, so the allowance still holds); a queued word already learned is reviewed. Only eligible words are used; the rest of the queue waits.
   if (mode === 'daily') {
-    const qAll = (vocab || []).filter(w => w && w.queuedNext && !w.duplicateOf && pool.eligibleIds.has(w.id) && !isThaiPhraseEntry(w)).sort((a, b) => String(a.queuedNext).localeCompare(String(b.queuedNext)))
+    const qAll = (vocab || []).filter(w => w && w.queuedNext && !w.duplicateOf && pool.eligibleIds.has(w.id) && !isThaiPhraseEntry(w)).sort((a, b) => String(a.queuedNext).localeCompare(String(b.queuedNext)) || a.id - b.id)
     if (qAll.length) {
       let limit = 5; try { limit = getBeltConfig(currentRankName(vocab)).newWordLimit } catch (e) {}
       const qNew = qAll.filter(w => isGenuinelyNew(w)).slice(0, limit), qOld = qAll.filter(w => !isGenuinelyNew(w))
@@ -7443,7 +7443,7 @@ function pickWords(vocab, mode, todayNewWords) {
   ]
   // the words the learner queued by hand lead the track, in the order they were queued
   {
-    const qd = targets.filter(w => w._selectorStage === 'queued').sort((a, b) => String(a.queuedNext).localeCompare(String(b.queuedNext)))
+    const qd = targets.filter(w => w._selectorStage === 'queued').sort((a, b) => String(a.queuedNext).localeCompare(String(b.queuedNext)) || a.id - b.id)
     if (qd.length) targets = qd.concat(targets.filter(w => w._selectorStage !== 'queued'))
   }
   const reachedList = [...reached.values()]
@@ -17147,7 +17147,7 @@ function thaiSwapSpeakerLine(p, to) {
   const t0 = t.replace(/\s+/g, '')
   if (to === 'B' && /ค่ะ$/.test(t0) && (THAI_QUESTION_RE.test(t0.replace(/ค่ะ$/, '')) || /\?\s*$/.test(String(p.english || '')))) t = t.replace(/ค่ะ\s*$/, 'คะ')
   const cue = thaiSwapCuePronouns(p.prompt, to)
-  return { ...p, speaker: to, thai: t, text: t, prompt: cue, phonetic: '', words: [], speakerGender: to === 'B' ? 'female' : 'male', _speakerOrderFixed: true }
+  return { ...p, speaker: to, thai: t, text: t, prompt: cue, phonetic: '', words: [], speakerGender: thaiSpeakerMapGender(to), _speakerOrderFixed: true }
 }
 function thaiFinalSpeakerOrderPass(pairs) {
   const out = (pairs || []).slice(); let fixed = 0
@@ -36249,6 +36249,15 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
                 </div>
               )}
             </div>
+            {(() => {
+              // Words as chips; greetings / partings / phrases listed as Conversation basics (the same split the Daily Track uses).
+              const _ph = activeTargets.filter(isThaiPhraseEntry), _wd = activeTargets.filter(w => !isThaiPhraseEntry(w))
+              const _ids = new Set(activeTargets.map(w => w.id))
+              const _avail = (vocab || []).filter(w => w && !isThaiPhraseEntry(w) && (w.status === 'known' || w.status === 'learning' || _ids.has(w.id))).length
+              const _role = w => { const r = w.selectionRole || (w.status === 'new' ? 'new' : ''); return r ? String(r).toUpperCase() : '' }
+              return <GenTargetPreview targets={_wd} availableCount={_avail} textOf={w => w.thai} subOf={w => w.phonetic}
+                basics={_ph.map(w => ({ id:w.id, text:w.thai, sub:w.phonetic, english:w.english, role:_role(w) }))} />
+            })()}
             <Btn onClick={() => { setGenLog([]); setPairsDone(0); setBrickSources({}); setBrickChecks({}); setBrickHist({}); setSessionTargets(null); setSessionAnchors(null); setPhase('starting') }}
               style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'14px' }}>
               ▶ {mode === 'daily' && thUseGen2 ? 'Generate with the NEW generator (test)' : 'Generate Track from this Scene'}
@@ -36258,6 +36267,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
               variant="secondary" style={{ width:'100%', justifyContent:'center' }}>
               🔄 Try a different scene
             </Btn>
+            <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
           </>
         )}
         {buildingScene && <Spinner size={20} color="var(--gold)" />}
@@ -38428,6 +38438,48 @@ function BeltVocabView({ vocab, beltLabel, beltName, displayName, beltColor, onB
             </div>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+// Word list opened by the dashboard stat tiles (Words / Due / Learning / Known) in Japanese and Mandarin — the same tap-through the
+// Thai dashboard has. Read-only: search, a filter row, and one line per word (script, reading, meaning, status).
+function WordListView({ vocab, lang, initialFilter, onBack }) {
+  const [filter, setFilter] = useState(initialFilter || 'all')
+  const [q, setQ] = useState('')
+  const today = new Date().toISOString().slice(0, 10)
+  const script = w => lang === 'ja' ? w.japanese : lang === 'zh' ? w.chinese : w.thai
+  const reading = w => lang === 'ja' ? [w.reading, w.romaji].filter(Boolean).join(' · ') : lang === 'zh' ? w.pinyin : w.phonetic
+  const rows = useMemo(() => (vocab || []).filter(w => {
+    if (!w || w.duplicateOf) return false
+    const okF = filter === 'all' ? true : filter === 'due' ? (w.status !== 'new' && w.dueDate && w.dueDate <= today) : w.status === filter
+    const ql = q.trim().toLowerCase()
+    return okF && (!ql || String(script(w) || '').includes(q.trim()) || String(w.english || '').toLowerCase().includes(ql) || String(reading(w) || '').toLowerCase().includes(ql))
+  }), [vocab, filter, q])
+  const SC = { known:'#10b981', learning:'#4a90e2', new:'var(--muted)', locked:'var(--muted)' }
+  return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
+      <Btn onClick={onBack} variant="ghost" style={{ alignSelf:'flex-start' }}>{'\u2190'} Back</Btn>
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search words..."
+        style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 12px', color:'var(--text)', fontSize:14 }} />
+      <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+        {['all', 'due', 'learning', 'known', 'new'].map(f => (
+          <button key={f} onClick={() => setFilter(f)} style={{ fontSize:12, padding:'6px 12px', borderRadius:16, cursor:'pointer',
+            background: filter === f ? 'var(--gold)' : 'var(--surface2)', color: filter === f ? '#000' : 'var(--text)', border:'1px solid var(--border)' }}>{f}</button>
+        ))}
+      </div>
+      <p style={{ fontSize:11, color:'var(--muted)', margin:0 }}>{rows.length} word{rows.length === 1 ? '' : 's'}</p>
+      <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+        {rows.slice(0, 400).map(w => (
+          <div key={w.id} style={{ display:'flex', alignItems:'baseline', gap:8, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 10px', minWidth:0 }}>
+            <span className={lang === 'ja' ? 'jp' : lang === 'zh' ? 'zh' : 'thai'} style={{ color:'var(--text)', fontSize:15, fontWeight:700 }}>{script(w)}</span>
+            <span className="phon" style={{ color:'var(--muted)', fontSize:11 }}>{reading(w)}</span>
+            <span style={{ color:'var(--muted)', fontSize:11, marginLeft:'auto', textAlign:'right' }}>{w.english}</span>
+            <span style={{ fontSize:9, fontWeight:700, color: SC[w.status] || 'var(--muted)' }}>{String(w.status || '').toUpperCase()}</span>
+          </div>
+        ))}
+        {rows.length > 400 && <p style={{ fontSize:11, color:'var(--muted)', textAlign:'center' }}>Showing the first 400 — search to narrow.</p>}
       </div>
     </div>
   )
@@ -42904,12 +42956,12 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
         {[
-          { label: 'Words',    val: stats.total,    icon: 'book',  color: 'var(--text)' },
-          { label: 'Due',      val: stats.due,      icon: 'clock', color: '#f59e0b' },
-          { label: 'Learning', val: stats.learning, icon: 'trend', color: '#4a90e2' },
-          { label: 'Known',    val: stats.known,    icon: 'star',  color: '#10b981' },
+          { label: 'Words',    val: stats.total,    icon: 'book',  color: 'var(--text)', filter: 'all' },
+          { label: 'Due',      val: stats.due,      icon: 'clock', color: '#f59e0b', filter: 'due' },
+          { label: 'Learning', val: stats.learning, icon: 'trend', color: '#4a90e2', filter: 'learning' },
+          { label: 'Known',    val: stats.known,    icon: 'star',  color: '#10b981', filter: 'known' },
         ].map(s => (
-          <Card key={s.label} style={{ padding: '12px 10px', textAlign: 'center' }}>
+          <Card key={s.label} onClick={() => onNav && onNav('browse-' + s.filter)} style={{ padding: '12px 10px', textAlign: 'center', cursor: 'pointer' }}>
             <Icon name={s.icon} size={14} color={s.color} />
             <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4, color: s.color }}>{s.val}</div>
             <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1, fontWeight: 500 }}>{s.label}</div>
@@ -42931,26 +42983,6 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
 
       {/* Belt Rank */}
       <BeltRankCard vocab={vocab} onNav={onNav} langName="Japanese" />
-
-      {/* Next targets — §1/§9: romaji is the learner phonetic line and is always
-          visible, mirroring where Thai Teacher shows its phonetics. */}
-      {targets && targets.length > 0 && (
-        <Card style={{ padding: '14px 16px' }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
-            Next targets ({targets.length})
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {targets.map(t => (
-              <div key={t.id} style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                <span className="jp" style={{ fontSize: 18, fontWeight: 700, color: 'var(--gold)' }}>{t.japanese}</span>
-                <span className="jp" style={{ fontSize: 12, color: 'var(--muted)' }}>{t.reading}</span>
-                <span className="phon" style={{ fontSize: 13, color: 'var(--text)' }}>{t.romaji}</span>
-                <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 'auto' }}>{t.english}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
       {/* Speech Style \u2014 the one Japanese-specific control */}
       <JapaneseSpeechStyle value={register} onChange={onSetRegister} />
@@ -46197,9 +46229,16 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
         const cp = await genCheckpointLoad('zh')
         if (cp) { offerCheckpoint(cp); setPhase('resume-choice'); return }
       }
-      startGeneration(null)
+      buildZhScene()   // same pre-generation step as Japanese/Thai: set the scene, show what the track will teach, then wait for the learner
     })()
   }, [])
+  const [zhScene, setZhScene] = useState(null)
+  async function buildZhScene() {
+    setPhase('scene_building')
+    const sc = await generateMandarinScene(targets, apiKey, model)
+    if (stopRef.current.cancelled) return
+    setZhScene(sc); setPhase('preview')
+  }
 
   async function startGeneration(resumeCp) {
       setPhase('generating')
@@ -46353,6 +46392,52 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
   }
   const filled = (phase === 'idle' ? 0 : FRAMING) + recallDone
   const pct = totalSlots ? Math.min(100, Math.round((filled / totalSlots) * 100)) : 0
+
+  if (phase === 'scene_building') return (
+    <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, paddingTop:40 }}>
+      <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0 }}>{'\u{1F3AC}'} Setting the scene...</h2>
+      <Spinner size={20} color="var(--gold)" />
+    </div>
+  )
+  if (phase === 'preview') {
+    // Same pre-generation screen as Japanese and Thai. The opening and closing are the track's real fixed greeting / goodbye
+    // exchange (Mandarin tracks have no other framing); the setting and characters come from the scene step above.
+    const _inv = mandarinLearnerInventory(vocab, targets)
+    const _fr = mandarinFramingPairs(_inv)
+    const _line = p => (
+      <div key={p.speaker + p.chinese + p._kind} style={{ background:'var(--surface2)', borderRadius:8, padding:'8px 10px' }}>
+        <div style={{ fontSize:10, color:'var(--muted)', marginBottom:4 }}>{p.speaker === 'A' ? 'A' : 'B'} {'\u00b7'} {p._kind === 'parting' ? 'Closing' : 'Opening'}</div>
+        <div className="zh" style={{ fontSize:15, color:'var(--gold)' }}>{p.chinese}</div>
+        <div className="phon" style={{ fontSize:12, color:'var(--text)', marginTop:3 }}>{p.pinyin}</div>
+        <div style={{ fontSize:11, color:'var(--muted)', marginTop:2, fontStyle:'italic' }}>{p.english}</div>
+      </div>)
+    const _basics = mandarinBasicsFor(vocab).map(b => ({ id:b.id, text:b.form, sub:b.pinyin, english:b.english }))
+    return (
+      <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, paddingTop:40 }}>
+        <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0 }}>{'\u2705'} Scene Ready</h2>
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:16, display:'flex', flexDirection:'column', gap:10 }}>
+          <p style={{ color:'var(--text)', fontSize:14, margin:0, lineHeight:1.5 }}>{zhScene ? zhScene.scene : 'Two friends talking in everyday casual-polite Mandarin.'}</p>
+          {zhScene && (zhScene.characterA || zhScene.characterB) && (
+            <div style={{ display:'flex', gap:8 }}>
+              <div style={{ flex:1, background:'var(--surface2)', borderRadius:8, padding:'8px 10px' }}>
+                <div style={{ fontSize:10, color:'var(--muted)', marginBottom:2 }}>A (male)</div>
+                <div style={{ fontSize:12, color:'var(--text)' }}>{zhScene.characterA}</div>
+              </div>
+              <div style={{ flex:1, background:'var(--surface2)', borderRadius:8, padding:'8px 10px' }}>
+                <div style={{ fontSize:10, color:'var(--muted)', marginBottom:2 }}>B (female)</div>
+                <div style={{ fontSize:12, color:'var(--text)' }}>{zhScene.characterB}</div>
+              </div>
+            </div>)}
+          {[..._fr.open, ..._fr.close].map(_line)}
+        </div>
+        <GenTargetPreview targets={targets} availableCount={_inv.allContent.length} textOf={w => w.chinese} subOf={w => w.pinyin} basics={_basics} />
+        <Btn onClick={() => startGeneration(null)} style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'14px' }}>{'\u25B6'} Generate Track from this Scene</Btn>
+        {isDailyZh && <Gen2Switch settingKey={ZH_GEN2_SETTING_KEY} note={'Test version: each sentence is checked by a second model. A word it cannot teach well is left for a later lesson (it stays due).'} />}
+        <Btn onClick={() => { setZhScene(null); buildZhScene() }} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>{'\u{1F504}'} Try a different scene</Btn>
+        <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+      </div>
+    )
+  }
 
   if (phase === 'error' || phase === 'resume-choice') return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, alignItems:'center', minHeight:'50vh', justifyContent:'center' }}>
@@ -46884,6 +46969,52 @@ function jaSceneRows(vocab, store, sceneText, register) {
     return [...due, ...reinforce, ...fresh, ...learnedInScene].slice(0, 5)
   }
   return { blocks: pick(blocks), basics: pick(basics) }
+}
+
+// One "what this track will teach" block, shared by Thai, Japanese-style and Mandarin generate screens:
+// the TARGETING summary line (counts by NEW / DUE / REINFORCE...) and one chip per target word.
+function GenTargetPreview({ targets, availableCount, textOf, subOf, basics, basicLabel }) {
+  const list = targets || []
+  const bl = basics || []
+  if (!list.length && !bl.length) return null
+  return (
+    <div>
+      <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+        <span>{describeTargetSelection(null, list)}</span>
+        {availableCount != null && <span style={{ color:'var(--muted)' }}>{'\u00B7'} {availableCount} content words available</span>}
+      </p>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+        {list.map((w, i) => {
+          const isNew = w.selectionRole ? w.selectionRole === 'new' : w.status === 'new'
+          return (
+            <div key={w.id != null ? w.id : i} style={{ display:'flex', flexDirection:'column', alignItems:'center', position:'relative',
+              background: isNew ? 'rgba(74,144,226,0.10)' : 'transparent',
+              border:'1px solid ' + (isNew ? 'rgba(74,144,226,0.65)' : 'var(--border)'), borderRadius:8, ...BRICK_PAD }}>
+              <RoleBadge word={w} role={roleFromSelection(w)} />
+              <span className="thai" style={{ color: isNew ? '#8ab8f0' : 'var(--text)', fontSize:13, lineHeight:1.3 }}>{textOf(w)}</span>
+              {subOf && <span className="phon" style={{ color:'var(--muted)', fontSize:10, lineHeight:1.2 }}>{subOf(w)}</span>}
+            </div>
+          )
+        })}
+      </div>
+      {bl.length > 0 && (
+        <>
+          <p style={{ fontSize:11, color:'var(--muted)', margin:'12px 0 8px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Conversation basics</p>
+          <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+            {bl.map((b, i) => (
+              <div key={b.id != null ? b.id : i} style={{ display:'flex', alignItems:'baseline', gap:8, background:'var(--surface2)',
+                border:'1px solid ' + (b.role === 'NEW' ? 'var(--accent)' : 'var(--border)'), borderRadius:8, padding:'6px 10px', minWidth:0 }}>
+                <span className="thai" style={{ color:'var(--text)', fontSize:15, fontWeight:700, lineHeight:1.2 }}>{b.text}</span>
+                {b.sub && <span className="phon" style={{ color:'var(--muted)', fontSize:11 }}>{b.sub}</span>}
+                {b.english && <span style={{ color:'var(--muted)', fontSize:11, marginLeft:'auto' }}>{b.english}</span>}
+                {b.role && <span style={{ fontSize:9, fontWeight:700, color: b.role === 'NEW' ? '#4a90e2' : b.role === 'DUE' ? '#f59e0b' : 'var(--muted)' }}>{b.role}</span>}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
 }
 
 function JapaneseBlockPill({ b, kind, row }) {
@@ -48111,6 +48242,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
         {view === 'rank-test' && <RankTestView vocab={vocab} lang="ja" onBack={() => setView('dashboard')} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="ja" onBack={() => setView('dashboard')} />}
         {view === 'topics' && <TopicsView lang="ja" vocab={vocab} onBack={() => setView('dashboard')} />}
+        {String(view).startsWith('browse-') && <WordListView vocab={vocab} lang="ja" initialFilter={String(view).slice(7)} onBack={() => setView('dashboard')} />}
         {view === 'generate' && (
           <ErrorBoundary>
             <JapaneseGenerator vocab={vocab} targets={targets} selection={trackMode === 'revision' ? revisionSelection : selection} trackMode={trackMode} register={register} cred={cred}
@@ -48232,6 +48364,23 @@ function _salvageFirstJSONObject(text) {
 }
 
 // Scene + conversational envelope, generated as Japanese from the start (§8).
+// Mandarin scene (setting + two characters) for the Ready screen — the same idea as the Japanese and Thai scene step.
+// English only: Mandarin tracks open and close with the fixed 你好 / 再见 exchange and every other line is closed-vocabulary,
+// so the scene never writes Chinese the learner has not been taught. Returns null on any failure (the screen falls back to a
+// plain summary and still lets the learner generate).
+async function generateMandarinScene(targets, apiKey, model) {
+  if (!apiKey) return null
+  const words = (targets || []).slice(0, 12).map(t => t.english).filter(Boolean).join(', ')
+  const prompt = 'Invent a short everyday setting for a beginner Mandarin conversation between two friends. ' +
+    'The words being practised include: ' + words + '. Pick a plain, believable setting (a cafe, a market, a station, a classroom, a home...). ' +
+    'Reply ONLY with JSON: {"scene":"one or two English sentences describing the setting","characterA":"a Chinese man: name and one detail","characterB":"a Chinese woman: name and one detail"}'
+  try {
+    const raw = await geminiGenerate(apiKey, model, [{ role: 'user', content: prompt }], 600)
+    const d = _jaParseJSON(raw)
+    return d && d.scene ? { scene: String(d.scene), characterA: String(d.characterA || ''), characterB: String(d.characterB || '') } : null
+  } catch (e) { return null }
+}
+
 async function generateJapaneseScene(targets, vocab, registerId, apiKey, model, onLog) {
   const { system, user } = buildJapaneseConvoPrompt(targets, vocab, registerId)
   const inv = japaneseLearnerInventory(vocab, targets)
@@ -50770,11 +50919,11 @@ function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack,
   return (
     <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16 }}>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:8 }}>
-        {[{ l:'Words', v:stats.total, i:'book', c:'var(--text)' },
-          { l:'Due', v:stats.due, i:'clock', c:'#f59e0b' },
-          { l:'Learning', v:stats.learning, i:'trend', c:'#4a90e2' },
-          { l:'Known', v:stats.known, i:'star', c:'#10b981' }].map(s => (
-          <Card key={s.l} style={{ padding:'12px 10px', textAlign:'center' }}>
+        {[{ l:'Words', v:stats.total, i:'book', c:'var(--text)', f:'all' },
+          { l:'Due', v:stats.due, i:'clock', c:'#f59e0b', f:'due' },
+          { l:'Learning', v:stats.learning, i:'trend', c:'#4a90e2', f:'learning' },
+          { l:'Known', v:stats.known, i:'star', c:'#10b981', f:'known' }].map(s => (
+          <Card key={s.l} onClick={() => onNav && onNav('browse-' + s.f)} style={{ padding:'12px 10px', textAlign:'center', cursor:'pointer' }}>
             <Icon name={s.i} size={14} color={s.c} />
             <div style={{ fontSize:22, fontWeight:700, marginTop:4, color:s.c }}>{s.v}</div>
             <div style={{ fontSize:10, color:'var(--muted)', marginTop:1 }}>{s.l}</div>
@@ -50795,47 +50944,6 @@ function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack,
 
       <BeltRankCard vocab={vocab} onNav={onNav} langName="Mandarin" />
 
-      {/* §5 — one locked register, shown as a badge, not a selector */}
-      <Card style={{ padding:'12px 16px', display:'flex', alignItems:'center', gap:10 }}>
-        <span style={{ fontSize:18 }}>{MANDARIN_REGISTER.icon}</span>
-        <span style={{ fontSize:13, fontWeight:700, color:'var(--gold)' }}>{MANDARIN_REGISTER.label}</span>
-        <span style={{ fontSize:10, color:'var(--muted)', marginLeft:'auto' }}>very casual, still polite</span>
-      </Card>
-
-      {/* v683 — Next targets lists the WHOLE Daily Track (the 30 targets the generator receives: new + review), not only the
-          raw new-word picks; the Learn New Words card below keeps showing just the new words */}
-      {(() => { const list = (trackTargets && trackTargets.length) ? trackTargets : (targets || [])
-        const nNew = list.filter(t => t.selectionRole ? t.selectionRole === 'new' : t.status === 'new').length
-        return list.length > 0 && (
-        <Card style={{ padding:'14px 16px' }}>
-          <p style={{ fontSize:12, fontWeight:600, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
-            Next targets ({list.length}) · {nNew} new · {list.length - nNew} review
-          </p>
-          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            {list.map(t => (
-              <div key={t.id} style={{ display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap' }}>
-                <span className="zh" style={{ fontSize:20, fontWeight:700, color:'var(--gold)' }}>{t.chinese}</span>
-                <span className="phon" style={{ fontSize:13, color:'var(--text)' }}>{t.pinyin}</span>
-                <span style={{ fontSize:12, color:'var(--muted)', marginLeft:'auto' }}>{t.english}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      ) })()}
-
-      {/* §4 — learn the new words (v671: 5 at Mukyu) before practising them */}
-      <button onClick={onLearnWords} disabled={!targets || !targets.length}
-        style={{ background:(targets && targets.length) ? 'linear-gradient(135deg,#1a1630,#231d42)' : 'var(--surface)',
-                 border:'1px solid ' + ((targets && targets.length) ? '#4a90e2' : 'var(--border)'), borderRadius:12,
-                 padding:'16px 12px', cursor:(targets && targets.length) ? 'pointer' : 'not-allowed',
-                 textAlign:'center', color:'var(--text)', opacity:(targets && targets.length) ? 1 : 0.55 }}>
-        <Icon name="book" size={20} color="#4a90e2" />
-        <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Learn New Words</div>
-        <div style={{ fontSize:11, color:'#8ab8f0', marginTop:2 }}>
-          {(() => { const nw = (targets || []).filter(t => t.selectionRole ? t.selectionRole === 'new' : t.status === 'new'); return nw.length ? nw.map(t => t.chinese).join(' \u00b7 ') : 'No new words available' })()}
-        </div>
-      </button>
-
       {/* Daily | Revision | Listening (v658: Listening is its own track) */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0, 1fr))', gap:10 }}>
         <button onClick={onStartTrack} disabled={!targets || !targets.length}
@@ -50846,14 +50954,13 @@ function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack,
           <Icon name="sparkles" size={22} color="#10b981" />
           <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Daily Track</div>
           <div style={{ fontSize:11, color:'#4a9960', marginTop:2 }}>{(targets && targets.length) ? 'Learn + review' : 'No targets'}</div>
-          {(targets && targets.length) ? <div style={{ fontSize:11, color:'var(--text-2)', marginTop:4 }}>{(() => { const n = (targets || []).filter(t => t.selectionRole ? t.selectionRole === 'new' : t.status === 'new').length; return n + ' new word' + (n === 1 ? '' : 's') })()}</div> : null}
+          {(targets && targets.length) ? <div style={{ fontSize:11, color:'var(--text-2)', marginTop:4 }}>{'~45 min \u00b7 ' + stats.due + ' due'}</div> : null}   {/* same line as the Thai and Japanese Daily buttons */}
         </button>
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={onStartSrsTrack} />
         <ListeningTrackButton selection={listeningSelection} onStart={onStartListening} />
         <TopicsEntryCard lang="zh" onOpen={() => onNav && onNav('topics')} />
       </div>
-      <Gen2Switch settingKey={ZH_GEN2_SETTING_KEY} note={'Daily Track only. Test version: each sentence is checked by a second model. A word it cannot teach well is left for a later lesson (it stays due). Costs a little more than the standard generator.'} />
 
       {/* Rank Test — same component and behaviour in every language */}
       <RankTestButton vocab={vocab} rank={currentRankName(vocab)}
@@ -51089,6 +51196,7 @@ function MandarinTeacher({ lang, onSetLang }) {
         {view === 'rank-test' && <RankTestView vocab={vocab} lang="zh" onBack={() => setView('dashboard')} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="zh" onBack={() => setView('dashboard')} />}
         {view === 'topics' && <TopicsView lang="zh" vocab={vocab} onBack={() => setView('dashboard')} />}
+        {String(view).startsWith('browse-') && <WordListView vocab={vocab} lang="zh" initialFilter={String(view).slice(7)} onBack={() => setView('dashboard')} />}
         {view === 'learn' && (
           <ErrorBoundary>
             <MandarinLearnWords words={newTargets.filter(w => w.selectionRole === 'new')} gcpTtsKey={cred.gcpTtsKey}

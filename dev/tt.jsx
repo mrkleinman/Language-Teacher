@@ -6801,7 +6801,7 @@ function thaiPhrasePlan(vocab, today, eligibleIds, o) {
   const raw = new Map(RAW_VOCAB.map(d => [d.id, d])), pos = w => { const d = raw.get(w.id); return (d && d._ci0) || 1e6 }
   const fresh = ph.filter(w => isNew(w) && thaiPhraseHomeIndex(w) <= ri).sort((a, b) => (kind(b) ? 1 : 0) - (kind(a) ? 1 : 0) || pos(a) - pos(b) || a.id - b.id)
   // a QUEUED phrase ("Next in queue" in the vocab bank) goes first: a learned one is the opening / closing (a greeting) or a review phrase, a new one is taught inside the new words
-  const queued = ph.filter(w => w.queuedNext).sort((x, y) => String(x.queuedNext).localeCompare(String(y.queuedNext)))
+  const queued = ph.filter(w => w.queuedNext).sort((x, y) => String(x.queuedNext).localeCompare(String(y.queuedNext)) || x.id - y.id)
   const qOld = queued.filter(w => !isNew(w)), qNew = queued.filter(isNew).slice(0, 3)
   const out = { ...none, dueGreetings: dueList.filter(kind).length, duePhrases: dueList.filter(w => !kind(w)).length, newAvailable: fresh.length }
   out.open = qOld.find(w => kind(w) === 'open') || dueList.find(w => kind(w) === 'open') || null
@@ -7346,7 +7346,7 @@ function pickWords(vocab, mode, todayNewWords) {
   // "Next in queue" (vocab bank): the words the learner put in the queue come FIRST in the next Daily (not Revision / weak). A queued NEW word takes one of the belt's new places (the
   // last new words give way, so the allowance still holds); a queued word already learned is reviewed. Only eligible words are used; the rest of the queue waits.
   if (mode === 'daily') {
-    const qAll = (vocab || []).filter(w => w && w.queuedNext && !w.duplicateOf && pool.eligibleIds.has(w.id) && !isThaiPhraseEntry(w)).sort((a, b) => String(a.queuedNext).localeCompare(String(b.queuedNext)))
+    const qAll = (vocab || []).filter(w => w && w.queuedNext && !w.duplicateOf && pool.eligibleIds.has(w.id) && !isThaiPhraseEntry(w)).sort((a, b) => String(a.queuedNext).localeCompare(String(b.queuedNext)) || a.id - b.id)
     if (qAll.length) {
       let limit = 5; try { limit = getBeltConfig(currentRankName(vocab)).newWordLimit } catch (e) {}
       const qNew = qAll.filter(w => isGenuinelyNew(w)).slice(0, limit), qOld = qAll.filter(w => !isGenuinelyNew(w))
@@ -7407,7 +7407,7 @@ function pickWords(vocab, mode, todayNewWords) {
   ]
   // the words the learner queued by hand lead the track, in the order they were queued
   {
-    const qd = targets.filter(w => w._selectorStage === 'queued').sort((a, b) => String(a.queuedNext).localeCompare(String(b.queuedNext)))
+    const qd = targets.filter(w => w._selectorStage === 'queued').sort((a, b) => String(a.queuedNext).localeCompare(String(b.queuedNext)) || a.id - b.id)
     if (qd.length) targets = qd.concat(targets.filter(w => w._selectorStage !== 'queued'))
   }
   const reachedList = [...reached.values()]

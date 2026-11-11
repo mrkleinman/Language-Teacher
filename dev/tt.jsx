@@ -36213,6 +36213,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
                 </div>
               )}
             </div>
+            <GenTargetPreview targets={activeTargets} textOf={w => w.thai} subOf={w => w.phonetic} />
             <Btn onClick={() => { setGenLog([]); setPairsDone(0); setBrickSources({}); setBrickChecks({}); setBrickHist({}); setSessionTargets(null); setSessionAnchors(null); setPhase('starting') }}
               style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'14px' }}>
               ▶ {mode === 'daily' && thUseGen2 ? 'Generate with the NEW generator (test)' : 'Generate Track from this Scene'}
@@ -36222,6 +36223,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
               variant="secondary" style={{ width:'100%', justifyContent:'center' }}>
               🔄 Try a different scene
             </Btn>
+            <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
           </>
         )}
         {buildingScene && <Spinner size={20} color="var(--gold)" />}
@@ -42896,26 +42898,6 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
       {/* Belt Rank */}
       <BeltRankCard vocab={vocab} onNav={onNav} langName="Japanese" />
 
-      {/* Next targets — §1/§9: romaji is the learner phonetic line and is always
-          visible, mirroring where Thai Teacher shows its phonetics. */}
-      {targets && targets.length > 0 && (
-        <Card style={{ padding: '14px 16px' }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
-            Next targets ({targets.length})
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {targets.map(t => (
-              <div key={t.id} style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                <span className="jp" style={{ fontSize: 18, fontWeight: 700, color: 'var(--gold)' }}>{t.japanese}</span>
-                <span className="jp" style={{ fontSize: 12, color: 'var(--muted)' }}>{t.reading}</span>
-                <span className="phon" style={{ fontSize: 13, color: 'var(--text)' }}>{t.romaji}</span>
-                <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 'auto' }}>{t.english}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
       {/* Speech Style \u2014 the one Japanese-specific control */}
       <JapaneseSpeechStyle value={register} onChange={onSetRegister} />
 
@@ -46161,7 +46143,7 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
         const cp = await genCheckpointLoad('zh')
         if (cp) { offerCheckpoint(cp); setPhase('resume-choice'); return }
       }
-      startGeneration(null)
+      setPhase('preview')   // same pre-generation screen as Japanese/Thai: show what the track will teach, then wait for the learner
     })()
   }, [])
 
@@ -46317,6 +46299,15 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
   }
   const filled = (phase === 'idle' ? 0 : FRAMING) + recallDone
   const pct = totalSlots ? Math.min(100, Math.round((filled / totalSlots) * 100)) : 0
+
+  if (phase === 'preview') return (
+    <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, paddingTop:40 }}>
+      <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0 }}>{'\u2705'} Ready</h2>
+      <GenTargetPreview targets={targets} textOf={w => w.chinese} subOf={w => w.pinyin} />
+      <Btn onClick={() => startGeneration(null)} style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'14px' }}>{'\u25B6'} Generate Track</Btn>
+      <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+    </div>
+  )
 
   if (phase === 'error' || phase === 'resume-choice') return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, alignItems:'center', minHeight:'50vh', justifyContent:'center' }}>
@@ -46848,6 +46839,35 @@ function jaSceneRows(vocab, store, sceneText, register) {
     return [...due, ...reinforce, ...fresh, ...learnedInScene].slice(0, 5)
   }
   return { blocks: pick(blocks), basics: pick(basics) }
+}
+
+// One "what this track will teach" block, shared by Thai, Japanese-style and Mandarin generate screens:
+// the TARGETING summary line (counts by NEW / DUE / REINFORCE...) and one chip per target word.
+function GenTargetPreview({ targets, availableCount, textOf, subOf }) {
+  const list = targets || []
+  if (!list.length) return null
+  return (
+    <div>
+      <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+        <span>{describeTargetSelection(null, list)}</span>
+        {availableCount != null && <span style={{ color:'var(--muted)' }}>{'\u00B7'} {availableCount} content words available</span>}
+      </p>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+        {list.map((w, i) => {
+          const isNew = w.selectionRole ? w.selectionRole === 'new' : w.status === 'new'
+          return (
+            <div key={w.id != null ? w.id : i} style={{ display:'flex', flexDirection:'column', alignItems:'center', position:'relative',
+              background: isNew ? 'rgba(74,144,226,0.10)' : 'transparent',
+              border:'1px solid ' + (isNew ? 'rgba(74,144,226,0.65)' : 'var(--border)'), borderRadius:8, ...BRICK_PAD }}>
+              <RoleBadge word={w} role={roleFromSelection(w)} />
+              <span className="thai" style={{ color: isNew ? '#8ab8f0' : 'var(--text)', fontSize:13, lineHeight:1.3 }}>{textOf(w)}</span>
+              {subOf && <span className="phon" style={{ color:'var(--muted)', fontSize:10, lineHeight:1.2 }}>{subOf(w)}</span>}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 function JapaneseBlockPill({ b, kind, row }) {
@@ -50758,47 +50778,6 @@ function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack,
       </Card>
 
       <BeltRankCard vocab={vocab} onNav={onNav} langName="Mandarin" />
-
-      {/* §5 — one locked register, shown as a badge, not a selector */}
-      <Card style={{ padding:'12px 16px', display:'flex', alignItems:'center', gap:10 }}>
-        <span style={{ fontSize:18 }}>{MANDARIN_REGISTER.icon}</span>
-        <span style={{ fontSize:13, fontWeight:700, color:'var(--gold)' }}>{MANDARIN_REGISTER.label}</span>
-        <span style={{ fontSize:10, color:'var(--muted)', marginLeft:'auto' }}>very casual, still polite</span>
-      </Card>
-
-      {/* v683 — Next targets lists the WHOLE Daily Track (the 30 targets the generator receives: new + review), not only the
-          raw new-word picks; the Learn New Words card below keeps showing just the new words */}
-      {(() => { const list = (trackTargets && trackTargets.length) ? trackTargets : (targets || [])
-        const nNew = list.filter(t => t.selectionRole ? t.selectionRole === 'new' : t.status === 'new').length
-        return list.length > 0 && (
-        <Card style={{ padding:'14px 16px' }}>
-          <p style={{ fontSize:12, fontWeight:600, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
-            Next targets ({list.length}) · {nNew} new · {list.length - nNew} review
-          </p>
-          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            {list.map(t => (
-              <div key={t.id} style={{ display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap' }}>
-                <span className="zh" style={{ fontSize:20, fontWeight:700, color:'var(--gold)' }}>{t.chinese}</span>
-                <span className="phon" style={{ fontSize:13, color:'var(--text)' }}>{t.pinyin}</span>
-                <span style={{ fontSize:12, color:'var(--muted)', marginLeft:'auto' }}>{t.english}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      ) })()}
-
-      {/* §4 — learn the new words (v671: 5 at Mukyu) before practising them */}
-      <button onClick={onLearnWords} disabled={!targets || !targets.length}
-        style={{ background:(targets && targets.length) ? 'linear-gradient(135deg,#1a1630,#231d42)' : 'var(--surface)',
-                 border:'1px solid ' + ((targets && targets.length) ? '#4a90e2' : 'var(--border)'), borderRadius:12,
-                 padding:'16px 12px', cursor:(targets && targets.length) ? 'pointer' : 'not-allowed',
-                 textAlign:'center', color:'var(--text)', opacity:(targets && targets.length) ? 1 : 0.55 }}>
-        <Icon name="book" size={20} color="#4a90e2" />
-        <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Learn New Words</div>
-        <div style={{ fontSize:11, color:'#8ab8f0', marginTop:2 }}>
-          {(() => { const nw = (targets || []).filter(t => t.selectionRole ? t.selectionRole === 'new' : t.status === 'new'); return nw.length ? nw.map(t => t.chinese).join(' \u00b7 ') : 'No new words available' })()}
-        </div>
-      </button>
 
       {/* Daily | Revision | Listening (v658: Listening is its own track) */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0, 1fr))', gap:10 }}>

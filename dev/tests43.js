@@ -60,9 +60,13 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
   }
   // ══ D — Mandarin target display ═════════════════════════════════════════════════════════════════════════════════════
   {
-    T('D1', 'the Mandarin dashboard gets the 30-target Daily Track list for "Next targets" (labelled new / review) while Learn New Words keeps the new words only',
-      /<MandarinDashboard vocab=\{vocab\} tracks=\{tracks\} targets=\{newTargets\} trackTargets=\{targets\}/.test(SRC) && /Next targets \(\{list\.length\}\) · \{nNew\} new · \{list\.length - nNew\} review/.test(SRC) &&
-      /<MandarinLearnWords words=\{newTargets\.filter\(w => w\.selectionRole === 'new'\)\}/.test(SRC))
+    // 11 Nov: the owner removed "Next targets" and "Learn New Words" from the Mandarin dashboard (and "Next targets" from Japanese);
+    // the targets are now shown on the Scene Ready / Ready screen before generating. D1 used to assert the removed card, so it now
+    // asserts the removal and that the shared target preview is wired into all three generators.
+    T('D1', 'Next targets / Learn New Words / register badge are gone from the Japanese and Mandarin dashboards; Thai, Japanese and Mandarin generate screens use the targets preview',
+      !/Next targets \(/.test(SRC) && !/>Learn New Words</.test(SRC) && !/very casual, still polite/.test(SRC) &&
+      /<GenTargetPreview targets=\{activeTargets\}/.test(SRC) && /<GenTargetPreview targets=\{targets\}/.test(SRC) && /<TargetHeader \/>/.test(SRC) &&
+      /<JapaneseSpeechStyle value=\{register\}/.test(SRC))
     T('D2', 'generation-screen headings (Mandarin and Japanese) count the targets actually generated, not the raw new-word selection',
       (SRC.match(/describeTargetSelection\(\(selection && selection\.counts\) \|\| \{[^}]*\}, targets\)/g) || []).length === 3)
   }

@@ -17111,7 +17111,7 @@ function thaiSwapSpeakerLine(p, to) {
   const t0 = t.replace(/\s+/g, '')
   if (to === 'B' && /ค่ะ$/.test(t0) && (THAI_QUESTION_RE.test(t0.replace(/ค่ะ$/, '')) || /\?\s*$/.test(String(p.english || '')))) t = t.replace(/ค่ะ\s*$/, 'คะ')
   const cue = thaiSwapCuePronouns(p.prompt, to)
-  return { ...p, speaker: to, thai: t, text: t, prompt: cue, phonetic: '', words: [], speakerGender: to === 'B' ? 'female' : 'male', _speakerOrderFixed: true }
+  return { ...p, speaker: to, thai: t, text: t, prompt: cue, phonetic: '', words: [], speakerGender: thaiSpeakerMapGender(to), _speakerOrderFixed: true }
 }
 function thaiFinalSpeakerOrderPass(pairs) {
   const out = (pairs || []).slice(); let fixed = 0

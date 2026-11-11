@@ -77,12 +77,14 @@ async function main() {
   // ══ §2/§4/§6/§7 — MAIN COHERENCE AGAINST THE LOCAL PREMISE (live replay) ═════════════════════
   {
     // v654 (replay): one global premise → the travel scene fails and stays failed
+    if (require('fs').existsSync('tt.v654.compiled.js')) {
     const S4 = liveSetup('tt.v654.compiled.js'); mock(S4, 'th')
     wrap(S4, (q, r) => /A language lesson is GROUPED PRACTICE/.test(q) ? judge(q) : r)
     const tr4 = { ...makeTrack(S4, 'th', { tag: '-v654' }), sceneContract: { premise: GLOBAL, characters: [{ speaker: 'A', name: 'Somchai' }, { speaker: 'B', name: 'Nida' }], allowedSceneEntities: [] }, scenePlan: livePlan(S4, GLOBAL) }
     const { t: t4 } = await (async () => { const log = []; const t = await S4.c.finaliseMainTrack(tr4, S4.c.ev('TRACK_ADAPTERS').th, { vocab: S4.vocab, apiKey: 'k', model: 'm', qcRan: true, onLog: m => log.push(m) }); return { t, log } })()
     T('C0', 'replay v654: a travel scene judged against the GLOBAL food-stall premise fails → MAIN_TRACK_COHERENCE=FAIL → NOT_READY (the live failure)',
       t4.integrity.status === 'NOT_READY' && t4.integrity.reasons.some(r => /MAIN_TRACK_COHERENCE=FAIL/.test(r)), t4.integrity.reasons)
+    } else out.push('BLOCKED C0 v654 replay: the old build tt.v654.compiled.js is not in the repository (never published), so this before/after comparison cannot run here: reported BLOCKED, not passed')
     // v655: the same scene with the inherited (wrong) premise → premise re-planned, not the sentences
     const S = liveSetup(); mock(S, 'th')
     const seen = wrap(S, (q, r) => /A language lesson is GROUPED PRACTICE/.test(q) ? judge(q) : r)

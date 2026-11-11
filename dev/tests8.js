@@ -17,10 +17,11 @@ async function gen(file, lines) {
   return { c, res, err, calls, log }
 }
 ;(async () => {
-  const old = await gen('tt.v642.compiled.js'), neu = await gen('tt.compiled.js')
-  out.push('REPLAY live ข้าวเหนียว lines — v642: ' + old.calls + ' model calls, log: ' + JSON.stringify(old.log.filter(l => /speaker=|fail/i.test(l)).slice(0, 2)))
+  const HASOLD = require('fs').existsSync('tt.v642.compiled.js')
+  const old = HASOLD ? await gen('tt.v642.compiled.js') : null, neu = await gen('tt.compiled.js')
+  if (HASOLD) out.push('REPLAY live ข้าวเหนียว lines — v642: ' + old.calls + ' model calls, log: ' + JSON.stringify(old.log.filter(l => /speaker=|fail/i.test(l)).slice(0, 2))); else out.push('BLOCKED REPLAY v642 log: tt.v642.compiled.js is not in the repository (never published), so the v642 side of this comparison cannot run here: reported BLOCKED, not passed')
   out.push('                              v643: ' + neu.calls + ' model call(s), log: ' + JSON.stringify(neu.log.filter(l => /POLITENESS|CONFLICT|NATURALNESS|passed|fail/i.test(l)).slice(0, 3)))
-  T('R1', 'v642 reproduces the live loop: all 11 checks fail on "no politeness particle at the end"', old.calls === 11 && old.log.filter(l => /particle=\(none\) result=FAIL \(no politeness particle at the end\)/.test(l)).length >= 11)
+  if (HASOLD) T('R1', 'v642 reproduces the live loop: all 11 checks fail on "no politeness particle at the end"', old.calls === 11 && old.log.filter(l => /particle=\(none\) result=FAIL \(no politeness particle at the end\)/.test(l)).length >= 11); else out.push('BLOCKED R1 v642 reproduction: tt.v642.compiled.js is not in the repository (never published), so the v642 side of this comparison cannot run here: reported BLOCKED, not passed')
   T('R2', 'v643: the same output passes on the 1st check (politeness logged as advisory, never as a gender failure)', neu.calls === 1 && neu.res && neu.res.length === 3 &&
     neu.log.some(l => /POLITENESS_ISSUE \(advisory\) speaker=B: politeness particle only in an earlier clause/.test(l)) && !neu.log.some(l => /Gender fail|SPEAKER_GENDER_CONFLICT/.test(l)))
   const c = neu.c, V = (t, sp) => c.validateThaiSpeakerParticle(t, c.thaiSpeakerMapGender(sp))

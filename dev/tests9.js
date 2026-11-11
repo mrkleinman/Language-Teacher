@@ -60,19 +60,24 @@ async function recover(env, targetThai, o) {
 }
 
 ;(async () => {
-  const env = setup('tt.compiled.js'), env643 = setup('tt.v643.compiled.js')
+  const HAS643 = require('fs').existsSync('tt.v643.compiled.js')   // v643 was never published to the repository: the v643-vs-v644 comparisons are reported BLOCKED when it is absent (never counted as passes)
+  const env = setup('tt.compiled.js'), env643 = HAS643 ? setup('tt.v643.compiled.js') : null
   const c = env.c
   // ════ LIVE [049] REPLAY ═══════════════════════════════════════════════════════════
   const kaw = env.vocab.find(w => w.thai === 'เข้า')
   const live049 = { speaker: 'A', thai: 'ขอเข้าหน่อยครับ', english: 'Can I have a to enter, please?', prompt: 'Ask if you can have a to enter', phonetic: 'khɔ̌ɔ khâo nòi khráp',
     pairType: 'content', targetId: kaw.id, wordId: kaw.id, _target: 'เข้า', _typedAt: 'creation', language: 'th', _source: 'closed-vocab-fallback:เข้า' }
   out.push('SOURCE TRACE — makeFallbackPairs(เข้า "' + kaw.english + '"): classifyWord=' + c.classifyWord(kaw) + ' · lexicalFunction=' + c.lexicalFunctionFromGloss(kaw.english))
+  if (HAS643) {
   out.push('  v643: ' + JSON.stringify(env643.c.makeFallbackPairs(kaw).map(p => p.prompt + ' | ' + p.english)))
+  } else out.push('BLOCKED v643 fallback listing: tt.v643.compiled.js is not in the repository (never published), so the v643 side of this comparison cannot run here')
   out.push('  v644: ' + JSON.stringify(c.makeFallbackPairs(kaw).map(p => p.prompt + ' | ' + p.english)))
+  if (HAS643) {
   mock(env643.c, {}); const a643 = await env643.c.finalPairSemanticAudit([live049], 'k', 'm', () => {})
   mock(c, {}); const a644 = await c.finalPairSemanticAudit([live049], 'k', 'm', () => {})
   T('R1', 'live [049] replay: v643 audit KEPT the garbage pair (model scored cue 5, Thai natural); v644 drops it deterministically',
     a643.pairs.length === 1 && a644.pairs.length === 0 && a644.stats.templateGarbage === 1, { v643: a643.stats.dropped, v644: a644.stats.failures[0] && a644.stats.failures[0].reason })
+  } else out.push('BLOCKED R1 live [049] replay: tt.v643.compiled.js is not in the repository (never published), so the v643 side of this comparison cannot run here')
 
   // ════ 13. CUE / TRANSLATION ═════════════════════════════════════════════════════
   const gA = c.thaiTemplateGarbageProblems({ prompt: 'Ask if you can have a to enter' })
@@ -95,21 +100,25 @@ async function recover(env, targetThai, o) {
   const phrik = env.vocab.find(w => w.thai === 'พริก'), twenty = env.yi
   const fbK = c.makeFallbackPairs(kaw), fbP = c.makeFallbackPairs(phrik), fbY = c.makeFallbackPairs(twenty)
   const noGarbage = arr => arr.every(p => !c.thaiTemplateGarbageProblems(p).length)
+  if (HAS643) {
   T('E', 'raw gloss in a fallback template: verb gloss "to enter" no longer fills the noun frame; noun gloss "chilli" stays (valid in context); number "twenty" gets count/price frames',
     fbK.length && noGarbage(fbK) && fbK.every(p => !/have a to/.test(p.prompt + p.english)) && fbP.some(p => /Can I have a chilli, please\?/.test(p.english)) &&
     fbY.length && fbY.every(p => /baht|people/.test(p.english)) && env643.c.makeFallbackPairs(twenty).some(p => /have a twenty/.test(p.english)),
     { เข้า: fbK.map(p => p.english), พริก: fbP.map(p => p.english), ยี่สิบ: fbY.map(p => p.english) })
+  } else out.push('BLOCKED E fallback template: tt.v643.compiled.js is not in the repository (never published), so the v643 side of this comparison cannot run here')
   // E2: the closed-vocabulary repair (the live source) never emits a garbage cue
   const illegal = { ...live049, thai: 'ผมจะเข้าครัวครับ', english: 'I will go into the kitchen.', prompt: 'He says he will go into the kitchen', _source: 'gemini-check-1:conv' }
   const T0 = c.thaiTargetsFromTrack(env.track, env.vocab)
   const byId = new Map([...T0.byId, [kaw.id, kaw]])
   const cv = c.enforceThaiClosedVocabulary([illegal], c.buildThaiTrackVocabContext(env.vocab, [...T0.list, kaw]), { targetsById: byId, stage: 'test' })
+  if (HAS643) {
   const T0b = env643.c.thaiTargetsFromTrack(env643.track, env643.vocab)
   const kaw643 = env643.vocab.find(w => w.thai === 'เข้า')
   const cv643 = env643.c.enforceThaiClosedVocabulary([illegal], env643.c.buildThaiTrackVocabContext(env643.vocab, [...T0b.list, kaw643]), { targetsById: new Map([...T0b.byId, [kaw643.id, kaw643]]), stage: 'test' })
   T('E2', 'closed-vocabulary repair of an illegal เข้า line: v643 wrote the garbage template, v644 does not',
     cv643.pairs.some(p => /have a to enter/.test(p.prompt || '')) && !cv.pairs.some(p => c.thaiTemplateGarbageProblems(p).length),
     { v643: cv643.pairs.map(p => p.prompt + ' | ' + p.thai), v644: cv.pairs.map(p => p.prompt + ' | ' + p.thai + ' | SRC ' + p._source) })
+  } else out.push('BLOCKED E2 closed-vocabulary repair: tt.v643.compiled.js is not in the repository (never published), so the v643 side of this comparison cannot run here')
 
   // ════ 14. RECOVERY ═══════════════════════════════════════════════════════════════
   const liveYi = [L('A', 'ผมจะไปถึงตอนบ่ายสี่โมงครับ', 'I will arrive at 4 pm.', 'He says he will arrive at four in the afternoon'),
@@ -119,13 +128,15 @@ async function recover(env, targetThai, o) {
                   L('B', 'ถูกดีนะคะ', 'That is cheap.', 'She says that is cheap'),
                   L('A', 'ครับ มียี่สิบคนครับ', 'Yes, there are twenty people.', 'He says there are twenty people')]
   // live replay on v643: the ยี่สิบโมง exchange is accepted
-  const r643 = await recover(env643, 'ยี่สิบ', { replacements: { 'ยี่สิบ': [liveYi, bahtYi] } })
   const rF = await recover(env, 'ยี่สิบ', { replacements: { 'ยี่สิบ': [liveYi, bahtYi] } })
   const dF = rF.res.diagnostics.filter(d => d.attempt === 1 && /ยี่สิบโมง/.test(d.thai))
+  if (HAS643) {
+  const r643 = await recover(env643, 'ยี่สิบ', { replacements: { 'ยี่สิบ': [liveYi, bahtYi] } })
   T('F', 'recovery produces ยี่สิบโมง ⇒ FAIL (v643 accepted it on attempt 1; v644 rejects it deterministically even when the model scores it natural)',
     r643.rec.resolved && r643.rec.attempts[0].result === 'accepted' && (r643.rec.attempts[0].lines || []).some(l => /ยี่สิบโมง/.test(l)) &&
     rF.rec.attempts[0].result === 'rejected' && dF.length === 2 && dF.every(d => /INVALID_TIME_EXPRESSION/.test(d.finalStatus) && /FAIL/.test(d.naturalness)),
     { v643: r643.rec.attempts.map(a => a.attempt + ':' + a.result + ' ' + (a.lines || []).join(' / ')), v644: dF.map(d => d.thai + ' → ' + d.naturalness + ' · ' + d.finalStatus) })
+  } else out.push('BLOCKED F recovery: tt.v643.compiled.js is not in the repository (never published), so the v643 side of this comparison cannot run here')
   const tp = x => c.thaiTimeExpressionProblems(x).length
   const tuen = [L('A', 'พรุ่งนี้ผมต้องตื่นเช้าครับ', 'I have to wake up early tomorrow.', 'He says he has to wake up early tomorrow'),
                 L('B', 'คืนนี้นอนสองทุ่มนะคะ', 'Go to bed at 8 p.m. tonight.', 'She tells him to go to bed at eight tonight'),
@@ -150,14 +161,16 @@ async function recover(env, targetThai, o) {
   T('J', 'recovery line is natural but its cue does not match ⇒ rejected (CUE_MISMATCH)',
     !rJ.rec.resolved && dJ.length === 2 && dJ.every(d => /CUE_MISMATCH/.test(d.finalStatus) && /PASS/.test(d.naturalness)), dJ.map(d => d.thai + ' → ' + d.finalStatus))
   // K: the same audit, fail closed — a candidate whose naturalness batch cannot be parsed is not accepted
-  const rK643 = await recover(env643, 'ตื่น', { replacements: { 'ตื่น': [tuen, tuen] }, natFail: () => true })
   const rK = await recover(env, 'ตื่น', { replacements: { 'ตื่น': [tuen, tuen] }, natFail: () => true })
   const rK2 = await recover(env, 'ตื่น', { replacements: { 'ตื่น': [tuen] } })
   const acc = rK2.res.pairs.filter(p => p._source === 'qc:recover:ตื่น')
+  if (HAS643) {
+  const rK643 = await recover(env643, 'ตื่น', { replacements: { 'ตื่น': [tuen, tuen] }, natFail: () => true })
   T('K', 'recovery is accepted only after the SAME final semantic audit: unjudged ⇒ rejected (v643 accepted it), judged ⇒ accepted and marked VERIFIED',
     rK643.rec.resolved && !rK.rec.resolved && rK.res.diagnostics.filter(d => d.attempt === 1 && d.targetPresent).every(d => /NATURALNESS_UNVERIFIED/.test(d.finalStatus)) &&
     rK2.rec.resolved && acc.length && acc.every(p => p._semanticState === 'VERIFIED') && rK2.res.audit.audited === 3 && rK2.m.calls.cue >= 1 && rK2.m.calls.nat >= 1,
     { v643: rK643.rec.attempts.map(a => a.result), v644: rK.rec.attempts.map(a => a.result + ' ' + (a.reasons || []).slice(0, 1).join('')), audit: rK2.res.audit })
+  } else out.push('BLOCKED K recovery: tt.v643.compiled.js is not in the repository (never published), so the v643 side of this comparison cannot run here')
   // attempt wording
   const recTxt = []
   { const r = await recover(env, 'ตื่น', { replacements: {} }); recTxt.push(c.recoveryAttemptCount({ attempts: [{ attempt: 0, result: 'not attempted' }] }), c.recoveryAttemptCount(r.rec)) }

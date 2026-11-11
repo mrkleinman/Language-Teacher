@@ -24,12 +24,15 @@ async function genOnce(file, opts = {}) {
 }
 ;(async () => {
   // ── REPRODUCTION ──
-  const old = await genOnce('tt.v641.compiled.js'), neu = await genOnce('tt.compiled.js')
+  const HASOLD = require('fs').existsSync('tt.v641.compiled.js')
+  const old = HASOLD ? await genOnce('tt.v641.compiled.js') : null, neu = await genOnce('tt.compiled.js')
+  if (HASOLD) {
   const oldFails = old.log.filter(l => /speaker=A gender=female particle=ครับ result=FAIL/.test(l)).length
   out.push('REPRO v641 (scene: A "' + CHAR_A + '", B "' + CHAR_B + '"):')
   out.push('  model calls ' + old.calls + ' · accepted ' + (old.res ? old.res.filter(l => !/best-attempt/.test(l._source || '')).length : 0) + ' · first lines of log:')
   old.log.filter(l => /speaker=|Gender fail/.test(l)).slice(0, 4).forEach(l => out.push('    ' + l))
   T('R1', 'v641 reproduces the live failure: correct ผม…ครับ rejected as "speaker=A gender=female" on all 11 checks', old.calls === 11 && oldFails >= 11)
+  } else out.push('BLOCKED R1 v641 reproduction: tt.v641.compiled.js is not in the repository (never published), so the old-build side of this comparison cannot run here: reported BLOCKED, not passed')
   out.push('  v642 log: ' + JSON.stringify(neu.log.slice(0,6)))
   T('R2', 'v642: the same model output passes on the 1st check', neu.calls === 1 && neu.res && neu.res.length === 3 && !neu.log.some(l => /result=FAIL/.test(l)), neu.log.filter(l => /check|✅/.test(l)).slice(0, 3))
   // stage-by-stage trace for one A line and one B line (v641 vs v642)
@@ -40,8 +43,10 @@ async function genOnce(file, opts = {}) {
       qcResult: c.validateThaiSpeakerParticle(l.thai, c.thaiSpeakerGender(l.speaker, charA, charB)).ok ? 'PASS' : 'FAIL',
       thaiEvidence: c.thaiSpeakerEvidence(l.thai), rendererGender: c.speakerGenderOf(p, 'th') }
   }
+  if (HASOLD) {
   out.push('TRACE A line "' + LIVE[0].thai + '"\n  v641: ' + JSON.stringify(trace(old.c, LIVE[0], CHAR_A, CHAR_B)) + '\n  v642: ' + JSON.stringify(trace(neu.c, LIVE[0], CHAR_A, CHAR_B)))
   out.push('TRACE B line "' + LIVE[1].thai + '"\n  v641: ' + JSON.stringify(trace(old.c, LIVE[1], CHAR_A, CHAR_B)) + '\n  v642: ' + JSON.stringify(trace(neu.c, LIVE[1], CHAR_A, CHAR_B)))
+  } else out.push('BLOCKED TRACE v641 stage-by-stage trace: tt.v641.compiled.js is not in the repository (never published), so the old-build side of this comparison cannot run here: reported BLOCKED, not passed')
   const swapped = await genOnce('tt.compiled.js', { charA: 'Nida, a Thai woman', charB: 'Somchai, a Thai man' })
   T('R3', 'a fully swapped scene is flagged as SCENE_CHARACTER_MISMATCH (diagnostic) and lines still pass by the map', swapped.res && swapped.res.length === 3 &&
     neu.c.thaiSceneCharacterCheck('Nida, a Thai woman', 'Somchai, a Thai man').length === 2 && neu.c.thaiSceneCharacterCheck(CHAR_A, CHAR_B).length === 0,
@@ -122,6 +127,10 @@ async function genOnce(file, opts = {}) {
     cl.unresolvedTargets[0].id === 517 && cl.consistent && /UNRESOLVED=517/.test(c.thaiTargetCountsLine(cl)), c.thaiTargetCountsLine(cl))
   // M: progress denominator = generationTargetCount
   const c3 = load('tt.compiled.js'); const v3 = c3.initVocab()
+  // 11 Nov: generateConversationTrack first asks the model to describe how Thai speakers use the words (thaiEnsureUsageProfiles). With the fake
+  // key 'k' and no model mock that call is refused (GEMINI_KEY_MISSING) and, correctly, stops generation. This check is about the progress
+  // denominator, so the model is mocked at the same boundary the other suites use and every call returns an empty answer.
+  c3.mockGeminiGenerate = async () => JSON.stringify({ words: [] })
   const tg = v3.filter(w => w.curriculumIndex >= 101 && w.curriculumIndex <= 127).map(w => ({ ...w }))
   c3.generateWordLines = async (t) => [{ speaker: 'A', thai: 'ผมชอบ' + t.thai + 'ครับ', english: 'x', prompt: 'He says x', phonetic: 'x' }, { speaker: 'B', thai: 'จริงเหรอคะ', english: 'Really?', prompt: 'She asks', phonetic: 'x' }]
   const statuses = []; const logs = []
@@ -150,6 +159,10 @@ async function genOnce(file, opts = {}) {
     ltN.coverage.requiredTargetIds.length === 30 && ltN.coverage.newTargetIds.length === 3, { generation: cntN.generationTargetCount, requiredListening: cntN.requiredListeningTargetCount, listening: ltN.coverage.requiredTargetIds.length })
   // shortfall is reported, never silent
   const sv = learner(); sv.forEach(w => { if (w.curriculumIndex >= 1 && w.curriculumIndex <= 290) { w.status = 'new'; w.lastSeen = null; w.introducedAt = null; w.dueDate = null; w.okStreak = 0 } })
+  // 11 Nov: this is the v646/v683 flat-syllabus rule (3 new at Mukyu, the rest is overflow). Since the phrase / word split (30 Oct) a new
+  // phrase is taught inside the new places, so the same learner reports one fewer overflow word. The flat rule is still what this check
+  // is about, so it runs with the split switched off (and back on right after).
+  c.ev('THAI_PHRASE_SPLIT').on = false; c.ev('thaiPhraseSplitRevert')(c.ev('RAW_VOCAB'))
   const ps = c.pickWords(sv, 'daily', [])
   const cs = countsFor(ps.targets, 'daily', 30, { shortfall: ps.shortfall, lockedByUnratedTracks: 240 })
   // v646: superseded — a short review pool no longer yields a short selection. The cascade fills 30 and any unseen
@@ -157,5 +170,6 @@ async function genOnce(file, opts = {}) {
   // v683 owner's quota table: Thai Mukyu introduces 3 new words (was 5), so 9 unseen = 3 NEW + 6 overflow
   T('S', 'v646: a learner with only 21 introduced words still gets 30 targets; the extra unseen words are REPORTED (NEW_CEILING_OVERFLOW), never silent',
     ps.targets.length === 30 && !ps.shortfall && /NEW_CEILING_OVERFLOW=6/.test(c.thaiTargetCountsLine(cs)), c.thaiTargetCountsLine(cs))
+  c.ev('THAI_PHRASE_SPLIT').on = true; c.ev('thaiPhraseSplitApply')(c.ev('RAW_VOCAB'))
   console.log(out.join('\n') + '\n\n' + (fails ? fails + ' FAILED' : 'all passed'))
 })().catch(e => { console.error(e); process.exit(1) })

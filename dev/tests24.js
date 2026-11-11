@@ -104,6 +104,7 @@ async function openListening(S, lang, props = {}) {
         lg.length === 1 && lnTiles.length === 30 && same(lnTiles, revIds), { ln: lnTiles.slice(0, 8), rev: revIds.slice(0, 8) })
       // regression: v658's own Revision computation (the code the Revision generators ran before the canonical
       // function existed) picks the same ordered 30 from the same state — Revision behaviour is unchanged
+      if (require('fs').existsSync('tt.v658.compiled.js')) {
       const old = load('tt.v658.compiled.js'); old.console.info = () => {}
       const V = JSON.parse(c.localStorage.getItem(key))
       let oldIds
@@ -128,6 +129,7 @@ async function openListening(S, lang, props = {}) {
       const _now = canon.targetIds.filter(id => !_fn.has(id)), _old = oldIds.filter(id => !_fn.has(id))
       T(lang, 'P4', 'regression: v658\'s Revision generator computation picks the same ordered 30 (Thai: apart from at most 2 function-word targets, v681) — the canonical selector changed nothing else',
         same(_now, _old.slice(0, _now.length)) && canon.targetIds.filter(id => _fn.has(id) && !_reopened.has(id)).length <= 2, { old: oldIds.slice(0, 8), now: canon.targetIds.slice(0, 8), functionTargets: canon.targetIds.filter(id => _fn.has(id)) })
+      } else out.push('BLOCKED P4 v658 comparison: the old build tt.v658.compiled.js is not in the repository (never published), so this before/after comparison cannot run here: reported BLOCKED, not passed')
       T(lang, 'P3', '§22 the selection is non-trivial (mixed tiers / due dates) and all 30 are learned: NEW 0 · REVIEW 30',
         canon.targets.every(w => c.revisionEligible(w)) && ['hard', 'overdue', 'due', 'reinforce'].filter(k => canon.counts[k] > 0).length >= 2 && canon.counts.new === 0, { tiers: canon.counts })
     }

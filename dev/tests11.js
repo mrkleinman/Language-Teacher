@@ -27,11 +27,12 @@ function daily(c, vocab, mode = 'daily') {
 }
 
 ;(async () => {
-  const c = load('tt.compiled.js'), c644 = load('tt.v644.compiled.js')
+  const c = load('tt.compiled.js'), c644 = require('fs').existsSync('tt.v644.compiled.js') ? load('tt.v644.compiled.js') : null   // v644 was never published to the repository: its comparisons are reported BLOCKED when it is absent
   const raw = c.ev('RAW_VOCAB'), unverified = raw.filter(d => d.semanticQc !== 'PASS' && d.curriculumIndex > 0).map(d => d.id)
 
   // ════ LIVE REPLAY: the four words ════════════════════════════════════════════
   const FOUR = [67, 108, 324, 1626]
+  if (c644) {
   const base644 = c644.pickWords(learner(c644), 'daily', []).targets.filter(w => !FOUR.includes(w.id)).slice(0, 26)
   const live644 = base644.concat(FOUR.map(id => ({ ...learner(c644).find(w => w.id === id), status: 'learning', lastSeen: '2026-09-20', introducedAt: '2026-08-01' })))
   const r644 = c644.resolveThaiTargetSet(live644, [])
@@ -39,6 +40,7 @@ function daily(c, vocab, mode = 'daily') {
   T('R1', 'v644 reproduces the live bug: a 30-word selection containing สาย ถูก รองเท้า วันพฤหัสบดี is shrunk AFTER selection by resolveThaiTargetSet → 26',
     cnt644.selectedTargetCount === 30 && cnt644.generationTargetCount === 26 && r644.skipped.map(s => s.thai).sort().join() === ['ถูก', 'รองเท้า', 'วันพฤหัสบดี', 'สาย'].sort().join(),
     c644.thaiTargetCountsLine(cnt644))
+  } else out.push('BLOCKED R1 v644 replay: the old build tt.v644.compiled.js is not in the repository (never published), so this before/after comparison cannot run here — reported BLOCKED, not passed')
   // v645, same 30 with the four records as they WERE (unrepaired) — architecture alone: backfill keeps 30
   const saved = FOUR.map(id => { const d = raw.find(x => x.id === id); return [d, { semanticQc: d.semanticQc, qcStatus: d.qcStatus, qcIssues: d.qcIssues }] })
   const unrepair = () => saved.forEach(([d]) => { const a = c.ev('THAI_LEXICON_AUDIT_V645').find(x => x.id === d.id); Object.assign(d, { semanticQc: a.before.semanticQc, qcStatus: a.before.qcStatus, qcIssues: a.before.qcIssues }) })
@@ -224,10 +226,12 @@ function daily(c, vocab, mode = 'daily') {
   // 30 Oct (phrase / word split): this check is about the SELECTOR CODE, which must return what v644 returned on the same data — v644 has the old flat syllabus, so the current build is
   // compared with the split switched off (and put back right after)
   c.ev('THAI_PHRASE_SPLIT').on = false; c.ev('thaiPhraseSplitRevert')(c.ev('RAW_VOCAB'))
+  if (c644) {
   const cz = c644.selectRevisionTrackTargets({ vocab: learner(c644), maxTargets: 30, today: DAY }), cz2 = c.selectRevisionTrackTargets({ vocab: learner(c), maxTargets: 30, today: DAY })
-  c.ev('THAI_PHRASE_SPLIT').on = true; c.ev('thaiPhraseSplitApply')(c.ev('RAW_VOCAB'))
   T('L', 'the shared revision selector without `eligible` (Japanese/Mandarin path) returns exactly what v644 returned',
     JSON.stringify(cz.targets.map(t => t.id)) === JSON.stringify(cz2.targets.map(t => t.id)) && cz2.reserve === undefined && cz2.skippedCandidates === undefined)
+  } else out.push('BLOCKED L v644 selector comparison: the old build tt.v644.compiled.js is not in the repository (never published), so this before/after comparison cannot run here — reported BLOCKED, not passed')
+  c.ev('THAI_PHRASE_SPLIT').on = true; c.ev('thaiPhraseSplitApply')(c.ev('RAW_VOCAB'))
   // M: the real Generator (server-rendered with React) — the lesson header the learner sees
   const React = require('react'), RDS = require('react-dom/server')
   const cr = load('tt.compiled.js', { React })

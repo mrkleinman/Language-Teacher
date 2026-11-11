@@ -63,7 +63,9 @@ async function genJa(S, responder, extra) {
 
 ;(async () => {
   // ── BEFORE (v650 build): the exact failure chain of the 29-Sept run, reproduced ──
-  {
+  // (tt.v650.compiled.js was never published to the repository: without it this comparison is reported BLOCKED, never counted as a pass)
+  if (!require('fs').existsSync('tt.v650.compiled.js')) out.push('BLOCKED B0 v650 reproduction: tt.v650.compiled.js is not in the repository')
+  else {
     const S = setup('ja'); S.c = load('tt.v650.compiled.js')
     const V = S.c.initJapaneseVocab(); V.forEach(w => { w.status = w.status === 'new' ? 'learning' : w.status; w.lastSeen = '2026-09-20'; w.introducedAt = '2026-09-01'; w.repCount = 3 })
     const byId = new Map(V.map(w => [w.id, w])); S.vocab = V; S.targets = S.targets.map(t => byId.get(t.id) || t)
@@ -98,7 +100,8 @@ async function genJa(S, responder, extra) {
   info('fixture run: ' + genA.totalAttempts + ' paid generation requests for 90 recalls (' + genA.avgAttemptsPerRecall.toFixed(2) + ' per recall) · ' + genA.fallback + ' fallback · ' + genA.deterministicRepairs + ' deterministic repairs without a request')
 
   // ── N. prompt size: v650 per-recall prompt vs v651 ──
-  {
+  if (!require('fs').existsSync('tt.v650.compiled.js')) out.push('BLOCKED N v650 prompt-size comparison: tt.v650.compiled.js is not in the repository')
+  else {
     const t = SA.targets[3], inv = SA.c.japaneseLearnerInventory(SA.vocab, SA.targets)
     const nw = SA.c.buildJapaneseRecallPrompt(t, 1, inv, SA.vocab, 'natural', {})
     const newChars = nw.system.length + nw.user.length

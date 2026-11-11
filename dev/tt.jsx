@@ -38407,6 +38407,48 @@ function BeltVocabView({ vocab, beltLabel, beltName, displayName, beltColor, onB
   )
 }
 
+// Word list opened by the dashboard stat tiles (Words / Due / Learning / Known) in Japanese and Mandarin — the same tap-through the
+// Thai dashboard has. Read-only: search, a filter row, and one line per word (script, reading, meaning, status).
+function WordListView({ vocab, lang, initialFilter, onBack }) {
+  const [filter, setFilter] = useState(initialFilter || 'all')
+  const [q, setQ] = useState('')
+  const today = new Date().toISOString().slice(0, 10)
+  const script = w => lang === 'ja' ? w.japanese : lang === 'zh' ? w.chinese : w.thai
+  const reading = w => lang === 'ja' ? [w.reading, w.romaji].filter(Boolean).join(' · ') : lang === 'zh' ? w.pinyin : w.phonetic
+  const rows = useMemo(() => (vocab || []).filter(w => {
+    if (!w || w.duplicateOf) return false
+    const okF = filter === 'all' ? true : filter === 'due' ? (w.status !== 'new' && w.dueDate && w.dueDate <= today) : w.status === filter
+    const ql = q.trim().toLowerCase()
+    return okF && (!ql || String(script(w) || '').includes(q.trim()) || String(w.english || '').toLowerCase().includes(ql) || String(reading(w) || '').toLowerCase().includes(ql))
+  }), [vocab, filter, q])
+  const SC = { known:'#10b981', learning:'#4a90e2', new:'var(--muted)', locked:'var(--muted)' }
+  return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
+      <Btn onClick={onBack} variant="ghost" style={{ alignSelf:'flex-start' }}>{'\u2190'} Back</Btn>
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search words..."
+        style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 12px', color:'var(--text)', fontSize:14 }} />
+      <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+        {['all', 'due', 'learning', 'known', 'new'].map(f => (
+          <button key={f} onClick={() => setFilter(f)} style={{ fontSize:12, padding:'6px 12px', borderRadius:16, cursor:'pointer',
+            background: filter === f ? 'var(--gold)' : 'var(--surface2)', color: filter === f ? '#000' : 'var(--text)', border:'1px solid var(--border)' }}>{f}</button>
+        ))}
+      </div>
+      <p style={{ fontSize:11, color:'var(--muted)', margin:0 }}>{rows.length} word{rows.length === 1 ? '' : 's'}</p>
+      <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+        {rows.slice(0, 400).map(w => (
+          <div key={w.id} style={{ display:'flex', alignItems:'baseline', gap:8, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 10px', minWidth:0 }}>
+            <span className={lang === 'ja' ? 'jp' : lang === 'zh' ? 'zh' : 'thai'} style={{ color:'var(--text)', fontSize:15, fontWeight:700 }}>{script(w)}</span>
+            <span className="phon" style={{ color:'var(--muted)', fontSize:11 }}>{reading(w)}</span>
+            <span style={{ color:'var(--muted)', fontSize:11, marginLeft:'auto', textAlign:'right' }}>{w.english}</span>
+            <span style={{ fontSize:9, fontWeight:700, color: SC[w.status] || 'var(--muted)' }}>{String(w.status || '').toUpperCase()}</span>
+          </div>
+        ))}
+        {rows.length > 400 && <p style={{ fontSize:11, color:'var(--muted)', textAlign:'center' }}>Showing the first 400 — search to narrow.</p>}
+      </div>
+    </div>
+  )
+}
+
 function BeltRankView({ vocab, onBack, onOpenWord, onOpenInVocabulary, initialBelt, initialBeltFilter, lang }) {
   const known = (vocab||[]).filter(w => w.status === 'known').length
   // Restored when returning from Browse Vocabulary, so Back lands on the same belt.
@@ -42878,12 +42920,12 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
         {[
-          { label: 'Words',    val: stats.total,    icon: 'book',  color: 'var(--text)' },
-          { label: 'Due',      val: stats.due,      icon: 'clock', color: '#f59e0b' },
-          { label: 'Learning', val: stats.learning, icon: 'trend', color: '#4a90e2' },
-          { label: 'Known',    val: stats.known,    icon: 'star',  color: '#10b981' },
+          { label: 'Words',    val: stats.total,    icon: 'book',  color: 'var(--text)', filter: 'all' },
+          { label: 'Due',      val: stats.due,      icon: 'clock', color: '#f59e0b', filter: 'due' },
+          { label: 'Learning', val: stats.learning, icon: 'trend', color: '#4a90e2', filter: 'learning' },
+          { label: 'Known',    val: stats.known,    icon: 'star',  color: '#10b981', filter: 'known' },
         ].map(s => (
-          <Card key={s.label} style={{ padding: '12px 10px', textAlign: 'center' }}>
+          <Card key={s.label} onClick={() => onNav && onNav('browse-' + s.filter)} style={{ padding: '12px 10px', textAlign: 'center', cursor: 'pointer' }}>
             <Icon name={s.icon} size={14} color={s.color} />
             <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4, color: s.color }}>{s.val}</div>
             <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1, fontWeight: 500 }}>{s.label}</div>
@@ -46151,9 +46193,16 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
         const cp = await genCheckpointLoad('zh')
         if (cp) { offerCheckpoint(cp); setPhase('resume-choice'); return }
       }
-      setPhase('preview')   // same pre-generation screen as Japanese/Thai: show what the track will teach, then wait for the learner
+      buildZhScene()   // same pre-generation step as Japanese/Thai: set the scene, show what the track will teach, then wait for the learner
     })()
   }, [])
+  const [zhScene, setZhScene] = useState(null)
+  async function buildZhScene() {
+    setPhase('scene_building')
+    const sc = await generateMandarinScene(targets, apiKey, model)
+    if (stopRef.current.cancelled) return
+    setZhScene(sc); setPhase('preview')
+  }
 
   async function startGeneration(resumeCp) {
       setPhase('generating')
@@ -46308,9 +46357,15 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
   const filled = (phase === 'idle' ? 0 : FRAMING) + recallDone
   const pct = totalSlots ? Math.min(100, Math.round((filled / totalSlots) * 100)) : 0
 
+  if (phase === 'scene_building') return (
+    <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, paddingTop:40 }}>
+      <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0 }}>{'\u{1F3AC}'} Setting the scene...</h2>
+      <Spinner size={20} color="var(--gold)" />
+    </div>
+  )
   if (phase === 'preview') {
-    // Same pre-generation screen as Japanese and Thai. Mandarin tracks have no invented scene: they open and close with the fixed
-    // greeting / goodbye exchange, so that real exchange is what is shown (never a made-up scene).
+    // Same pre-generation screen as Japanese and Thai. The opening and closing are the track's real fixed greeting / goodbye
+    // exchange (Mandarin tracks have no other framing); the setting and characters come from the scene step above.
     const _inv = mandarinLearnerInventory(vocab, targets)
     const _fr = mandarinFramingPairs(_inv)
     const _line = p => (
@@ -46325,12 +46380,24 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
       <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, paddingTop:40 }}>
         <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0 }}>{'\u2705'} Scene Ready</h2>
         <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:16, display:'flex', flexDirection:'column', gap:10 }}>
-          <p style={{ color:'var(--text)', fontSize:14, margin:0, lineHeight:1.5 }}>Two friends talking in everyday casual-polite Mandarin. The track opens and closes with a greeting and a goodbye.</p>
+          <p style={{ color:'var(--text)', fontSize:14, margin:0, lineHeight:1.5 }}>{zhScene ? zhScene.scene : 'Two friends talking in everyday casual-polite Mandarin.'}</p>
+          {zhScene && (zhScene.characterA || zhScene.characterB) && (
+            <div style={{ display:'flex', gap:8 }}>
+              <div style={{ flex:1, background:'var(--surface2)', borderRadius:8, padding:'8px 10px' }}>
+                <div style={{ fontSize:10, color:'var(--muted)', marginBottom:2 }}>A (male)</div>
+                <div style={{ fontSize:12, color:'var(--text)' }}>{zhScene.characterA}</div>
+              </div>
+              <div style={{ flex:1, background:'var(--surface2)', borderRadius:8, padding:'8px 10px' }}>
+                <div style={{ fontSize:10, color:'var(--muted)', marginBottom:2 }}>B (female)</div>
+                <div style={{ fontSize:12, color:'var(--text)' }}>{zhScene.characterB}</div>
+              </div>
+            </div>)}
           {[..._fr.open, ..._fr.close].map(_line)}
         </div>
         <GenTargetPreview targets={targets} availableCount={_inv.allContent.length} textOf={w => w.chinese} subOf={w => w.pinyin} basics={_basics} />
         <Btn onClick={() => startGeneration(null)} style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'14px' }}>{'\u25B6'} Generate Track from this Scene</Btn>
         {isDailyZh && <Gen2Switch settingKey={ZH_GEN2_SETTING_KEY} note={'Test version: each sentence is checked by a second model. A word it cannot teach well is left for a later lesson (it stays due).'} />}
+        <Btn onClick={() => { setZhScene(null); buildZhScene() }} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>{'\u{1F504}'} Try a different scene</Btn>
         <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
       </div>
     )
@@ -48139,6 +48206,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
         {view === 'rank-test' && <RankTestView vocab={vocab} lang="ja" onBack={() => setView('dashboard')} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="ja" onBack={() => setView('dashboard')} />}
         {view === 'topics' && <TopicsView lang="ja" vocab={vocab} onBack={() => setView('dashboard')} />}
+        {String(view).startsWith('browse-') && <WordListView vocab={vocab} lang="ja" initialFilter={String(view).slice(7)} onBack={() => setView('dashboard')} />}
         {view === 'generate' && (
           <ErrorBoundary>
             <JapaneseGenerator vocab={vocab} targets={targets} selection={trackMode === 'revision' ? revisionSelection : selection} trackMode={trackMode} register={register} cred={cred}
@@ -48260,6 +48328,23 @@ function _salvageFirstJSONObject(text) {
 }
 
 // Scene + conversational envelope, generated as Japanese from the start (§8).
+// Mandarin scene (setting + two characters) for the Ready screen — the same idea as the Japanese and Thai scene step.
+// English only: Mandarin tracks open and close with the fixed 你好 / 再见 exchange and every other line is closed-vocabulary,
+// so the scene never writes Chinese the learner has not been taught. Returns null on any failure (the screen falls back to a
+// plain summary and still lets the learner generate).
+async function generateMandarinScene(targets, apiKey, model) {
+  if (!apiKey) return null
+  const words = (targets || []).slice(0, 12).map(t => t.english).filter(Boolean).join(', ')
+  const prompt = 'Invent a short everyday setting for a beginner Mandarin conversation between two friends. ' +
+    'The words being practised include: ' + words + '. Pick a plain, believable setting (a cafe, a market, a station, a classroom, a home...). ' +
+    'Reply ONLY with JSON: {"scene":"one or two English sentences describing the setting","characterA":"a Chinese man: name and one detail","characterB":"a Chinese woman: name and one detail"}'
+  try {
+    const raw = await geminiGenerate(apiKey, model, [{ role: 'user', content: prompt }], 600)
+    const d = _jaParseJSON(raw)
+    return d && d.scene ? { scene: String(d.scene), characterA: String(d.characterA || ''), characterB: String(d.characterB || '') } : null
+  } catch (e) { return null }
+}
+
 async function generateJapaneseScene(targets, vocab, registerId, apiKey, model, onLog) {
   const { system, user } = buildJapaneseConvoPrompt(targets, vocab, registerId)
   const inv = japaneseLearnerInventory(vocab, targets)
@@ -50798,11 +50883,11 @@ function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack,
   return (
     <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16 }}>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:8 }}>
-        {[{ l:'Words', v:stats.total, i:'book', c:'var(--text)' },
-          { l:'Due', v:stats.due, i:'clock', c:'#f59e0b' },
-          { l:'Learning', v:stats.learning, i:'trend', c:'#4a90e2' },
-          { l:'Known', v:stats.known, i:'star', c:'#10b981' }].map(s => (
-          <Card key={s.l} style={{ padding:'12px 10px', textAlign:'center' }}>
+        {[{ l:'Words', v:stats.total, i:'book', c:'var(--text)', f:'all' },
+          { l:'Due', v:stats.due, i:'clock', c:'#f59e0b', f:'due' },
+          { l:'Learning', v:stats.learning, i:'trend', c:'#4a90e2', f:'learning' },
+          { l:'Known', v:stats.known, i:'star', c:'#10b981', f:'known' }].map(s => (
+          <Card key={s.l} onClick={() => onNav && onNav('browse-' + s.f)} style={{ padding:'12px 10px', textAlign:'center', cursor:'pointer' }}>
             <Icon name={s.i} size={14} color={s.c} />
             <div style={{ fontSize:22, fontWeight:700, marginTop:4, color:s.c }}>{s.v}</div>
             <div style={{ fontSize:10, color:'var(--muted)', marginTop:1 }}>{s.l}</div>
@@ -51075,6 +51160,7 @@ function MandarinTeacher({ lang, onSetLang }) {
         {view === 'rank-test' && <RankTestView vocab={vocab} lang="zh" onBack={() => setView('dashboard')} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="zh" onBack={() => setView('dashboard')} />}
         {view === 'topics' && <TopicsView lang="zh" vocab={vocab} onBack={() => setView('dashboard')} />}
+        {String(view).startsWith('browse-') && <WordListView vocab={vocab} lang="zh" initialFilter={String(view).slice(7)} onBack={() => setView('dashboard')} />}
         {view === 'learn' && (
           <ErrorBoundary>
             <MandarinLearnWords words={newTargets.filter(w => w.selectionRole === 'new')} gcpTtsKey={cred.gcpTtsKey}

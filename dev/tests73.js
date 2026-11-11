@@ -39,15 +39,24 @@ async function open(lang) {
     const { r: ja } = await open('ja'); const j = txt(ja)
     T('U4', 'Japanese dashboard: no Next targets; the speech-style selector is kept', !/Next targets/.test(j) && /Speech|style|Style/.test(j), j.slice(0, 300))
     await TR.act(async () => { ja.unmount() })
+    // ── stat tiles open the word list, like the Thai dashboard ──
+    for (const L of ['zh', 'ja']) {
+      const { r } = await open(L)
+      const tile = r.root.findAll(x => typeof x.type === 'string' && x.props && typeof x.props.onClick === 'function' && /^\s*\d+\s+Learning\s*$/.test(textOf(x.children)))[0]
+      let ok = !!tile
+      if (tile) { await TR.act(async () => { tile.props.onClick(); await flush(20) }); const t = txt(r); ok = /\d+ words?/.test(t) && /LEARNING/.test(t) && !/Daily Track/.test(t) }
+      T('U10' + L, L.toUpperCase() + ' dashboard: tapping a stat tile opens the filtered word list (as on Thai)', ok, { found: !!tile, text: txt(r).replace(/@import[^;]*;/, '').slice(-300) })
+      await TR.act(async () => { r.unmount() })
+    }
     // ── Mandarin Ready screen (was: generation started the moment Daily Track was tapped) ──
     const { r: z2 } = await open('zh')
     const daily = z2.root.findAll(x => x.type === 'button').find(b => /Daily Track/.test(textOf(b.children)))
     await TR.act(async () => { daily.props.onClick(); await flush(60) })
     const t = txt(z2)
     T('U5', 'Mandarin: Daily Track opens a Scene Ready screen first (nothing generated yet)', /Scene Ready/.test(t) && !/Generating Mandarin track/.test(t), t.slice(0, 300))
-    T('U6', 'Mandarin Ready screen has the same parts as Japanese: summary, opening/closing lines, TARGETING counts, content words available, Conversation basics, Generate, generator switch, Back',
+    T('U6', 'Mandarin Ready screen has the same parts as Japanese: summary, characters block when the scene step returns one, opening/closing lines, TARGETING counts, content words available, Conversation basics, Generate, generator switch, Try a different scene, Back',
       /TARGETING \d+ WORD/.test(t) && /content words available/.test(t) && /Conversation basics/.test(t) && /Opening/.test(t) && /Closing/.test(t) &&
-      /Generate Track from this Scene/.test(t) && /Use the new generator \(test\)/.test(t) && /Back/.test(t), t.slice(0, 500))
+      /Generate Track from this Scene/.test(t) && /Use the new generator \(test\)/.test(t) && /Try a different scene/.test(t) && /Back/.test(t), t.slice(0, 500))
     const gen = z2.root.findAll(x => x.type === 'button').find(b => /Generate Track from this Scene/.test(textOf(b.children)))
     await TR.act(async () => { gen.props.onClick(); await flush(20) })
     // the simulated model leaves a few recalls missing, so the run ends on the draft screen — what matters is that generation ran

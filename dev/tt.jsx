@@ -27876,6 +27876,20 @@ function validateClosedWorldCandidate(lang, text, bank, targets) {
     const lemma = tok.lemma || tok.surface
     if (!unknown.includes(lemma)) unknown.push(lemma)
   })
+  // Mandarin: Layer A now holds ~3,000 bank words, so its longest-match segmentation can cut a taught sequence at the wrong place (不可以 → 不可 + 以 although the learner
+  // knows 不 and 可以). A line is closed-vocabulary valid when ANY segmentation of each clause into authorised words / particles exists, so every clause that holds an
+  // unauthorised token is re-checked as a whole against the authorised surfaces; only a clause that cannot be tiled keeps its unknown words.
+  if (lang === 'zh' && unknown.length) {
+    _authorisedCover('', auth, adapter)                       // builds auth._restricted (authorised surfaces + function forms)
+    const idx = auth._restricted
+    const tiles = cl => { const n = cl.length, ok = new Array(n + 1).fill(false); ok[0] = true
+      for (let i = 0; i < n; i++) if (ok[i]) { ;(idx.get(cl[i]) || []).forEach(w => { if (cl.startsWith(w, i)) ok[i + w.length] = true })
+        ZH_PARTICLES.forEach(w => { if (w && cl.startsWith(w, i)) ok[i + w.length] = true }) }
+      return ok[n] }
+    const clauses = stripped.split(/[\uFF0C\u3002\uFF1F\uFF01\u3001\uFF1B\uFF1A\u2026\s"\u201C\u201D\uFF08\uFF09()]+/).filter(Boolean)
+    const hasUnknown = cl => unknown.some(u => cl.includes(u) || [...u.split(' ')].some(x => x && cl.includes(x)))
+    if (clauses.filter(hasUnknown).every(tiles) && clauses.some(hasUnknown)) unknown.length = 0
+  }
   return { ok: !unknown.length && !malformed.length, unknown, malformed, tokens: toks }
 }
 function listeningClosedWorldLine(lang, pair, bank, targets) {

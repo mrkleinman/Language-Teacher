@@ -14,4 +14,13 @@ const lex = c.mandarinLexicon(null)
 const seg = c.segmentMandarin('我吃了。', lex)
 const le = seg.find(s => s.surface === '了')
 T('P4', 'the segment 了 is grammar but still carries the bank word id (coverage / SRS can find it)', le && le.type === 'grammar' && V.find(x => x.chinese === '了').id === le.vocabId, le)
+// the Layer A lexicon holds ~3,000 bank words now: 不可 is a bank word, so 不可以 was cut 不可 + 以 and a learner who knows 不 and 可以 was told "unknown words: 不可 以"
+{
+  const { learner, V693_IDS } = require('./benchmark/v692/learners')
+  const cc = load(process.env.TT_FILE || 'tt.compiled.js', { realBelt: true })
+  const L = learner(cc, 'zh', { dueIds: V693_IDS.zh }), tg = L.vocab.filter(w => V693_IDS.zh.includes(w.id))
+  const unk = s => cc.validateClosedWorldCandidate('zh', s, L.vocab, tg).unknown
+  T('P5', 'a taught sequence is not rejected because a longer untaught bank word starts inside it: 今天不可以，明天吧。 has no unknown word (不 + 可以 taught, 不可 not)', unk('今天不可以，明天吧。').length === 0, unk('今天不可以，明天吧。'))
+  T('P6', 'closed vocabulary is not weakened: a clause with a really untaught word still reports it (我想吃苹果。 → 苹果)', JSON.stringify(unk('我想吃苹果。')) === '["苹果"]', unk('我想吃苹果。'))
+}
 console.log(fails ? 'FAILED ' + fails + '/' + n : 'ALL PASS ' + n + '/' + n); process.exit(fails ? 1 : 0)

@@ -27,7 +27,9 @@ function learner(c, lang, o = {}) {
   const vocab = lang === 'th' ? c.initVocab() : lang === 'ja' ? c.initJapaneseVocab() : c.initMandarinVocab()
   const due = new Set(o.dueIds || V691_IDS[lang].concat(lang === 'zh' ? [29] : []))
   const learn = w => { w.status = 'learning'; w.lastSeen = '2026-10-05'; w.introducedAt = w.introducedAt || '2026-09-01'; w.repCount = Math.max(w.repCount || 0, 3); w.okStreak = 1 }
-  if (lang === 'zh') vocab.forEach(w => { if (w.curriculumIndex <= 63 && ![59, 60, 61].includes(w.id)) learn(w) })
+  // 12 Nov: the new Mandarin bank holds phrases (ids 9001-9023) that carry curriculumIndex 0, which "<= 63" also matched: they were silently learned and joined the
+  // inventory of this replay. The replay is the owner's 13 Oct run under the 13 Oct syllabus (curriculum 1-63 words only), so curriculumIndex must be a real position (>= 1).
+  if (lang === 'zh') vocab.forEach(w => { if (w.curriculumIndex >= 1 && w.curriculumIndex <= 63 && ![59, 60, 61].includes(w.id)) learn(w) })
   if (lang === 'ja') vocab.forEach(w => { if (w.curriculumIndex <= 106) learn(w) })
   if (lang === 'th') {
     vocab.forEach(w => { if (due.has(w.id)) learn(w) })

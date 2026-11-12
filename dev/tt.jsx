@@ -6181,9 +6181,15 @@ const MANDARIN_POLYPHONIC = {
 // Longest-match-first so \u4ECA\u5929 never splits into \u4ECA + \u5929 (\u00a710/\u00a749).
 function mandarinLexicon(vocab) {
   const lex = []
+  // The new word list teaches the structure particles as words of their own (了 的 吗 吧 呢 们 过 着 没 比 个 地 得). They keep their vocabId (a target 了 is still
+  // heard / covered), but in a sentence they are grammar, not a content unit: before the list had them they were 'grammar' entries and never counted toward the
+  // length limit, and "particles do not count" is the rule the contract states. As 'vocab' they inflated every Mandarin line by one or two units (明天我们去买东西吧
+  // counted 7 > hardMax 6), so lines were rejected TOO_COMPLEX and targets lost. 不 was a bank word before and keeps counting as one.
+  let particles = null
+  try { particles = new Set(MANDARIN_GRAMMAR_SCAFFOLD.map(g => g.form).filter(f => f !== '\u4E0D').concat(typeof ZH_STRUCTURE_GLOSS !== 'undefined' ? Object.keys(ZH_STRUCTURE_GLOSS) : [])) } catch (e) { particles = null }
   ;(vocab || RAW_MANDARIN_VOCAB).forEach(w => {
     const zh = w.chinese || w.w
-    if (zh) lex.push({ w:zh, p:w.pinyin || '', e:w.english || '', type:'vocab', vocabId:w.id })
+    if (zh) lex.push({ w:zh, p:w.pinyin || '', e:w.english || '', type: particles && particles.has(zh) ? 'grammar' : 'vocab', vocabId:w.id })
   })
   MANDARIN_GRAMMAR_SCAFFOLD.forEach(g => lex.push({ w:g.form, p:g.pinyin, e:g.meaning, type:'grammar', scaffoldId:g.id }))
   MANDARIN_CONVERSATION_BASICS.forEach(b => lex.push({ w:b.form, p:b.pinyin, e:b.english, type:'basic', basicId:b.id }))

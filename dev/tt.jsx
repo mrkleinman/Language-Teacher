@@ -15106,7 +15106,48 @@ function aiPriceOf(model) {
   const k = String(model || '').replace(/^google\//, '').replace(/:.*$/, '')
   return AI_PRICE_USD_PER_MTOK[k] || null
 }
+// ── phone browsers freeze a page that is hidden or locked: a network request made then fails ("Failed to fetch") and every retry is used up in
+// seconds. So (1) the screen is kept on while requests are running (Screen Wake Lock, where the browser has it) and (2) a request that failed
+// while the page was hidden / offline does NOT count as an attempt: it waits until the page is visible and online again, then retries.
+let AI_WAKE = null, AI_WAKE_IDLE = null, AI_HID_AT = 0, AI_PAUSE_BANNER = null
+function aiPageHiddenOrOffline() { try { return (typeof document !== 'undefined' && !!document.hidden) || (typeof navigator !== 'undefined' && navigator.onLine === false) } catch (e) { return false } }
+function aiReleaseScreen() { try { if (AI_WAKE) AI_WAKE.release() } catch (e) {}; AI_WAKE = null }
+function aiKeepScreenOn() {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.wakeLock || typeof document === 'undefined') return
+    if (!AI_WAKE) navigator.wakeLock.request('screen').then(l => { AI_WAKE = l; if (l.addEventListener) l.addEventListener('release', () => { if (AI_WAKE === l) AI_WAKE = null }) }).catch(() => {})
+    clearTimeout(AI_WAKE_IDLE); AI_WAKE_IDLE = setTimeout(aiReleaseScreen, 4 * 60 * 1000)        // released 4 minutes after the last request
+  } catch (e) {}
+}
+try { if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('visibilitychange', () => { if (document.hidden) AI_HID_AT = Date.now(); else if (AI_WAKE_IDLE) { AI_WAKE = null; aiKeepScreenOn() } }) } catch (e) {}   // the lock is dropped when the page is hidden: take it again on return
+function aiPageStateFailure(startedAt) { return aiPageHiddenOrOffline() || AI_HID_AT >= startedAt }
+function aiShowPause(on) {
+  try {
+    if (typeof document === 'undefined' || !document.body) return
+    if (!on) { if (AI_PAUSE_BANNER && AI_PAUSE_BANNER.parentNode) AI_PAUSE_BANNER.parentNode.removeChild(AI_PAUSE_BANNER); AI_PAUSE_BANNER = null; return }
+    if (AI_PAUSE_BANNER) return
+    const d = document.createElement('div')
+    d.setAttribute('data-ai-paused', '1')
+    d.style.cssText = 'position:fixed;left:12px;right:12px;bottom:76px;z-index:99999;background:#1e293b;color:#fde68a;border:1px solid #f59e0b;border-radius:10px;padding:10px 12px;font:600 13px system-ui,sans-serif;text-align:center'
+    d.textContent = '⏸ Paused — the page was hidden. Keep this tab open and in front: it continues by itself.'
+    document.body.appendChild(d); AI_PAUSE_BANNER = d
+  } catch (e) {}
+}
+function aiWaitForPage(signal, runCtl) {
+  return new Promise(resolve => {
+    if (typeof document === 'undefined') return resolve()
+    aiShowPause(true)
+    let done = false, t = null
+    const finish = () => { if (done) return; done = true; try { document.removeEventListener('visibilitychange', check); if (typeof window !== 'undefined') window.removeEventListener('online', check) } catch (e) {}; clearTimeout(t); aiShowPause(false); resolve() }
+    const check = () => { if (!aiPageHiddenOrOffline()) setTimeout(finish, 1200) }              // let the connection settle before the retry
+    try { document.addEventListener('visibilitychange', check); if (typeof window !== 'undefined') window.addEventListener('online', check) } catch (e) {}
+    t = setTimeout(finish, 45 * 60 * 1000)
+    ;[signal, runCtl && runCtl.signal].forEach(sg => { if (sg && sg.addEventListener) sg.addEventListener('abort', finish) })
+    if (!aiPageHiddenOrOffline()) setTimeout(finish, 3000)                                       // already back: a short pause, then retry
+  })
+}
 function aiRecordStart(o) {
+  aiKeepScreenOn()
   const tag = AI_CTX.nextTag; AI_CTX.nextTag = null
   const row = { id: ++_aiSeq, runId: AI_CTX.runId, runKind: AI_CTX.runKind, trackId: AI_CTX.trackId, at: new Date().toISOString(),
     provider: o.provider, model: o.model, fn: (o.chain || [])[0] || '?', chain: o.chain || [], stage: o.stage || aiStageOf(o.prompt, o.chain),
@@ -15515,7 +15556,7 @@ async function _geminiSend({ key, modelId, messages, maxTokens, temperature, sig
   if (json) { generationConfig.responseMimeType = 'application/json'; if (schema) generationConfig.responseSchema = schema }
   const body = JSON.stringify({ contents, generationConfig })
   const backup = geminiBackupKey()
-  let lastErr = null, why = null
+  let lastErr = null, why = null, _pauses = 0
   for (let attempt = 1; attempt <= GEMINI_MAX_ATTEMPTS; attempt++) {
     if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) throw _cancelledError('run superseded')
     const useKey = attempt > 1 && isGeminiApiKey(backup) && backup.trim() !== key ? backup.trim() : key
@@ -15527,6 +15568,7 @@ async function _geminiSend({ key, modelId, messages, maxTokens, temperature, sig
     if (runCtl && runCtl.signal.addEventListener) runCtl.signal.addEventListener('abort', onAbort)
     const detach = () => { clearTimeout(tid); if (signal && signal.removeEventListener) signal.removeEventListener('abort', onAbort); if (runCtl && runCtl.signal.removeEventListener) runCtl.signal.removeEventListener('abort', onAbort) }
     let res = null
+    const _t0 = Date.now()
     try {
       res = await fetch(GEMINI_API_BASE + modelId + ':generateContent?key=' + useKey,
         { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json' }, body })
@@ -15534,6 +15576,7 @@ async function _geminiSend({ key, modelId, messages, maxTokens, temperature, sig
       detach()
       if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) { row.cancelled = true; aiRecordEnd(row, { ok: false, error: 'cancelled (run superseded)' }); throw _cancelledError('run superseded') }
       const msg = fe && fe.name === 'AbortError' ? 'Gemini timeout after ' + (GEMINI_TIMEOUT_MS / 1000) + 's' : String((fe && fe.message) || fe)
+      if (_pauses < 60 && aiPageStateFailure(_t0)) { _pauses++; aiRecordEnd(row, { ok: false, error: 'page hidden or offline (' + msg + ') — paused, not counted as an attempt' }); await aiWaitForPage(signal, runCtl); attempt--; continue }
       aiRecordEnd(row, { ok: false, error: msg })
       lastErr = aiMakeError(0, 'GEMINI_UNAVAILABLE: ' + msg, 'gemini'); lastErr.geminiUnavailable = true
       why = 'same-model retry after ' + (fe && fe.name === 'AbortError' ? 'timeout' : 'network error')
@@ -15837,7 +15880,7 @@ async function anthropicRequest({ model, messages, maxTokens, signal, stage, jso
   }
   if (!AI_ANTHROPIC_ACCESS) { const err = anthropicError(401, 'access_denied', ''); AI_ANTHROPIC_LATCH.set(runId, err); notSent('NO_ACCESS_CODE (not sent)', err) }
   const body = JSON.stringify(req.body)
-  let why = null, lastErr = null
+  let why = null, lastErr = null, _pauses = 0
   for (let attempt = 1; attempt <= ANTHROPIC_CONFIG.maxAttempts; attempt++) {
     if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) throw _cancelledError('run superseded')
     const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens, attempt, retryReason: why })
@@ -15847,11 +15890,13 @@ async function anthropicRequest({ model, messages, maxTokens, signal, stage, jso
     if (runCtl && runCtl.signal.addEventListener) runCtl.signal.addEventListener('abort', onAbort)
     const detach = () => { clearTimeout(tid); if (signal && signal.removeEventListener) signal.removeEventListener('abort', onAbort); if (runCtl && runCtl.signal.removeEventListener) runCtl.signal.removeEventListener('abort', onAbort) }
     let res = null
+    const _t0 = Date.now()
     try { res = await fetch(anthropicServerUrl(), { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json', 'x-lt-access': AI_ANTHROPIC_ACCESS }, body }) }
     catch (fe) {
       detach()
       if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) { row.cancelled = true; aiRecordEnd(row, { ok: false, error: 'cancelled (run superseded)' }); throw _cancelledError('run superseded') }
       const msg = fe && fe.name === 'AbortError' ? 'timeout after ' + (ANTHROPIC_CONFIG.timeoutMs / 1000) + 's' : String((fe && fe.message) || fe)
+      if (_pauses < 60 && aiPageStateFailure(_t0)) { _pauses++; aiRecordEnd(row, { ok: false, error: 'page hidden or offline (' + msg + ') — paused, not counted as an attempt' }); await aiWaitForPage(signal, runCtl); attempt--; continue }
       aiRecordEnd(row, { ok: false, error: msg })
       lastErr = anthropicError(0, 'unreachable', msg)
       why = 'retry after ' + (fe && fe.name === 'AbortError' ? 'timeout' : 'network error')

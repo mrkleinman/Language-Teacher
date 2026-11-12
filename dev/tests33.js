@@ -301,7 +301,10 @@ function scriptedAdapter(plan) {
       c.newWordsPerTrack('zh', 'daily', fresh) === 5 && c.newWordsPerTrack('ja', 'daily', fresh) === 3 && c.newWordsPerTrack('zh', 'revision', fresh) === 0 && c.newWordsPerTrack('zh', 'listening', fresh) === 0 &&
       c.newWordsPerTrack('th', 'daily', c.initVocab()) === 3 && c.zhDailyNewWords(fresh.map(w => w.unlockOrder <= 100 ? { ...w, status: 'known', repCount: 5, okStreak: 5, lastSeen: '2026-09-01' } : w)) === 5)
     const sel = c.mandarinSelectTargets(fresh, [])
-    const few = fresh.map((w, k) => k < 97 ? { ...w, status: 'learning', repCount: 1, lastSeen: '2026-09-01' } : w)
+    // 12 Nov: the Mandarin bank now holds 3,023 words, not ~100, so "the first 97 learned" no longer leaves 3: the fixture keeps exactly the 3 words
+    // the selector picked first as the only NEW ones and marks every other word learned (the property under test is unchanged: 3 eligible -> takes 3)
+    const keepNew = new Set(sel.slice(0, 3).map(w => w.id))
+    const few = fresh.map(w => keepNew.has(w.id) ? w : { ...w, status: 'learning', repCount: 1, lastSeen: '2026-09-01' })
     const sel3 = c.mandarinSelectTargets(few, [])
     T('4B', 'the Mandarin selector takes 5 NEW words at Mukyu (not a hardcoded 3); with only 3 eligible it takes 3', sel.length === 5 && sel.every(w => w.status === 'new') && sel3.length === 3, { n: sel.length, n3: sel3.length })
     const st = c.selectTrackTargets({ vocab: fresh.map((w, k) => k >= 5 && k < 60 ? { ...w, status: 'learning', repCount: 2, lastSeen: '2026-09-01', dueDate: '2026-09-02' } : w), targetCap: 30, lang: 'zh', newSelector: v => c.mandarinSelectTargets(v, []) })
@@ -317,8 +320,11 @@ function scriptedAdapter(plan) {
     T('4E', 'the Mandarin fallback never builds a dangling adverb (太吗？ / 太。) — a degree adverb gets an adjective frame (太X了。) or stays unresolved; no unfiltered fallback pool',
       fbs.every(x => !x || (!/^太[吗。？]/.test(x) && !g(x, inv).length)), fbs)
     const seg = x => c.segmentMandarin(x, inv.lexicon).map(s => s.surface)
-    T('4F', 'segmentation keeps compounds whole (时间 时候 taught; 下午 周末 公园 kept as ONE untaught word, never 下 / 午)',
-      seg('我下午有时间。').includes('下午') && seg('周末去公园吗？').includes('公园') && seg('周末去公园吗？').includes('周末') && JSON.stringify(c.mandarinCheckLine('我下午有时间。', inv).unknown) === '["下午"]')
+    // 12 Nov: the new Mandarin bank contains almost every compound of the segmenter's built-in list (下午 周末 公园 ... are taught words now); only 苹果 is left that is
+    // absent from the bank AND starts with a character that is not itself a bank word, which is the case the list exists for (a bank character is matched first, so
+    // an untaught compound made of known characters is split and is not "unknown" at all). The probe is therefore 苹果; 时候 stays the taught-compound check.
+    T('4F', 'segmentation keeps compounds whole (时候 taught; 苹果 kept as ONE untaught word, never 苹 / 果)',
+      seg('什么时候去？').includes('时候') && seg('我有苹果。').includes('苹果') && JSON.stringify(c.mandarinCheckLine('我有苹果。', inv).unknown) === '["苹果"]')
     T('4G', 'cue accuracy (objective): 我… cued as "you" and 你… cued as "I" are rejected; a question rendered as a statement is rejected',
       c.zhCueFormProblems({ chinese: '我想吃。', english: 'Do you want to eat?' }).length > 0 && c.zhCueFormProblems({ chinese: '你去吗？', english: 'I am going.' }).length > 0 && !c.zhCueFormProblems({ chinese: '你去吗？', english: 'Are you going?' }).length)
     const stats = c.createMandarinGenerationStats('unknown', 0)

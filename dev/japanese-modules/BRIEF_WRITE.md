@@ -30,5 +30,5 @@ Prompts (`*_prompt`): short English instruction telling the learner what to say,
 - The English must be natural spoken English, not a gloss of the Japanese structure.
 - Every module must read naturally for EVERY word it fits - if one word in the cell does not fit, list it in `exclude_ids` (or ask for a split). Test with `render` on at least four different words of the cell.
 
-## Counts
-For each cell (group or subgroup with its tier): `min(24, 8 + ceil(words/10))` modules when the cell has 10+ words; small cells need at least 3 modules per word at the word's own tier (4 for T1-T2 words). Quirky X_ groups: 2 modules per word (3 at T1), written for that word with `exclude_ids` listing everything else.
+## Counts (pilot, tier T1)
+Every module fits ALL words of its cell, so a cell needs enough different modules for variety, not 3 per word: cells with 8+ words: 10 modules; cells with 5-7 words: 8; cells with 3-4 words: 6; X_ cells with one or two words (one-of-a-kind words): 3 modules per word (write them for that word only: list every other word of the group in `exclude_ids`, or better, make the cell its own subgroup - the cell for X_ words is the subgroup in the tags). Fewer is fine ONLY when a cell's words cannot support more natural lines - say so in your report.

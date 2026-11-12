@@ -49,7 +49,9 @@ def segment(chunk, tier_i):
             w = chunk[i:i + L]
             t = ALLOWED.get(w)
             if (t is not None and t <= tier_i) or w in FREE_SET:
-                cost = 0.0001 * (1 if w in FREE_SET else 0)       # prefer real words over free particles on a tie
+                # a multi-character FREE word (一下) must win over its characters (一 + 下 would count 2 content units); a one-character free particle
+                # still loses a tie to a real word of the same span
+                cost = (-0.01 if len(w) > 1 else 0.0001) if w in FREE_SET else 0
                 if best[i] + cost < best[i + L]: best[i + L], back[i + L] = best[i] + cost, (i, 'w')
         if best[i] + 1 < best[i + 1]: best[i + 1], back[i + 1] = best[i] + 1, (i, 'u')
     spans, tokens, j, cur = [], [], n, []

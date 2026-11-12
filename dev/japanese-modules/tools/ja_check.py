@@ -69,7 +69,9 @@ def forms_for(w):
     if k == 'A':
         f = ja_conj.adj_forms(w['word'], w['conj'])
         q = w['word'] if w['conj'] != 'na-adj' else w['word']
-        return {'A': f['pred'], 'Aq': q, 'Aneg': f['neg'], 'Apast': f['past'], 'Anegpast': f['negpast'], 'Ate': f['te'], 'Aadv': f['adv'], 'Aattr': f['attr']}
+        d = {'A': f['pred'], 'Aq': q, 'Aneg': f['neg'], 'Apast': f['past'], 'Anegpast': f['negpast'], 'Ate': f['te'], 'Aattr': f['attr']}
+        if f.get('adv'): d['Aadv'] = f['adv']      # colour-type words (青, 赤 ...) have no adverb form: using {Aadv} for them is reported when a module is checked
+        return d
     return {'W': w['word']}
 
 def fill_ja(line, w):

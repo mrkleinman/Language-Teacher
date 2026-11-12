@@ -35996,6 +35996,9 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           }
           freezeSession()
       setPhase('streaming')
+          // one environment line at the top of the exported log, so a failure that only happens in one browser can be told apart
+          // from a network / provider failure (booleans and counts only — never a key, code or address)
+          try { logAll('\u{1F9EA} ENV · ' + (typeof navigator !== 'undefined' ? navigator.userAgent : 'no navigator') + ' · targets ' + (activeTargets || []).length + ' · learned words ' + (vocab || []).filter(w => w && (w.status === 'known' || w.status === 'learning')).length + '/' + (vocab || []).length + ' · gemini key ' + (isGeminiApiKey(apiKey) ? 'set' : 'none') + ' · model ' + (function () { try { return aiModelForRequest(aiRunRef.current, 'generate') } catch (e) { return '?' } })() + ' · build ' + APP_BUILD_VERSION) } catch (e) {}
           // Quick API sanity check on first run
           console.log('[Generator] generationSource=gemini model=' + genModel + ' key=' + (apiKey ? 'set' : 'NONE'))
           // Seed phoneticsRef from vocab words that already have phonetics stored
@@ -36045,6 +36048,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
               // than a single ○○○ → ●●● jump when the group completes.
               if (meta && meta.recallAccepted) {
                 const ra = meta.recallAccepted
+                try { logAll('  \u2713 ' + ra.targetThai + ' recall ' + ra.recallIndex + ' accepted · ' + (ra.source || '')) } catch (e) {}
                 const ti = activeTargets.findIndex(t => t.thai === ra.targetThai)
                 if (ti >= 0 && ra.recallIndex >= 1 && ra.recallIndex <= 3) {
                   setBrickSources(prev => ({ ...prev, [ti * 3 + (ra.recallIndex - 1)]: ra.source }))

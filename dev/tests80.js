@@ -11,4 +11,6 @@ T('N1', 'an empty result stops with NO_LINES_GENERATED and the error phase', iGu
 T('N2', 'the guard runs BEFORE the track is built and before the auto quality check', iGuard > 0 && iGuard < iKeywords && iKeywords < gen.indexOf('Auto quality check starting'))
 T('N3', 'it reports the last failed requests of this run from the AI ledger', /AI_LEDGER\.filter\(r => r && r\.runId === aiRunRef\.current && !r\.ok\)/.test(gen))
 T('N4', 'a resumed draft that already has lines is not affected (merged before the guard)', gen.indexOf('pairs = [...resumeDraft.pairs') > 0 && gen.indexOf('pairs = [...resumeDraft.pairs') < iGuard)
+T('N5', 'the exported log starts the generation with one ENV line (browser, counts, key set/none — never the key itself) and records each accepted recall',
+  /logAll\('\\u\{1F9EA\} ENV · '/.test(gen) && /recall ' \+ ra\.recallIndex \+ ' accepted/.test(gen) && !/ENV[^\n]{0,400}\+ apiKey\b[^\n]{0,10}[^?]\)/.test(gen.slice(gen.indexOf('ENV ·') - 20, gen.indexOf('ENV ·') + 700).replace(/isGeminiApiKey\(apiKey\)/g, '')))
 console.log(fails ? 'FAILED ' + fails + '/' + n : 'ALL PASS ' + n + '/' + n); process.exit(fails ? 1 : 0)

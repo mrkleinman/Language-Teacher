@@ -436,7 +436,8 @@ const SALV = x => ({ st: x.track.status, fc: x.track.failedChecks, cov: x.track.
     const ja = await run('ja', jaBase, {}, L694('ja'))
     const jaFinal = finalTexts(ja, 'japanese')
     T('K8-ja', 'ja v694: ごめん、聞いちゃった。 is no longer an unknown 聞 (〜ちゃう forms of a godan verb resolve to 聞く); こっち / こと are still unauthorised (S3 / S6 replanned) — closed vocabulary not weakened',
-      !/unknown words: 聞/.test(ja.Ls) && /SCENE_LOCAL_CHECK S1 STATUS=PASS/.test(ja.Ls) && /SCENE_LOCAL_CHECK S3 FAIL[^\n]*unknown words: こっち/.test(ja.Ls) && /SCENE_LOCAL_CHECK S6 FAIL[^\n]*unknown words: こと/.test(ja.Ls), lineOf(ja.Ls, /SCENE_LOCAL_CHECK S1[^\n]*/))
+      !/unknown words: 聞/.test(ja.Ls) && /SCENE_LOCAL_CHECK S1 STATUS=PASS/.test(ja.Ls) && /SCENE_LOCAL_CHECK S3 FAIL[^\n]*unknown words: こっち/.test(ja.Ls) && /SCENE_LOCAL_CHECK S6 FAIL[^\n]*unknown words: (こと|事)/.test(ja.Ls), lineOf(ja.Ls, /SCENE_LOCAL_CHECK S1[^\n]*/))
+    // 12 Nov: the new Japanese word list has 事 (こと is its kana spelling), so the closed-vocabulary check now names the canonical lexeme 事 (it reports lemmas, v668 §2); the line is still rejected as untaught
     const bnd = repCalls(ja)
     T('K9-ja', 'ja v694: the "today agreed → tomorrow?" contradiction is found deterministically (STATE_CONTRADICTION at S4, not only by the audit in the last round) and fixed by ONE bounded BOUNDARY repair — the end of S3 + the start of S4 (4 turns) in one request; no situation is rebuilt; the rest of the plan is unchanged',
       /SCENE_LOCAL_CHECK S4 FAIL 1: STATE_CONTRADICTION — the plan for 今日 was agreed/.test(ja.Ls) && /MEANING_REPAIR round 1\/3 · 1 part\(s\): x1 boundary \[TRANSITION\]/.test(ja.Ls) && /PART_REPAIRED x1 \(boundary · TRANSITION\) 4 turn\(s\) → 4 new/.test(ja.Ls) &&

@@ -7401,9 +7401,18 @@ function pickWords(vocab, mode, todayNewWords, popts) {
   })
   // Shuffle to avoid same words always first/last, then float brand-new words back
   // to the front so they lead the generation screen and are rated first in review.
-  for (let i = targets.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [targets[i], targets[j]] = [targets[j], targets[i]]
+  // 12 Nov: the shuffle was truly random, and the Daily screen recomputes the selection whenever its inputs change, so the words (and the conversation basics)
+  // visibly reshuffled on the Scene Ready screen, and the saved new-word slots (compared in order) never settled. The order is still mixed up, but from a
+  // seed made of today's date and the chosen words: the same selection always shows in the same order, and a different day gives a different one.
+  {
+    let h = 2166136261 >>> 0
+    const seedStr = today + '|' + targets.map(w => w.id).sort((a, b) => a - b).join(',')
+    for (let k = 0; k < seedStr.length; k++) { h ^= seedStr.charCodeAt(k); h = Math.imul(h, 16777619) >>> 0 }
+    const rnd = () => { h = (h + 0x6D2B79F5) >>> 0; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296 }
+    for (let i = targets.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      [targets[i], targets[j]] = [targets[j], targets[i]]
+    }
   }
   targets = [
     ...targets.filter(w => w.status === 'new'),
@@ -35768,7 +35777,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     const slotIds = targets.filter(w => w.status === 'new').slice(0, newSlotsFor(vocab)).map(w => w.id)
     if (!slotIds.length) return
     const prev = dailyNewWords?.wordIds || []
-    const same = prev.length === slotIds.length && prev.every((id, i) => id === slotIds[i])
+    const same = prev.length === slotIds.length && [...prev].sort((a, b) => a - b).every((id, i) => id === [...slotIds].sort((a, b) => a - b)[i])   // same words = same slots, whatever the order
     if (same) return
     onSaveDailyNewWords?.({ date: new Date().toISOString().slice(0, 10), wordIds: slotIds })
   }, [targets, dailyNewWords, mode, vocab, sessionTargets])
@@ -47151,6 +47160,35 @@ const TH_GEN2_SETTING_KEY = 'tt-th-gen2'
 // the same generation tail (closed-vocabulary gate → final phonetics → final audit). The screen's own QC / FINAL_TRACK /
 // Save run unchanged afterwards. Returns { pairs, targets } (the lesson's targets: deferred words are replaced by due
 // reviews, never by NEW words) or { pairs: null, error }.
+// The test generator writes only the recall lines. The standard generator always opens with a greeting (A, then B's reply) and closes with a parting
+// (A, then B's reply), taken from the vocabulary's greeting / parting phrases (v724). 12 Nov: a test-generator track had neither. This builds the same four lines
+// from the same scene helpers, so the two generators bookend a lesson identically.
+async function thGen2Framing(o, frozen, log) {
+  const { targets, vocab, apiKey } = o
+  const _sd0 = normaliseSceneSpokenFields(o.scene || { scene: 'Two friends in everyday moments.', characterA: 'Somchai, a Thai man', characterB: 'Nida, a Thai woman' })
+  let sd = _sd0
+  try {
+    const sd1 = await thaiFreshFraming({ ...thaiBankFramingScene(_sd0), _defaultScene: !o.scene }, { apiKey, model: GEN_MODEL }, log)
+    sd = thaiGreetingFraming(sd1, { targets, framingWords: targets && targets._framingWords, ctx: (() => { try { return buildThaiTrackVocabContext(vocab, frozen, []) } catch (e) { return null } })() })
+  } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log('⚠ greeting / parting could not be prepared (' + String(e && e.message || e).slice(0, 80) + ')') }
+  const nA = ((sd.characterA || 'Somchai').split(',')[0] || 'A').trim(), nB = ((sd.characterB || 'Nida').split(',')[0] || 'B').trim()
+  const cw = ph => !ph ? [] : enrichWordsWithCompounds(String(ph).trim().split(/\s+/).filter(Boolean).map(tok => ({ p: tok, e: '' })))
+  const mk = (speaker, thai, phonetic, english, prompt, target, key, forcedId) => {
+    const t = String(thai || '').trim().replace(/[?!.]+$/, '')
+    if (!t) return null
+    const p = { speaker, thai: t, phonetic: phonetic || '', english: english || '', prompt: prompt || '', words: cw(phonetic), _source: (sd._framingSource && sd._framingSource[key]) || 'ai:check-1', _target: target,
+      language: 'th', pairType: 'framing', targetId: null, _typedAt: 'creation', _pairKey: 'th-' + (target === 'greeting' ? 'open-' : 'close-') + speaker, speakerGender: thaiSpeakerMapGender(speaker) }
+    if (forcedId != null) p._framingWordId = forcedId
+    try { assertThaiPairIdentity(p) } catch (e) { return null }
+    return p
+  }
+  const gf = sd._greetForced || {}
+  const open = [mk('A', sd.opening, sd.opening_phonetic, sd.opening_english || 'Hello.', (sd.opening_prompt && sd.opening_prompt.trim()) || ('He greets ' + nB + ' and asks how she is'), 'greeting', 'opening', gf.open),
+                mk('B', sd.reply, sd.reply_phonetic, sd.reply_english || 'Hello.', sd.reply_prompt || ('She greets ' + nA + ' back'), 'greeting', 'reply', gf.open)].filter(Boolean)
+  const close = [mk('A', sd.closing, sd.closing_phonetic, sd.closing_english || 'See you again.', (sd.closing_prompt && sd.closing_prompt.trim()) || ('He says goodbye to ' + nB + ' and tells her to take care'), 'parting', 'closing', gf.close),
+                 mk('B', sd.closing_reply, sd.closing_reply_phonetic, sd.closing_reply_english || 'You too, take care.', sd.closing_reply_prompt || ('She says goodbye back to ' + nA), 'parting', 'closing_reply', gf.close)].filter(Boolean)
+  return { open, close, sceneData: sd }
+}
 async function thGen2MainPairs(o) {
   const { targets, vocab, apiKey } = o
   const log = o.onLog || (() => {})
@@ -47174,7 +47212,10 @@ async function thGen2MainPairs(o) {
     assertThaiPairIdentity(line)
     return line
   })
-  let out = pairs
+  let framing = { open: [], close: [] }
+  try { framing = await thGen2Framing(o, frozen, log); log('\u{1F44B} GREETING / PARTING: ' + framing.open.length + ' opening · ' + framing.close.length + ' closing line(s)') }
+  catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log('⚠ greeting / parting skipped: ' + String(e && e.message || e).slice(0, 100)) }
+  let out = framing.open.concat(pairs, framing.close)
   try { const cv = enforceThaiClosedVocabulary(out, buildThaiTrackVocabContext(vocab, frozen, sceneContract.allowedSceneEntities), { targetsById: fById, stage: 'generation', sceneContract, onLog: log }); if (cv && Array.isArray(cv.pairs)) out = cv.pairs }
   catch (e) { log('⚠ closed-vocabulary gate failed — lines kept as generated: ' + String(e && e.message || e).slice(0, 100)) }
   try { out = finaliseThaiTrackPhonetics(out, withThaiSceneNamePhonetics(lex, thaiSceneNameEntries({ sceneContract }, vocab))) }

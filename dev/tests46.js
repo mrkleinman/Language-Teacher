@@ -82,7 +82,9 @@ const DISPLAY = { 'Mukyu': '1–100 · 100 words', '10th Kyu': '101–200 · 100
   }
   // v708 — EXPECTED CHANGE (owner's 801–2500 import, commit f132349): Thai 3249 = 1799 + 1,429 new records + 21 Wedding Speech words
   // that became curriculum words (topic-only 45 → 24); "Beyond curriculum" 999 → 749 (250 existing records placed in 801–2500)
-  for (const [lang, fn, size] of [['th', 'initVocab', 3249], ['ja', 'initJapaneseVocab', 200], ['zh', 'initMandarinVocab', 100]]) {
+  // 12 Nov: the Japanese and Mandarin banks were replaced by the new lists (3,085 / 3,023 entries: 3,000 words + phrases); the saved ids are kept, the property under test is unchanged
+  // (no duplicates, every curriculum word in exactly one belt, belt labels match the ranges)
+  for (const [lang, fn, size] of [['th', 'initVocab', 3249], ['ja', 'initJapaneseVocab', 3085], ['zh', 'initMandarinVocab', 3023]]) {
     const v = c[fn](), ids = v.map(w => w.id)
     const placed = WANT.reduce((a, w) => a + c.wordsForRank(v, w[0]).length, 0), curr = v.filter(w => (w.curriculumIndex || 0) >= 1 && (w.curriculumIndex || 0) <= 2500 && !w.duplicateOf).length
     T('W3' + lang, lang + ': the real bank keeps every word and ID (' + size + ' words, no duplicates) and every curriculum word sits in exactly one belt; the stored belt label matches the new ranges',

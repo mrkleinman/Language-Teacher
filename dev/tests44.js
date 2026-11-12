@@ -23,8 +23,11 @@ const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sor
   // ══ V — independent pronunciation on the exported v683 lessons ═══════════════════════════════════════════════════
   {
     const zlex = c.mandarinLexicon(null)
-    const zf = J('zh.json').filter(p => c.v684ZhVerify({ text: p.text, pinyin: p.pinyin, spoken: p.spoken }, zlex, { yi: 'either' }).length).map(p => p.pos)
-    T('V1', 'Mandarin: the 94 exported lines → exactly the 10 audited errors (有一点 yóu; 我们 wómen ×3; 一下 yī xià; 可以 with no spoken line ×5)', eq(zf, [3, 9, 15, 33, 39, 45, 65, 71, 77, 82]), zf)
+    const zrows = J('zh.json').map(p => ({ pos: p.pos, msgs: c.v684ZhVerify({ text: p.text, pinyin: p.pinyin, spoken: p.spoken }, zlex, { yi: 'either' }) })).filter(r => r.msgs.length)
+    // 12 Nov: the new Mandarin list reads 嗯 as "èn" (the old bank had "ǹg"), and the two exported lines that are just 嗯 (pairs 2 and 94) carry the old reading, so the audit now also
+    // flags them for exactly that dictionary difference. They are separated here (and must carry exactly that one message) so the 10 AUDITED errors are still asserted unchanged.
+    const enRows = zrows.filter(r => r.msgs.length === 1 && /^嗯: dictionary pinyin "ǹg" ≠ "èn"$/.test(r.msgs[0])), zf = zrows.filter(r => !enRows.includes(r)).map(r => r.pos)
+    T('V1', 'Mandarin: the 94 exported lines → exactly the 10 audited errors (有一点 yóu; 我们 wómen ×3; 一下 yī xià; 可以 with no spoken line ×5), plus the two 嗯 lines whose old "ǹg" reading differs from the new list\'s "èn"', eq(zf, [3, 9, 15, 33, 39, 45, 65, 71, 77, 82]) && eq(enRows.map(r => r.pos), [2, 94]), { zf, en: enRows.map(r => r.pos) })
     const km = c.v684JaKanjiReadings(c.ev('RAW_JAPANESE_VOCAB'))
     const jf = J('ja.json').filter(p => c.v684JaReadingProblems(p.text, p.reading, km).concat(c.v684JaRomajiProblems(p.reading, p.romaji)).length).map(p => p.pos)
     T('V2', 'Japanese: the 91 exported lines → exactly pair 48 (何にも read なににも) and pair 91 (どこかいきの / dokokaikino)', eq(jf, [48, 91]), jf)

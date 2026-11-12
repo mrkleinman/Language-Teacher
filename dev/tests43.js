@@ -27,7 +27,8 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
       !/JA_DAILY_NEW_WORDS|ZH_DAILY_NEW_WORDS/.test(SRC) && /function dailyNewWordsFor\(lang, vocab\) \{ return newWordQuotaFor\(vocab, lang\) \}/.test(SRC) &&
       /function newWordQuotaFor\(vocab, lang\) \{ return getNewWordLimitForBelt\(quotaBeltFor\(vocab\), lang \|\| 'th'\) \}/.test(SRC) &&
       !/getNewWordLimitForBelt\((activeBelt|first, lang|belt\.first|sel\.belt|earliestIncompleteBelt)/.test(SRC.replace('quota != null ? quota : getNewWordLimitForBelt(activeBelt)', '')) &&
-      /lang: 'ja',\n    newSelector: v => japaneseSelectNewSlots/.test(SRC) && /lang: 'zh',\n    newSelector: v => mandarinSelectTargets/.test(SRC))
+      /lang: 'ja',[^\n]*\n\s*newSelector: v => japaneseSelectNewSlots/.test(SRC) && /lang: 'zh',[^\n]*\n\s*newSelector: v => mandarinSelectTargets/.test(SRC))
+    // 12 Nov: the phrase split put a comment line ("phrases are scheduled apart") between `lang: 'ja'|'zh'` and `newSelector:`; the two patterns above now allow one trailing comment on the `lang` line (same selectors, same call)
     // a Japanese learner at 10th Kyu (White complete): the REAL selector picks 5 new words out of 30 targets
     const J = c.initJapaneseVocab(), today = new Date().toISOString().slice(0, 10)
     J.forEach(w => { if (w.belt === 'White') Object.assign(w, { status: 'known', okCount: 12, okStreak: 12, repCount: 15, lastSeen: today, dueDate: '2099-01-01' }) })

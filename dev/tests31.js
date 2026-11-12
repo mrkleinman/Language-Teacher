@@ -58,10 +58,13 @@ async function run(S, lang, ln, opt = {}) {
       lem('借りました。').join() === '借りる' && lem('覚えてる？').join() === '覚える' && lem('行った').join() === '行く' && toks('行った').length === 1, [lem('借りました。'), lem('覚えてる？'), lem('行った')])
     T('A4', '§4 久しぶり / 図書館 / 借りる / 覚える stay whole; 僕図書館 is two lexemes (僕 + 図書館), never one fragment',
       ['久しぶり', '図書館', '借りる', '覚える'].every(w => toks(w).length === 1 && toks(w)[0].lemma === w) && toks('僕図書館で').filter(x => x.kind === 'lexeme').map(x => x.surface).join('|') === '僕|図書館', toks('僕図書館で').map(x => x.surface))
-    const bad = c.validateClosedWorldCandidate('ja', '置覚 える。おうなっる。', S.vocab, [])
-    T('A5', '§44/§45 malformed fragments (える after a broken stem, っる) are TOKENIZATION_ERROR — not "the learner does not know える"',
-      bad.malformed.includes('える') && bad.malformed.some(x => /っる/.test(x)) && !bad.unknown.includes('える') && !bad.ok, bad)
-    untaught(S, 'ja', ['図書館', '借りる'].filter(x => S.vocab.some(w => w.japanese === x)))
+    // 12 Nov: the new word list teaches 得る, whose kana spelling is える: after the bank import a bare える is a REAL word (得る) and no longer a fragment, so the
+    // fragment probe is くて (another bare ending of the app's fragment rule, malformed on both the old and the new build; れる is now a grammar word, so it cannot be used)
+    const bad = c.validateClosedWorldCandidate('ja', '置覚 くて。おうなっる。', S.vocab, [])
+    T('A5', '§44/§45 malformed fragments (くて after a broken stem, っる) are TOKENIZATION_ERROR — not "the learner does not know くて"',
+      bad.malformed.includes('くて') && bad.malformed.some(x => /っる/.test(x)) && !bad.unknown.includes('くて') && !bad.ok, bad)
+    // 12 Nov: 僕 is a word of the new list too (it was absent from the old bank, which is why it used to be unknown by itself): it joins the untaught set
+    untaught(S, 'ja', ['僕', '図書館', '借りる'].filter(x => S.vocab.some(w => w.japanese === x)))
     const v = c.validateClosedWorldCandidate('ja', '僕は図書館で本を借りました。', S.vocab, [])
     T('A6', '§1 Layer A is NOT permission: 僕 / 図書館 / 借りる are recognised words but untaught → UNKNOWN_LEXEME by lemma (借りる, not 借りました); 本 (taught) passes',
       v.unknown.includes('僕') && v.unknown.includes('図書館') && v.unknown.includes('借りる') && !v.unknown.includes('本') && !v.unknown.includes('借りました'), v.unknown)
@@ -160,6 +163,8 @@ async function run(S, lang, ln, opt = {}) {
   // ══ §58 / §21 — widespread leak (5 of 8 lines) → SCENE_REGENERATE, not five atomic repairs ══
   {
     const S = learner('ja')
+    // 12 Nov: 宇宙 is a word of the new list (taught in this fixture), so it is made untaught again here: the property under test is unchanged
+    untaught(S, 'ja', ['宇宙'])
     const order = []
     const r = await run(S, 'ja', {}, { speechStyle: 'natural', onLog: m => { if (/LISTENING_ATOMIC_REPAIR issue=|Write SCENE|SCENE_PREFLIGHT LS3/.test(m)) order.push(m) },
       inject: (sid, j, k) => { if (sid === 'LS3' && k === 1) j.turns.forEach((t, i) => { if (i < 5) t.text = addWord('ja', t.text, '宇宙') }) } })
@@ -174,6 +179,8 @@ async function run(S, lang, ln, opt = {}) {
   // ══ §59 / §28 / §29 — ONE leak → atomic repair with the positive scene palette (no regeneration, no forbidden list) ══
   {
     const S = learner('ja')
+    // 12 Nov: 宇宙 is a word of the new list (taught in this fixture), so it is made untaught again here: the property under test is unchanged
+    untaught(S, 'ja', ['宇宙'])
     const r = await run(S, 'ja', {}, { speechStyle: 'natural', inject: (sid, j, k) => { if (sid === 'LS2' && k === 1 && j.turns[1]) j.turns[1].text = addWord('ja', j.turns[1].text, '宇宙') } })
     const at = r.st.prompts.filter(q => /ATOMIC REPAIR of .* LISTENING lines/.test(q))
     const palLine = (r.L.match(/SCENE_PALETTE scene=LS2 [^\n]*supportVocabulary=\[([^\]]*)\]/) || [])[1] || ''
@@ -185,7 +192,8 @@ async function run(S, lang, ln, opt = {}) {
   }
   {
     const S = learner('ja')
-    untaught(S, 'ja', ['ホテル'])
+    // 12 Nov: 旅館 is a word of the new list too; the test says "(also untaught)", so both words are made untaught
+    untaught(S, 'ja', ['ホテル', '旅館'])
     let n1 = 0
     const post = (q, r) => { if (!/ATOMIC REPAIR of .* LISTENING lines/.test(q)) return r; n1++; if (n1 > 1) return r
       const j = JSON.parse(r); (j.repairs || []).forEach(x => (x.lines || []).forEach(l => { l.text = addWord('ja', l.text, '旅館') })); return JSON.stringify(j) }
@@ -231,18 +239,19 @@ async function run(S, lang, ln, opt = {}) {
   }
   {
     const S = learner('ja'); const c = S.c
-    const turns = ['宇宙に行きたい。', '僕は宇宙が好き。', '彗星を見た？'].map((t, i) => ({ speaker: i % 2 ? 'B' : 'A', pair: { japanese: t, thai: t, reading: 'ウチュウ宇宙', romaji: '宇宙 ni', english: 'x' } }))
+    // 12 Nov: 宇宙 is a bank word now, so its reading is resolved locally; the probe words are 流星 (x2) and 彗星, both absent from the bank (checked)
+    const turns = ['流星に行きたい。', '僕は流星が好き。', '彗星を見た？'].map((t, i) => ({ speaker: i % 2 ? 'B' : 'A', pair: { japanese: t, thai: t, reading: 'ウチュウ流星', romaji: '流星 ni', english: 'x' } }))
     const frozen = turns.map(tn => tn.pair.japanese)
     let calls = 0, asked = null
     c.mockGeminiGenerate = async (k, m, msgs) => { calls++; asked = msgs[msgs.length - 1].content; const items = JSON.parse(asked.match(/ITEMS \(JSON\): (\[.*\])/)[1])
-      return JSON.stringify(items.map(it => ({ id: it.id, reading: it.span === '宇宙' ? 'うちゅう' : it.span === '彗星' ? 'すいせい' : '' }))) }
+      return JSON.stringify(items.map(it => ({ id: it.id, reading: it.span === '流星' ? 'りゅうせい' : it.span === '彗星' ? 'すいせい' : '' }))) }
     const logs = [], tel = {}
     await c.japaneseListeningPronunciation(turns, S.vocab, { apiKey: KEY, model: 'gemini-2.5-flash-lite' }, m => logs.push(m), tel)
     T('F3', '§30/§33/§65 text FROZEN, readings repaired only: the bad reading/romaji fields are rebuilt; the Japanese sentences stay byte-for-byte unchanged',
       turns.every((tn, i) => tn.pair.japanese === frozen[i]) && turns.every(tn => !/[一-鿿]/.test(tn.pair.reading) && !/[぀-ヿ一-鿿]/.test(tn.pair.romaji)) &&
-      turns[0].pair.reading === 'うちゅうにいきたい。' && /JA_TEXT_FREEZE intact \(3 lines byte-identical\)/.test(logs.join('\n')), turns.map(t => t.pair.reading + ' | ' + t.pair.romaji))
-    T('F4', '§34 unresolved spans across ALL lines (宇宙 ×2, 彗星) go out in ONE batched request (no paid call per line), each answer kana-validated · alignment issues=0',
-      calls === 1 && (asked.match(/"span":"宇宙"/g) || []).length === 2 && /"span":"彗星"/.test(asked) && tel.LISTENING_READING_FALLBACK_CALLS === 1 && /JA_READING_ALIGNMENT lines=3 issues=0 PASS/.test(logs.join('\n')), { calls, logs })
+      turns[0].pair.reading === 'りゅうせいにいきたい。' && /JA_TEXT_FREEZE intact \(3 lines byte-identical\)/.test(logs.join('\n')), turns.map(t => t.pair.reading + ' | ' + t.pair.romaji))
+    T('F4', '§34 unresolved spans across ALL lines (流星 ×2, 彗星) go out in ONE batched request (no paid call per line), each answer kana-validated · alignment issues=0',
+      calls === 1 && (asked.match(/"span":"流星"/g) || []).length === 2 && /"span":"彗星"/.test(asked) && tel.LISTENING_READING_FALLBACK_CALLS === 1 && /JA_READING_ALIGNMENT lines=3 issues=0 PASS/.test(logs.join('\n')), { calls, logs })
   }
   {
     const S = learner('ja')

@@ -58,11 +58,11 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     // 11 Nov: Listening (v692 meaning-first planner, v712 fresh-conversation writer) and the Thai Daily writer (v693–v716 owner rewrites) were replaced on purpose after
     // these recordings, so those runs cannot replay any more and are reported BLOCKED (never as passes). The Japanese and Mandarin Daily runs are untouched: they must
     // still replay their setup identically (first difference at request >= 6, i.e. only through validator decisions).
-    const superseded = x => x.listening || /th-daily/.test(x.f)
-    out.push('BLOCKED A5 (' + rows.filter(superseded).length + ' of ' + rows.length + ' runs): Listening and Thai Daily were rewritten after the v677 recordings; they need fresh recordings before they can be replayed')
-    T('A5', 'v681+v682 CHANGE IS CONFINED (Japanese / Mandarin Daily): the live v677 runs replay their setup identically (first difference at request ≥ 6; Thai Daily ≥ 2 — v681 vehicle / function-word prompt guidance); Listening is faithful except the Mandarin runs (你到哪里？ rejected; 们 read as grammar) and Japanese run 1 (v682: どこか ≠ どこ in coverage) and the Thai runs whose only difference is the corrected ที่นั่น romanisation (thîi-nân); Daily runs differ only through validator decisions',
-      rows.length === 18 && rows.filter(x => !superseded(x)).every(x => x.faithful ? x.same : x.firstCall >= 6),
-      rows.map(x => x.f.replace('tt-bench-', '').replace('-v677.json', '') + ':' + (x.faithful ? 'faithful' : 'differs@' + x.firstCall)))
+    // 12 Nov: the Japanese and Mandarin word banks were replaced by the new lists (3,085 / 3,023 words, curriculum order). The v677 Japanese / Mandarin Daily recordings embed the OLD
+    // banks in their prompts (the learner's word list, in the old order), so they differ from request 1 and cannot replay any more. Checked: this test PASSES (18 runs, ja/zh Daily
+    // replayed to request >= 6) on the build from before the bank import, so the difference is the bank and nothing else. They are reported BLOCKED (never as passes) until fresh
+    // recordings exist; there is nothing left for this check to assert, so it is not run as a vacuous pass.
+    out.push('BLOCKED A5 (' + rows.length + ' of ' + rows.length + ' runs): Listening and Thai Daily were rewritten after the v677 recordings, and the Japanese / Mandarin Daily recordings embed the old word banks (replaced 12 Nov); all need fresh recordings before they can be replayed')
     const HAS_BASE = fs.existsSync(path.join(__dirname, 'tt.v677.jsx')), base = HAS_BASE ? fs.readFileSync(path.join(__dirname, 'tt.v677.jsx'), 'utf8') : ''
     const TB = HAS_BASE ? T : id => out.push('BLOCKED ' + id + ': the historical source tt.v677.jsx is not in the repository (never published), so this comparison cannot run here: reported BLOCKED, not passed')
     const banks = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0]
@@ -113,8 +113,9 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     const rep = []
     for (const x of cas) { const r = await runOnceUi(loadFixture(x.d.cassette.meta.fixture), { mode: 'replay', cassette: x.d.cassette, qualityOct13: false }); rep.push({ f: x.f, faithful: r.replay.faithful, same: compareContent(x.d.outcome.content, r.content).identical }) }
     // 11 Nov: the Thai Gen2 cassettes (7) were recorded against the Thai writers before the v693–v716 rewrites and Listening v712; they are reported BLOCKED below, never as passes.
-    out.push('BLOCKED C1 (' + rep.filter(r => /(^|[-.])th-/.test(r.f)).length + ' of ' + rep.length + ' Gen2 cassettes): the Thai cassettes need fresh recordings before they can be replayed')
-    T('C1', 'every Japanese / Mandarin Gen2 simulator cassette (of ' + rep.length + ') replays faithfully with identical content — the pilot is deterministic and replayable', rep.length >= 15 && rep.filter(r => !/(^|[-.])th-/.test(r.f)).every(r => r.faithful && r.same), rep.filter(r => !(r.faithful && r.same)))
+    // 12 Nov: the Japanese / Mandarin cassettes (10 of 17) embed the old word banks in their prompts, so they cannot replay against the new lists (this check PASSED on the build from before
+    // the bank import). All 17 are reported BLOCKED until the cassettes are re-recorded; nothing is asserted here, and no vacuous pass is reported.
+    out.push('BLOCKED C1 (' + rep.length + ' of ' + rep.length + ' Gen2 cassettes): the Thai cassettes need fresh recordings (rewritten writers) and the Japanese / Mandarin cassettes embed the old word banks (replaced 12 Nov)')
     const daily = cas.filter(x => /daily/.test(x.f) && x.d.outcome.content && x.d.outcome.content.status === 'READY')
     const dOk = daily.every(x => { const ps = x.d.outcome.content.pairs.filter(p => p && p.targetId != null), per = new Map(); ps.forEach(p => per.set(p.targetId, (per.get(p.targetId) || 0) + 1))
       return ps.length === 90 && per.size === 30 && [...per.values()].every(v => v === 3) && new Set(ps.map(p => p.cue)).size === 90 && new Set(ps.map(p => p.text)).size === 90 })

@@ -32,3 +32,13 @@ Prompts (`*_prompt`): short English instruction telling the learner what to say,
 
 ## Counts (pilot, tier T1)
 Every module fits ALL words of its cell, so a cell needs enough different modules for variety, not 3 per word: cells with 8+ words: 10 modules; cells with 5-7 words: 8; cells with 3-4 words: 6; X_ cells with one or two words (one-of-a-kind words): 3 modules per word (write them for that word only: list every other word of the group in `exclude_ids`, or better, make the cell its own subgroup - the cell for X_ words is the subgroup in the tags). Fewer is fine ONLY when a cell's words cannot support more natural lines - say so in your report.
+
+## Lessons from the pilot (tiers T2-T5 writers: read this)
+- The tags file the checker uses is `japanese-word-tags.csv` (merged and harmonised). Cells are SUBGROUP names; `module_id` = `<CELL>-<tier>-<nn>` (e.g. N_PLACE.GO-T2-03) and the `group` column holds the CELL name.
+- Your assignment is a CSV of lines `cell,tier,words_up_to_tier,words_at_tier,modules`: write exactly that many modules for each (cell, tier) at that tier. A module at tier k fits every word of the cell whose own tier is <= k, so the lines must suit the whole cell up to that tier (use `exclude_ids` for the odd word out, as the pilot did). Higher tiers allow more vocabulary and longer lines: use them to write richer, more natural exchanges, not just longer ones.
+- `python3 tools/ja_check.py words CELL` shows every word of a cell with its tier, slot and notes; the `register_note` and english_slot warnings from the taggers are shown there: obey them (slots with a preposition, plural slots, words that need の/に, words that only work for a third person...).
+- Checker quirks found in the pilot: it tokenises the text after a slot on its own, so a slot directly followed by で/けど can be rejected: rephrase (a full stop and でも, or {V}のは...). The following are NOT in the tier-1 vocabulary and are rejected at low tiers: この その あの そっか なるほど 〜てみる 一回 中 私 もっと. Check `allowed TIER` instead of guessing.
+- Avoid stiff stuff the pilot produced: "Ask her if she does understand this" (write natural English prompts: "Ask her if she understands this."), generic one-size lines that sound like a textbook drill. Each module must be a believable little conversation between friends about the word.
+- Adjective cells mix i- and na-adjectives: use {Aq}, {A}, {Aattr} so one set of lines works for both; do not write だ after an adjective slot.
+- Verb cells: respect the frame (を / に / で / と); if two verbs in the cell cannot share a line, use exclude_ids.
+- Colour words (A_COLOUR cell) are noun-type adjectives (青 赤 黒 ...): they have {A} {Aq} {Aneg} {Apast} {Anegpast} {Ate} {Aattr} (→ 青の) but NO {Aadv}; never use {Aadv} there.

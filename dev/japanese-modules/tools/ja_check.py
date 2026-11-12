@@ -35,11 +35,10 @@ A_SLOTS = ('A', 'Aq', 'Aneg', 'Apast', 'Anegpast', 'Ate', 'Aadv', 'Aattr')
 SENT = '\u0001'
 
 def load_words():
-    base = {r['id']: r for r in csv.DictReader(open(f'{HERE}/japanese-word-base.csv', encoding='utf-8-sig'))}
-    for p in sorted(glob.glob(f'{HERE}/drafts/*-tags.csv')):
-        for r in csv.DictReader(open(p, encoding='utf-8-sig')):
-            if r['id'] in base:
-                base[r['id']].update({k: r.get(k, '') for k in ('group', 'subgroup', 'frame', 'english_slot', 'english_plural', 'counter', 'register_note', 'skip')})
+    """japanese-word-tags.csv (merged + harmonised, built by ja_merge_tags.py) is the source; skipped words are dropped."""
+    base = {}
+    for r in csv.DictReader(open(f'{HERE}/japanese-word-tags.csv', encoding='utf-8-sig')):
+        base[r['id']] = r
     return base
 WORDS = load_words()
 
@@ -205,7 +204,7 @@ def main():
     if a and a[0] == 'words':
         g = a[1]; ti = TIERS.index(a[2]) if len(a) > 2 else 4
         for w in WORDS.values():
-            if (w.get('subgroup') or w.get('group')) == g and TIERS.index(w['tier']) <= ti and not w.get('skip'): print(w['id'], w['word'], w['meaning'], '|', w.get('english_slot'), '|', w['tier'], w['pos'], w['conj'])
+            if (w.get('subgroup') or w.get('group')) == g and TIERS.index(w['tier']) <= ti and not w.get('skip'): print(w['id'], w['word'], w['meaning'], '|', w.get('english_slot'), '|', w['tier'], w['pos'], w['conj'], '|', w.get('frame', ''), '|', w.get('register_note', ''))
         return
     path = a[0]; only = a[a.index('--group') + 1] if '--group' in a else None; quiet = '--quiet' in a
     rows = [r for r in read_rows(path) if r.get('status', 'ready') == 'ready' and (not only or r['group'] == only)]

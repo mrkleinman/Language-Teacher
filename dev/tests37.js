@@ -97,8 +97,15 @@ const FIX = ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening',
     // (never as passes): every Listening Track (v692 meaning-first planner, v712 fresh-conversation writer) and the Thai Daily writer (v693–v716 owner rewrites:
     // speaking guide in the prompts, yes-and scenes, cue passes). Japanese and Mandarin Daily are untouched, so those cassettes must still replay identically.
     const superseded = x => /listening|th-daily/.test(x.f), live = rows.filter(x => !superseded(x))
-    T('C1', 'BEHAVIOUR UNCHANGED: every Japanese / Mandarin Daily cassette recorded on the production baseline build (' + BASELINE_BUILD + ', ' + live.length + ' runs) replays on this build with byte-identical prompts, no unused request and identical learner-facing content',
-      live.length >= 10 && live.every(x => x.onV674 && x.faithful && x.same), live.filter(x => !(x.onV674 && x.faithful && x.same)))
+    // 12 Nov: the Japanese word bank was REPLACED by the new list (the 200 saved ids are kept, all other ids are new), and the Japanese cassettes embed the old ids and
+    // the old bank in their prompts, so they cannot replay byte-for-byte any more. Checked: the same replay PASSES on the build from before the import (commit 149a84e, run in a
+    // copy of the tree so the benchmark loads that build). Those cassettes are reported BLOCKED (never as passes) until they are re-recorded; the Mandarin cassettes (ids
+    // unchanged) must still replay identically, and so must the Japanese ones if they happen to.
+    const okRow = x => x.onV674 && x.faithful && x.same, jaRows = live.filter(x => /^(ja-|synthetic-ja)/.test(x.f)), zhRows = live.filter(x => !jaRows.includes(x))
+    T('C1', 'BEHAVIOUR UNCHANGED: every Mandarin Daily cassette recorded on the production baseline build (' + BASELINE_BUILD + ', ' + zhRows.length + ' runs) replays on this build with byte-identical prompts, no unused request and identical learner-facing content',
+      zhRows.length >= 5 && zhRows.every(okRow), zhRows.filter(x => !okRow(x)))
+    if (jaRows.every(okRow)) T('C1-ja', 'every Japanese Daily cassette (' + jaRows.length + ' runs) replays identically', true)
+    else out.push('BLOCKED C1-ja (' + jaRows.filter(x => !okRow(x)).length + ' of ' + jaRows.length + ' Japanese Daily cassettes): they embed the old Japanese word bank and ids (replaced by the new list on 12 Nov); the same replay passes on the build from before the import (checked, commit 149a84e); they need fresh recordings')
     out.push('BLOCKED C1 (' + (rows.length - live.length) + ' of ' + rows.length + ' cassettes): Listening and Thai Daily were rewritten after the v682 recordings; they need fresh recordings before they can be replayed')
     T('C2', 'the equivalence set covers all six combinations (TH/JA/ZH × Daily/Listening) including recovery, QC-replacement, coherence-failure and missing-target paths',
       ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening', 'zh-listening'].every(k => rows.some(x => x.f.includes(k))) && rows.some(x => /reject/.test(x.f)) && rows.some(x => /cohfail/.test(x.f)) && rows.some(x => /missing/.test(x.f)), rows.map(x => x.f))

@@ -54624,8 +54624,15 @@ function jaRepairPairStructure(pair, inv) {
   ;(inv.allContent || []).forEach(w => {
     const surf = w.japanese || '', rd = String(w.reading || '').split(/\s*[\/\uFF0F|]\s*/)[0]
     const m = /^([\u4E00-\u9FFF]+)([\u3041-\u309F]+)$/.exec(surf)
-    if (m && surf !== '\u6765\u308B' && rd.endsWith(m[2]) && rd.length > m[2].length)
-      lex.push({ s:m[1], r:rd.slice(0, rd.length - m[2].length), ro:'', e:w.english || '', t:'content', id:w.id, stemOf:surf })
+    if (m && surf !== '\u6765\u308B' && rd.endsWith(m[2]) && rd.length > m[2].length) {
+      // the hiragana a real inflection can start with: the okurigana's own first kana (食べ·ない), the kana row of its last kana
+      // (行く → か き く け こ) and the sound-change kana. Needed because a one-kanji WORD of the bank (行 "line") has the same surface as
+      // the stem of 行く: without this check the plain word shadowed the stem and 行けない fell apart into 行 · け · ない.
+      const _rows = { '\u304F':'\u304B\u304D\u304F\u3051\u3053', '\u3050':'\u304C\u304E\u3050\u3052\u3054', '\u3059':'\u3055\u3057\u3059\u305B\u305D', '\u3064':'\u305F\u3061\u3064\u3066\u3068', '\u306C':'\u306A\u306B\u306C\u306D\u306E', '\u3076':'\u3070\u3073\u3076\u3079\u307C', '\u3080':'\u307E\u307F\u3080\u3081\u3082', '\u308B':'\u3089\u308A\u308B\u308C\u308D', '\u3046':'\u308F\u3044\u3046\u3048\u304A' }
+      const _last = m[2].slice(-1)
+      const okuFirst = new Set((m[2][0] + (_rows[_last] || '') + '\u3063\u3044\u3093' + (_last === '\u3044' ? '\u304F\u304B\u3051\u3055\u305D' : '')).split(''))
+      lex.push({ s:m[1], r:rd.slice(0, rd.length - m[2].length), ro:'', e:w.english || '', t:'content', id:w.id, stemOf:surf, okuFirst })
+    }
   })
   lex.sort((a, b) => b.s.length - a.s.length)
 
@@ -54638,7 +54645,14 @@ function jaRepairPairStructure(pair, inv) {
     // ASCII punctuation from the model must be skipped as well, or it falls through
     // to the kana branch / structural failure.
     if (isJapanesePunctuation(ch)) { reading += ch; i += 1; continue }
-    const hit = lex.find(w => w.s && jp.startsWith(w.s, i))
+    let hit = lex.find(w => w.s && jp.startsWith(w.s, i))
+    if (hit && !hit.stemOf && hit.t === 'content') {
+      // a plain word and the stem of a taught verb/adjective share one surface (行 "line" / 行く): the stem wins only when the next
+      // kana can really start an inflection of that verb
+      const _nx = jp[i + hit.s.length]
+      const _st = _nx && lex.find(w => w.stemOf && w.s === hit.s && w.okuFirst && w.okuFirst.has(_nx))
+      if (_st) hit = _st
+    }
     if (hit && hit.stemOf) {
       // stem + its inflectional hiragana (行 + かない) = one content segment whose lemma is the taught word
       const tail = (/^[\u3041-\u309F]+/.exec(jp.slice(i + hit.s.length)) || [''])[0]

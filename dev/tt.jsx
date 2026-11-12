@@ -22467,6 +22467,15 @@ function listeningBuildExportLines(track) {
 //   FRAMING      greeting / parting lines (never count)
 //   SCENE        one continuous Listening conversation
 const TRACK_CONTRACT = Object.freeze({ TARGETS: 30, PAIRS_PER_TARGET: 3, QUOTA_ROUNDS: 3 })
+// A Thai Daily carries 30 words PLUS the review phrases that are due (phrase scheduling, v742: up to 5 on top of the 30). The finaliser used to demand
+// exactly 30 targets / 90 pairs, so every such track was marked NOT_READY ("SELECTED_TARGETS=35 (required 30)", 12 Nov). A review phrase is a Thai phrase entry
+// that is not new (a NEW phrase is taught inside the 30 new-word places). Other languages and tracks without phrase extras keep the plain 30.
+function trackTargetsRequired(lang, kws, newIds) {
+  let n = TRACK_CONTRACT.TARGETS
+  const nw = new Set(newIds || [])
+  if (lang === 'th' && THAI_PHRASE_SPLIT.on) n += (kws || []).filter(k => k && THAI_PHRASE_IDS.has(k.wordId) && !k.isNew && !nw.has(k.wordId)).length
+  return n
+}
 const TRACK_INTEGRITY_VERSION = 'v657'
 
 function trackLanguageOf(track) {
@@ -22977,7 +22986,7 @@ function trackQuotaReport(pairs, keywords, adapter, ctx) {
   rows.forEach(r => { r.deficit = Math.max(0, need - r.valid) })
   const quotaMet = rows.reduce((n, r) => n + Math.min(need, r.valid), 0)
   return { rows, required: rows.length * need, quotaMet, targetLines, bridges, framing, playable: (pairs || []).filter(Boolean).length,
-    wordsCovered: rows.filter(r => r.valid > 0).length, complete: rows.length === TRACK_CONTRACT.TARGETS && rows.every(r => r.deficit === 0) }
+    wordsCovered: rows.filter(r => r.valid > 0).length, complete: rows.length >= TRACK_CONTRACT.TARGETS && rows.every(r => r.deficit === 0) }
 }
 // Where a recovered TARGET PAIR goes: right after what remains of its word's group,
 // otherwise before the closing FRAMING lines.
@@ -24247,8 +24256,9 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (_prov && !_prov.ok) reasons.push('TARGET_PAIR_PROVENANCE=' + inv.TARGET_PAIR_PROVENANCE)
   if (_tc && _tc.mode === 'daily' && _tc.expectedNewCount != null && _tc.selectedNewTargetIds.length !== _tc.expectedNewCount && !_tc.newCountException)
     reasons.push('NEW_COUNT_MISMATCH=' + inv.SELECTED_NEW)
-  if (inv.SELECTED_TARGETS !== TRACK_CONTRACT.TARGETS) reasons.push('SELECTED_TARGETS=' + inv.SELECTED_TARGETS + ' (required ' + TRACK_CONTRACT.TARGETS + ')')
-  if (quota.quotaMet !== TRACK_CONTRACT.TARGETS * TRACK_CONTRACT.PAIRS_PER_TARGET) reasons.push('TARGET_PAIR_QUOTA=' + inv.TARGET_PAIR_QUOTA + ' (required 90/90)')
+  const _reqT = trackTargetsRequired(adapter.lang, kws, (_tc && _tc.selectedNewTargetIds) || t.selectedNewTargetIds)
+  if (inv.SELECTED_TARGETS !== _reqT) reasons.push('SELECTED_TARGETS=' + inv.SELECTED_TARGETS + ' (required ' + _reqT + ')')
+  if (quota.quotaMet !== _reqT * TRACK_CONTRACT.PAIRS_PER_TARGET) reasons.push('TARGET_PAIR_QUOTA=' + inv.TARGET_PAIR_QUOTA + ' (required ' + _reqT * TRACK_CONTRACT.PAIRS_PER_TARGET + '/' + _reqT * TRACK_CONTRACT.PAIRS_PER_TARGET + ')')
   if (inv.STATE_CONTRADICTIONS) reasons.push('STATE_CONTRADICTIONS=' + inv.STATE_CONTRADICTIONS + ' (' + inv.STATE_CONTRADICTIONS_DETAIL + ')')
   // v700 — a Japanese reply line that answers nothing, whose repair failed, is a learner-facing defect: never READY (it used to be logged and ignored)
   if (inv.RESPONSE_CONTEXT_UNRESOLVED) reasons.push('RESPONSE_CONTEXT_UNRESOLVED=' + inv.RESPONSE_CONTEXT_UNRESOLVED + ' (' + inv.RESPONSE_CONTEXT_DETAIL + ')')

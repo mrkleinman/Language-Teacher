@@ -314,7 +314,9 @@ function scriptedModel(plan, need) {
     T('4A', 'the cue is DERIVED from the accepted proposition and verified (v696 short instruction form): 你去哪里？ → "Ask where they are going."; 我想喝茶。 → "Say you want to drink tea."',
       c.mandarinCueFromProposition({ chinese: '你去哪里？', english: 'Where are you going?' }) === 'Ask where they are going.' && c.mandarinCueFromProposition({ chinese: '我想喝茶。', english: 'I want to drink tea.' }) === 'Say you want to drink tea.' &&
       c.mandarinCueFromProposition({ chinese: '我想喝茶。', english: 'Do you want tea?' }) === null)
-    const inv = c.mandarinLearnerInventory(S.vocab, S.targets)
+    // 12 Nov: 把 is a word of the new list, taught in this fixture; the property under test is "把 is flagged WHEN UNTAUGHT", so 把 is made untaught in a copy of the vocabulary
+    const vocab4B = S.vocab.map(w => w.chinese === '把' ? { ...w, status: 'new', introducedAt: null, lastSeen: null, okStreak: 0, repCount: 0 } : w)
+    const inv = c.mandarinLearnerInventory(vocab4B, S.targets)
     const g = zh => c.mandarinSurfaceGrammarProblems(zh, inv)
     T('4B', 'impossible constructions stay impossible (太吗？ · 我一点想吃 · 我一点要吃 · 太贵 without 了) and v672 adds 把 when untaught and 没 + verb + 了; natural lines pass (有点贵 · 便宜一点 · 太贵了 · 我没去)',
       g('太吗？').length && g('我一点想吃。').length && g('我一点要吃。').length && g('太贵。').length && g('我把书给你。').length && g('我没吃了。').length &&

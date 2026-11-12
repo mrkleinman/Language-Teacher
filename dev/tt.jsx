@@ -3722,7 +3722,13 @@ const JA_NATURALNESS_GUIDE =
   '  - あれ points at a THING (あれは何？); a place you go to is あそこ (あそこ、行ったことある？) · no けど without a contrast · a goodbye is じゃあ、またね\n' +
   '  - はい / うん / いいえ are REPLIES: the line answers a yes/no question (今日、時間ある？ → うん、あるよ), agrees to a suggestion (一緒に行こう → うん、いいよ) or acknowledges (ちょっと待って → うん、分かった). What follows the reply word IS the answer — never はい / うん as a filler before an unrelated statement (はい、ご飯だと思う。 ✗), and the cue says what is answered ("Say yes, you have time today")\n' +
   '  - the cue names the OTHER person (Ken talks to Yuka), never the speaker\n'
-function buildMandarinPrompt(target, inv, vocab, recallIndex, rules, exch) {
+// the Ready-screen scene as ONE prompt line: setting only (English); no names or places may become Chinese the learner was not taught
+function zhSceneLine(scene) {
+  const sc = scene && String(scene.scene || '').trim()
+  if (!sc) return ''
+  return 'SETTING of this conversation (for the situation only \u2014 the word lists above still decide every Chinese word; never write a name or any Chinese outside them): ' + sc.slice(0, 280) + '\n'
+}
+function buildMandarinPrompt(target, inv, vocab, recallIndex, rules, exch, scene) {
   const content = inv.allContent.map(w => '  ' + w.chinese + ' [' + w.pinyin + '] = ' + w.english +
     (w.note ? '  \u2014 use when ' + w.note : '')).join('\n')
   const basics  = inv.conversationBasics.map(b => '  ' + b.form + ' [' + b.pinyin + '] = ' + b.english).join('\n')
@@ -3740,6 +3746,8 @@ function buildMandarinPrompt(target, inv, vocab, recallIndex, rules, exch) {
     (target.note ? '\n\u26A0 This word collides in meaning with others the learner knows. Its English cue MUST include the ' +
       'minimum context that makes ' + target.chinese + ' the obvious answer: ' + target.note + '.' : '') + '\n' +
     'Write ONE natural sentence (recall ' + recallIndex + ' of 3) that genuinely uses ' + target.chinese + '.\n' +
+    // the Scene Ready screen's setting reaches generation (as it does for Thai and Japanese): context only, the word lists above still rule
+    zhSceneLine(scene) +
     // v672 §4 — a DIFFERENT communicative function per recall (where the word allows it — never forced)
     (teachingPlanOn() ? (tpSetSituationPool('zh', (inv.allContent || []).map(w => w.english)), teachingPlanLine(teachingPlan('zh', target), recallIndex))
       : oct13On() ? zhExchangeRoleLine(target, recallIndex, exch)
@@ -4679,7 +4687,7 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
       n = L.attempt(tid, recallIndex, { kind: 'model', stage: o.phase || 'generation' })
       onTier && onTier(n)
       onLog && onLog('  ' + checkLogLine(n, '', target.chinese, [recallIndex]))
-      const { system, user } = buildMandarinPrompt(target, inv, vocab, recallIndex, rules, o.exchange)
+      const { system, user } = buildMandarinPrompt(target, inv, vocab, recallIndex, rules, o.exchange, o.scene)
       // Retries used to say only THAT the last attempt failed, never what it wrote or
       // which words were rejected — so 到 repeated 我明天到家 for nine tiers and 开 asked
       // for 门 thirty-three times. Carry both forward, as the Japanese generator does.
@@ -5049,7 +5057,7 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
         tier => { attempts++; S.attempts++; S.highestCheckTier = Math.max(S.highestCheckTier, tier)
           onProgress && onProgress(doneRecall, totalRecall, { targetIdx:i, targetId:t.id, recallIndex:r, checkTier:tier, checkHistory: _zhLedger.history(t.id, r).map(e => e.index), accepted:false }) }, S,
         { ledger: _zhLedger, phase: _go.checkpoint ? 'resume' : 'generation', priorRejected: cp.rejected[_slot] || [], onRejected: txt => genCheckpointNoteRejected(cp, t.id, r, txt),
-          exchange: oct13On() ? accepted.map(a => ({ recallIndex: a.recallIndex, speaker: a.speaker, chinese: a.chinese, english: a.english })) : undefined })
+          exchange: oct13On() ? accepted.map(a => ({ recallIndex: a.recallIndex, speaker: a.speaker, chinese: a.chinese, english: a.english })) : undefined, scene: _go.scene || null })
       if (!got) {
         // §83 — visible, recoverable failure. Never silently continue.
         failures.push({ target:t.chinese, targetId:t.id, recallIndex:r, reason:'no valid candidate after all checks' })
@@ -5087,7 +5095,7 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
     const got = await generateMandarinOneRecall(t, f.recallIndex, vocab, inv, rules, apiKey, model, seenMap, onLog,
       tier => { attempts++; S.attempts++; S.highestCheckTier = Math.max(S.highestCheckTier, tier) }, S,
       { ledger: _zhLedger, phase: 'recovery', priorRejected: cp.rejected[genCheckpointSlot(t.id, f.recallIndex)] || [], onRejected: txt => genCheckpointNoteRejected(cp, t.id, f.recallIndex, txt),
-        exchange: oct13On() ? (perTarget[ti] || []).map(a => ({ recallIndex: a.recallIndex, speaker: a.speaker, chinese: a.chinese, english: a.english })) : undefined })
+        exchange: oct13On() ? (perTarget[ti] || []).map(a => ({ recallIndex: a.recallIndex, speaker: a.speaker, chinese: a.chinese, english: a.english })) : undefined, scene: _go.scene || null })
     if (!got) continue
     const pr = stampPairProvenance({ ...got.pair, ...(oct13On() ? { speaker: ZH_EXCHANGE_SPEAKER[f.recallIndex] || 'A', _zhExchange: true } : {}), checkTier: got.checkTier, sourceModel: model, _acceptedAtCheck: got.checkTier,
         _repairLineage: got.pair && got.pair._fallbackUsed ? ['deterministic-fallback'] : [] },
@@ -26585,6 +26593,67 @@ function enforceTrackTargetContract(selection, o) {
 }
 
 
+// ══ Thai-workflow parity for Japanese and Mandarin — start gate, daily cap, framing words ═════════════════════════════
+// Thai refuses to start a lesson that cannot hold its full set of targets (TRACK_SELECTION_BLOCKED) and refuses a fourth Daily
+// Track in one day. Japanese and Mandarin now follow the same two rules, with the same wording, BEFORE any paid request.
+const DAILY_TRACK_CAP = 3
+// today's date in each of the two stamps tracks carry: Thai's en-GB "12 Nov 2026" and the ja/zh ISO day "2026-11-12"
+function dailyTrackDayStamps(now) {
+  const d = now instanceof Date ? now : new Date()
+  return new Set([d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), d.toISOString().slice(0, 10)])
+}
+// Only DAILY tracks count (a Revision or Listening Track never uses up the allowance), exactly as on the Thai screen
+function dailyTracksToday(tracks, now) {
+  const days = dailyTrackDayStamps(now)
+  return (tracks || []).filter(t => t && trackModeOf(t) === 'daily' && (days.has(t.date) || (t.createdAt && days.has(String(t.createdAt).slice(0, 10))))).length
+}
+// null when the lesson may start; else { code, message } — the same two messages the Thai screen shows
+function jazhStartGate(o) {
+  const opts = o || {}, lang = opts.lang, targets = opts.targets || []
+  if (dailyTracksToday(opts.tracks, opts.now) >= DAILY_TRACK_CAP)
+    return { code: 'DAILY_CAP', message: 'You already have ' + DAILY_TRACK_CAP + ' tracks for today. Come back tomorrow! \u{1F389}' }
+  let blocked = null
+  try {
+    const mode = opts.trackMode === 'revision' || opts.trackMode === 'srs' ? 'revision' : 'daily'
+    blocked = enforceTrackTargetContract({ targets }, { lang, vocab: opts.vocab || [], mode }).blocked
+    // the targets given are already the contracted list: a short list that the whole bank could not fill is a data problem
+    if (!blocked && targets.length < TRACK_CONTRACT.TARGETS) blocked = { code: 'TRACK_SELECTION_BLOCKED', eligible: targets.length, required: TRACK_CONTRACT.TARGETS, mode,
+      reason: 'only ' + targets.length + ' valid targets were selected (required ' + TRACK_CONTRACT.TARGETS + ')' }
+  } catch (e) { blocked = null }        // a failure of the check itself never blocks a lesson
+  if (blocked) return { code: 'TRACK_SELECTION_BLOCKED', blocked, message: 'TRACK_SELECTION_BLOCKED eligible=' + blocked.eligible + ' required=' + blocked.required +
+    '\n\n' + blocked.reason + '. This is a vocabulary-data problem, not a normal short lesson — no track was started.' }
+  return null
+}
+// A due greeting / parting word from the bank that the track's opening or closing line happens to be: it is rated with the
+// rest (Thai: the opening / closing words are rated too — Player reads track.keywords + track.framingWords). Only a word the
+// learner has already been taught and that is due now, and never one of the day's own targets.
+function jazhFramingKeywords(lang, vocab, pairs, targetIds, today) {
+  const surf = w => String(lang === 'ja' ? w.japanese : w.chinese || '').replace(/[\s　、。，！？!?.,]/g, '')
+  const ownTargets = new Set((targetIds || []).filter(x => x != null))
+  const used = new Set(), out = []
+  ;[['open', 'greeting'], ['close', 'parting']].forEach(([slot, kind]) => {
+    const line = (pairs || []).find(p => p && p._framing && p._target === kind && p.speaker === 'A') || (pairs || []).find(p => p && p._framing && p._kind === kind && p.speaker === 'A')
+    const text = line ? String(lang === 'ja' ? (line.japanese || line.thai) : (line.chinese || line.thai) || '').replace(/[\s　、。，！？!?.,]/g, '') : ''
+    if (!text) return
+    const w = (vocab || []).find(x => x && surf(x) === text && !x.duplicateOf && x.status !== 'locked' && !ownTargets.has(x.id) && !used.has(x.id) && hasBeenIntroduced(x) && isDueNow(x, today))
+    if (!w) return
+    used.add(w.id)
+    out.push(lang === 'ja'
+      ? { japanese: w.japanese, reading: w.reading, romaji: w.romaji, english: w.english, wordId: w.id, rating: null, thai: w.japanese, phonetic: w.romaji, isNew: false, isUnseen: false, selectionRole: 'framing', framing: slot }
+      : { chinese: w.chinese, pinyin: w.pinyin, english: w.english, wordId: w.id, rating: null, thai: w.chinese, phonetic: w.pinyin, isNew: false, isUnseen: false, selectionRole: 'framing', framing: slot })
+  })
+  return out
+}
+// idempotent: a track that already carries framingWords is returned as it is
+function jazhAttachFramingWords(track, vocab, lang, today) {
+  if (!track || Array.isArray(track.framingWords)) return track
+  try {
+    const fw = jazhFramingKeywords(lang, vocab, track.pairs, track.selectedTargetIds || (track.keywords || []).map(k => k.wordId), today)
+    return fw.length ? { ...track, framingWords: fw } : track
+  } catch (e) { return track }
+}
+
+
 // ══ SHARED LISTENING CORE (all languages) ══════════════════════════════════════════
 // v656: every language builds Listening the same way — ONE fresh conversation (see
 // buildListeningConversation below); the language adapter supplies target presence, line gates,
@@ -46130,7 +46199,7 @@ function GenCheckpointChoice({ offer, total, langLabel, onRetryMissing, onStartN
     </>
   )
 }
-function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGenerated, onBack }) {
+function MandarinGenerator({ vocab, targets, selection, cred, trackMode, tracks, onGenerated, onBack }) {
   const [phase, setPhase] = useState('idle')
   const [fullLog, setFullLog] = useState([])
   const [liveLog, setLiveLog] = useState([])
@@ -46221,6 +46290,9 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
   }, [])
   const [zhScene, setZhScene] = useState(null)
   async function buildZhScene() {
+    // Thai's two start rules, before any paid request: a 4th Daily Track in one day, and a lesson that cannot hold its 30 targets
+    const _gate = jazhStartGate({ lang: 'zh', targets, tracks, vocab, trackMode })
+    if (_gate) { setError(_gate.message); setPhase('error'); return }
     setPhase('scene_building')
     const sc = await generateMandarinScene(targets, apiKey, model)
     if (stopRef.current.cancelled) return
@@ -46236,7 +46308,7 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
         if (useGen2) {
           push('\u{1F9EA} NEW GENERATOR (test) \u00B7 ' + GEN2_VERSION + ' \u00B7 build ' + APP_BUILD_VERSION)
           let n = 0
-          const out = await zhGen2MainTrack({ targets, vocab, apiKey, model,
+          const out = await zhGen2MainTrack({ targets, vocab, apiKey, model, scene: zhScene,
             onLog: m => { push(m, !/^\u2139/.test(m)); if (/^\u2705 TEACHABLE/.test(m)) { n++; setRecallDone(Math.min(n * 3, recallTotal)) } } })
           if (stopRef.current.cancelled) return
           if (!out.track) { setError(out.error); setPhase('error'); return }
@@ -46279,7 +46351,7 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
             if (meta.completed) { setCurrentTargetId(null); setCurrentRecall(0) }
           },
           m => { push(m, !/^\u2139/.test(m)) }, stopRef.current, undefined,
-          isDailyZh ? { checkpoint: resumeCp || null, onCheckpoint: cp => { cpRef.current = cp; genCheckpointWrite('zh', cp) } } : {})
+          { scene: zhScene || null, ...(isDailyZh ? { checkpoint: resumeCp || null, onCheckpoint: cp => { cpRef.current = cp; genCheckpointWrite('zh', cp) } } : {}) })
         if (stopRef.current.cancelled) return
         // §completeness — QC only after every recall carries provenance.
         // v671 §B4 — checked on the PAIRS themselves, like Japanese (the old check read a stale React closure → "0/90")
@@ -46289,7 +46361,7 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
         buildAndQc({
           createdAt:new Date().toISOString(), date:new Date().toISOString().slice(0, 10),
           language:'zh', mode:(trackMode === 'revision' || trackMode === 'srs' ? 'revision' : 'daily'), trackMode:(trackMode === 'revision' || trackMode === 'srs' ? 'revision' : 'daily'), speechStyle:MANDARIN_REGISTER.id,
-          provider:'gemini', model, pairs:res.pairs,
+          provider:'gemini', model, pairs:res.pairs, scene: zhScene || null,
           allowedContent:res.allowedContent, grammarUsed:res.grammarUsed, scarcity:res.scarcity,
           recallCount:res.recallCount, framingCount:res.framingCount, rated:false, bookmark:0,
           keywords:targets.map(t => ({ chinese:t.chinese, pinyin:t.pinyin, english:t.english,
@@ -47105,6 +47177,45 @@ function jaTrackObject(tc, g, targets, register, model, trackMode) {
 // existing SRS order and is never a NEW word. Gen2 itself still writes nothing; the track is saved only by the screen's
 // normal Save, through the existing SRS code. The same function runs in the sandbox benchmark (pipeline 'gen2-app').
 const JA_GEN2_SETTING_KEY = 'tt-ja-gen2'
+// Thai's greeting and parting for the test generator, for Japanese: the track opens with the Ready screen's own opening + reply and closes with its
+// closing + reply (A = man, B = woman), in the learner's speech style — the same four lines, the same closed-vocabulary check and the same in-context
+// repair as the standard generator. Without a scene, or when a line cannot be made teachable, the fixed Conversation Basics (こんにちは / またね) stand
+// in. No new model call unless a scene line carries untaught words (then the standard batched repair runs once).
+async function jaGen2Framing(o, frozen, tc, log) {
+  const { vocab, register, apiKey, model } = o
+  const inv = japaneseLearnerInventory(vocab, frozen)
+  const scene = o.scene ? { ...o.scene } : null
+  const KEYS = ['opening', 'reply', 'closing', 'closing_reply']
+  if (scene) {
+    let ents = []; try { ents = extractSceneEntities(scene, 'ja', vocab) } catch (e) {}
+    const bad = KEYS.map(k => ({ k, chk: scene[k] ? japaneseCheckLine(stripSceneEntities(scene[k] || '', ents), inv) : { ok: true } })).filter(x => !x.chk.ok)
+    if (bad.length) {
+      let fixed = {}
+      if (apiKey) { try { fixed = await jaContextualOpeningRepair(scene, bad, inv, { apiKey, model, registerId: register, onLog: log, entities: ents }) } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
+      bad.forEach(({ k, chk }) => {
+        const f = fixed[k]
+        if (f) { scene[k] = f.japanese; scene[k + '_reading'] = f.reading || ''; scene[k + '_romaji'] = f.romaji || ''; scene[k + '_english'] = f.english || ''; scene[k + '_prompt'] = f.prompt || f.english || '' }
+        else { log('  ✖ framing line dropped (untaught: ' + chk.unknown.join(' ') + ')'); scene[k] = '' }
+      })
+    }
+  }
+  const basic = f => inv.conversationBasics.find(b => b.form === f)
+  const fb = (f, en, cueA, cueB) => { const b = basic(f); return b ? { a: [b.form, '', b.romaji, en, cueA], b: [b.form, '', b.romaji, en, cueB] } : null }
+  const stamp = (pair, kind, slot) => stampPairProvenance(pair, { language: 'ja', trackId: tc.trackId, generationRunId: tc.generationRunId, isTargetPair: false, kind, slot, sourceStage: 'scene' })
+  const mk = (sp, jp, rd, ro, en, pr, what, kind, slot) => jp ? stamp(jaFramingPair(sp, jp, rd, ro, en, pr, what), kind, slot) : null
+  const open = [], close = []
+  if (scene && scene.opening) {
+    open.push(mk('A', scene.opening, scene.opening_reading, scene.opening_romaji, scene.opening_english, scene.opening_prompt, 'greeting', 'opening', 0))
+    if (scene.reply) open.push(mk('B', scene.reply, scene.reply_reading, scene.reply_romaji, scene.reply_english, scene.reply_prompt, 'greeting', 'reply', 1))
+  } else { const g = fb('こんにちは', 'Hello.', 'Greet him', 'Greet him back')
+    if (g) open.push(mk('A', g.a[0], g.a[1], g.a[2], g.a[3], g.a[4], 'greeting', 'opening', 0), mk('B', g.b[0], g.b[1], g.b[2], g.b[3], g.b[4], 'greeting', 'reply', 1)) }
+  if (scene && scene.closing) {
+    close.push(mk('A', scene.closing, scene.closing_reading, scene.closing_romaji, scene.closing_english, scene.closing_prompt, 'parting', 'closing', 2))
+    if (scene.closing_reply) close.push(mk('B', scene.closing_reply, scene.closing_reply_reading, scene.closing_reply_romaji, scene.closing_reply_english, scene.closing_reply_prompt, 'parting', 'closing_reply', 3))
+  } else { const g = fb('またね', 'See you.', 'Say see you', 'Say see you back')
+    if (g) close.push(mk('A', g.a[0], g.a[1], g.a[2], g.a[3], g.a[4], 'parting', 'closing', 2), mk('B', g.b[0], g.b[1], g.b[2], g.b[3], g.b[4], 'parting', 'closing_reply', 3)) }
+  return { open: open.filter(Boolean), close: close.filter(Boolean), scene }
+}
 async function jaGen2MainTrack(o) {
   const { targets, selection, vocab, register, apiKey, model, trackMode, runId, scene } = o
   const log = o.onLog || (() => {})
@@ -47135,9 +47246,14 @@ async function jaGen2MainTrack(o) {
       localPremise: 'Two friends in everyday moments' + (sits.length ? ': ' + sits.join('; ') : ''), targetRoles: {} })
   }
   const scenePlan = { version: 'gen2-sections/1', scenes }
-  const track = { ...jaTrackObject(tc, { pairs, scene: scene || null, scenePlan, buildingBlocks: [], allowedContent: [], recallCount: pairs.length, framingCount: 0, generationStats: null }, frozen, register, model, trackMode),
+  // Thai's greeting + parting: the track opens and closes with the scene's lines (or the fixed basics), rated words included
+  let framing = { open: [], close: [] }
+  try { framing = await jaGen2Framing(o, frozen, tc, log); log('\u{1F44B} GREETING / PARTING: ' + framing.open.length + ' opening \u00B7 ' + framing.close.length + ' closing line(s)') }
+  catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log('\u26A0 greeting / parting skipped: ' + String(e && e.message || e).slice(0, 100)) }
+  const track0 = { ...jaTrackObject(tc, { pairs: framing.open.concat(pairs, framing.close), scene: framing.scene || scene || null, scenePlan, buildingBlocks: [], allowedContent: [], recallCount: pairs.length, framingCount: framing.open.length + framing.close.length, generationStats: null }, frozen, register, model, trackMode),
     generator: GEN2_VERSION, deferredTargets: t.deferredTargets || [],
     gen2: { version: GEN2_VERSION, models: g.gen2.models, calls: g.gen2.calls, byStage: g.gen2.byStage, pronunciation: g.gen2.pronunciation || null, replacementsUsed: g.gen2.replacementsUsed } }
+  const track = jazhAttachFramingWords(track0, vocab, 'ja')      // a due greeting / parting word from the bank is rated with the rest (Thai)
   log('🧪 NEW GENERATOR track: ' + frozen.length + ' targets · ' + pairs.length + ' recalls' + (track.deferredTargets.length ? ' · deferred (stay due): ' + track.deferredTargets.map(d => d.surface).join(' ') : '') +
     (frozen.some(w => w.gen2Replacement) ? ' · replaced by: ' + frozen.filter(w => w.gen2Replacement).map(w => w.japanese).join(' ') : ''))
   return { track, gen2: g.gen2 }
@@ -47256,16 +47372,21 @@ async function zhGen2MainTrack(o) {
       sourceModel: (g.gen2.models || {}).generator || model, provenanceLive: true, provider: 'gemini', _gen2: p._gen2 },
       { language: 'zh', trackId: 'zh-' + startedAt, generationRunId: runId, targetId: p.targetId, targetSurface: w.chinese, recallIndex: p.recallIndex, sourceStage: 'generation-gen2' })
   })
-  const track = {
+  // Thai's greeting + parting: the same fixed 你 greeting / goodbye exchange the standard generator opens and closes with
+  // (Mandarin has no gender or particle rule for these lines and the basics are casual-polite 你, never 您)
+  const framing = mandarinFramingPairs(inv)
+  log('\u{1F44B} GREETING / PARTING: ' + framing.open.length + ' opening \u00B7 ' + framing.close.length + ' closing line(s)')
+  const track0 = {
     createdAt: startedAt, date: startedAt.slice(0, 10), language: 'zh', mode: 'daily', trackMode: 'daily', speechStyle: MANDARIN_REGISTER.id,
-    provider: 'gemini', model, pairs, scenePlan: gen2LessonSections(pairs, id => (fById.get(id) || {}).chinese),
+    provider: 'gemini', model, pairs: framing.open.concat(pairs, framing.close), scene: o.scene || null, scenePlan: gen2LessonSections(pairs, id => (fById.get(id) || {}).chinese),
     allowedContent: inv.allContent.map(w => ({ chinese: w.chinese, pinyin: w.pinyin, english: w.english })),
     grammarUsed: inv.grammarScaffold.map(gg => ({ form: gg.form, pinyin: gg.pinyin, meaning: gg.meaning })), scarcity: mandarinScarcityLevel(inv),
-    recallCount: pairs.length, framingCount: 0, rated: false, bookmark: 0, selectedTargetIds: Object.freeze(frozen.map(w => w.id)),
+    recallCount: pairs.length, framingCount: framing.open.length + framing.close.length, rated: false, bookmark: 0, selectedTargetIds: Object.freeze(frozen.map(w => w.id)),
     keywords: frozen.map(w => ({ chinese: w.chinese, pinyin: w.pinyin, english: w.english, wordId: w.id, rating: null, thai: w.chinese, phonetic: w.pinyin, partOfSpeech: w.partOfSpeech || null,
       isNew: w.selectionRole ? w.selectionRole === 'new' : w.status === 'new', selectionRole: w.selectionRole || (w.status === 'new' ? 'new' : 'review') })),
     generator: GEN2_VERSION, deferredTargets: t.deferredTargets || [],
     gen2: { version: GEN2_VERSION, models: g.gen2.models, calls: g.gen2.calls, byStage: g.gen2.byStage, replacementsUsed: g.gen2.replacementsUsed } }
+  const track = jazhAttachFramingWords(track0, vocab, 'zh')      // a due greeting / parting word from the bank is rated with the rest (Thai)
   log('🧪 NEW GENERATOR track: ' + frozen.length + ' targets · ' + pairs.length + ' recalls' + (track.deferredTargets.length ? ' · deferred (stay due): ' + track.deferredTargets.map(d => d.surface).join(' ') : '') +
     (frozen.some(w => w.gen2Replacement) ? ' · replaced by: ' + frozen.filter(w => w.gen2Replacement).map(w => w.chinese).join(' ') : ''))
   return { track, gen2: g.gen2 }
@@ -47286,7 +47407,7 @@ function Gen2Switch({ settingKey, onChange, note }) {
     </div>
   )
 }
-function JapaneseGenerator({ vocab, targets, selection, register: registerProp, cred, trackMode, onGenerated, onBack }) {
+function JapaneseGenerator({ vocab, targets, selection, register: registerProp, cred, trackMode, tracks, onGenerated, onBack }) {
   // v667 §4 — the speech style is FROZEN when the generator opens: a later change of the dashboard selector never
   // reaches an in-progress track (the TrackContext, every prompt, recovery and the saved track read this snapshot)
   const [register] = useState(() => canonicalJapaneseSpeechStyle(registerProp))
@@ -47437,6 +47558,9 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
     if (!aiRunRef.current) aiRunRef.current = aiBeginRun('ja-track')
     if (!apiKey) { setError('No API key configured. Japanese uses the same key as Thai \u2014 add one in Settings.'); setPhase('error'); return }
     if (!targets || !targets.length) { setError('No Japanese targets available.'); setPhase('error'); return }
+    // Thai's two start rules, before any paid request: a 4th Daily Track in one day, and a lesson that cannot hold its 30 targets
+    const _gate = jazhStartGate({ lang: 'ja', targets, tracks, vocab, trackMode })
+    if (_gate) { setError(_gate.message); setPhase('error'); return }
     try {
       const s = await generateJapaneseScene(targets, vocab, register, apiKey, model)
       if (!s) { setError('Could not build a scene. Try again.'); setPhase('error'); return }
@@ -48109,7 +48233,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
   function onTrackGenerated(rawTrack) {
     // A newly generated Main Track builds its Listening Track automatically.
     try { setListenAutoFor(listeningTrackId(rawTrack)) } catch (e) {}
-    const track = stampTrackMode(rawTrack, trackMode, targets)
+    const track = stampTrackMode(trackMode === 'revision' ? rawTrack : jazhAttachFramingWords(rawTrack, vocab, 'ja'), trackMode, targets)
     if (!track) { setNotice('Revision track was not saved: it contained a word you have not learned yet.'); setView('dashboard'); return }
     saveTracksJa([...tracks, track])
     // Only a Daily Track holds new-word slots. A revision track must neither use
@@ -48264,7 +48388,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
         {String(view).startsWith('browse-') && <WordListView vocab={vocab} lang="ja" initialFilter={String(view).slice(7)} onBack={() => setView('dashboard')} />}
         {view === 'generate' && (
           <ErrorBoundary>
-            <JapaneseGenerator vocab={vocab} targets={targets} selection={trackMode === 'revision' ? revisionSelection : selection} trackMode={trackMode} register={register} cred={cred}
+            <JapaneseGenerator vocab={vocab} targets={targets} selection={trackMode === 'revision' ? revisionSelection : selection} trackMode={trackMode} tracks={tracks} register={register} cred={cred}
               onGenerated={onTrackGenerated} onBack={() => setView('dashboard')} />
           </ErrorBoundary>
         )}
@@ -51122,7 +51246,7 @@ function MandarinTeacher({ lang, onSetLang }) {
   function onTrackGenerated(rawTrack) {
     // A newly generated Main Track builds its Listening Track automatically.
     try { setListenAutoFor(listeningTrackId(rawTrack)) } catch (e) {}
-    const track = stampTrackMode(rawTrack, trackMode, targets)
+    const track = stampTrackMode((trackMode === 'revision' || trackMode === 'srs') ? rawTrack : jazhAttachFramingWords(rawTrack, vocab, 'zh'), trackMode, targets)
     if (!track) { setNotice('Revision track was not saved: it contained a word you have not learned yet.'); setView('dashboard'); return }
     saveTracksZh([...tracks, track])
     if (track && track._qcDone) {
@@ -51225,7 +51349,7 @@ function MandarinTeacher({ lang, onSetLang }) {
         )}
         {view === 'generate' && (
           <ErrorBoundary>
-            <MandarinGenerator vocab={vocab} targets={targets} selection={selection} cred={cred} trackMode={trackMode}
+            <MandarinGenerator vocab={vocab} targets={targets} selection={selection} cred={cred} trackMode={trackMode} tracks={tracks}
               onGenerated={onTrackGenerated} onBack={() => setView('dashboard')} />
           </ErrorBoundary>
         )}

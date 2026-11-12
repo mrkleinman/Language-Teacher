@@ -109,7 +109,11 @@ const tg = (id, surface, gloss, role) => ({ id, surface, gloss, english: gloss, 
     const st = mock(S, 'zh', { ln: {} })
     const calls0 = st.calls.length
     const odd = S.targets[0]; odd.english = 'zero'                 // a digit with no other digits / phone number in this learner's bank
-    S.vocab.filter(w => w !== odd && /\b(zero|one|two|three|four|five|six|seven|eight|nine|phone|telephone|number)\b/i.test(w.english || '')).forEach(w => { w.status = 'new'; w.lastSeen = null; w.introducedAt = null; w.dueDate = null })
+    // 12 Nov: this fixture is "a learner whose ENTIRE pool is 30 words with a bank of about a hundred" (the old Mandarin bank had ~100 words). The new list has 3,000, all marked learned by the fixture, so the
+    // learner here is cut back to the 30 targets + 70 other words WITHOUT any number / digit / phone gloss (the old pattern only knew zero..nine, phone, number): the premise "no other digits" is unchanged
+    const numRx = /\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|hundred|thousand|million|billion|half|digit|digits|phone|telephone|number|numbers|numeral|count|counting|quantity|amount|figure|figures|age|how many|how much|ordinal|first|second|third)\b/i
+    const keepIds = new Set(S.targets.map(x => x.id)); let extraKept = 0
+    S.vocab.forEach(w => { if (w === odd || keepIds.has(w.id)) return; if (extraKept < 70 && !numRx.test(w.english || '') && w.status !== 'new' && w.status !== 'locked') { extraKept++; return } Object.assign(w, { status: 'new', lastSeen: null, introducedAt: null, dueDate: null, okStreak: 0, repCount: 0, manualKnown: false, interval: 0, lapses: 0 }) })
     const logs = []
     const r = await S.c.generateCohesiveListeningTrack({ lang: 'zh', vocab: S.vocab, apiKey: KEY, model: MODEL, onLog: x => logs.push(x), targetIds: S.targets.map(t => t.id), attemptId: 'lattempt-v673-infeasible' })
     const L = logs.join('\n')

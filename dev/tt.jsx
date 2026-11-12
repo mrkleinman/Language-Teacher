@@ -6425,6 +6425,109 @@ function mergeMandarinVocab(saved) {
   return merged
 }
 
+// ── PHRASE / WORD SPLIT for Japanese and Mandarin (v745) — the Thai design (THAI_PHRASE_SPLIT), generalised ──────────────────────────────────────────────
+//   • the words and the phrases are scheduled apart: phrases (entryType 'phrase', ids 9001+) never enter the word pipeline (jazhWordsOnly)
+//   • a Daily is 30 words PLUS the review phrases that are due (up to reviewPhrasesPerTrack); a NEW phrase is taught WITHIN the new-word places (it takes the last
+//     new place that was not queued by hand) and gets the usual three recalls
+//   • a NEW phrase is offered once the learner's current belt has reached the phrase's home belt (homeBelt, from the phrase schedule CSV)
+//   • review: the same ladder and "known" rule as a word, kept on the phrase's own record; a QUEUED phrase ("Next in queue") goes first
+// Greeting / parting phrases carry a kind ('open' / 'close') in the data for the framing work; until that consumes them they are reviewed like any other phrase.
+const JAZH_PHRASE_SCHEDULE = { newPhrasesPerTrack: 1, reviewPhrasesPerTrack: 5, beyondAfterBeltIndex: 1 }
+const _jazhPhraseIds = {}
+function jazhPhraseIdSet(lang) {
+  if (lang !== 'ja' && lang !== 'zh') return null
+  if (!_jazhPhraseIds[lang]) { const d = lang === 'ja' ? (typeof JA_PHRASE_DATA !== 'undefined' ? JA_PHRASE_DATA : null) : (typeof ZH_PHRASE_DATA !== 'undefined' ? ZH_PHRASE_DATA : null); _jazhPhraseIds[lang] = new Set(d ? d.ids : []) }
+  return _jazhPhraseIds[lang]
+}
+function isJazhPhraseEntry(w) { return !!(w && w.entryType === 'phrase' && w.thai == null) }
+function jazhWordsOnly(vocab) { const v = vocab || []; return v.some(isJazhPhraseEntry) ? v.filter(w => !isJazhPhraseEntry(w)) : v }
+function jazhPhraseHomeIndex(w) {
+  const hb = w && w.homeBelt
+  if (!hb || hb === POST_CURRICULUM) return JAZH_PHRASE_SCHEDULE.beyondAfterBeltIndex
+  const i = CURRICULUM_BELTS.findIndex(b => b.name === hb); return i < 0 ? JAZH_PHRASE_SCHEDULE.beyondAfterBeltIndex : i
+}
+function jazhPhrasePlan(vocab, lang, today, o) {
+  const cfg = Object.assign({}, JAZH_PHRASE_SCHEDULE, o || {})
+  const none = { newPhrases: [], review: [], duePhrases: 0, newAvailable: 0, newCount: 0 }
+  const ph = (vocab || []).filter(w => isJazhPhraseEntry(w) && !w.duplicateOf && w.status !== 'locked' && jazhTargetEligible(w, lang))
+  if (!ph.length) return none
+  const rank = currentRankName((o && o.rankVocab) || jazhWordsOnly(vocab)), ri = rank === 'Shodan' ? 99 : Math.max(0, CURRICULUM_BELTS.findIndex(b => b.name === rank))
+  const isNew = w => isGenuinelyNew(w), isDue = w => !isNew(w) && w.dueDate && w.dueDate <= today
+  const byDue = (a, b) => String(a.dueDate).localeCompare(String(b.dueDate)) || a.id - b.id
+  const dueList = ph.filter(isDue).sort(byDue)
+  const fresh = ph.filter(w => isNew(w) && jazhPhraseHomeIndex(w) <= ri).sort((a, b) => jazhPhraseHomeIndex(a) - jazhPhraseHomeIndex(b) || a.id - b.id)
+  const queued = ph.filter(w => w.queuedNext).sort((x, y) => String(x.queuedNext).localeCompare(String(y.queuedNext)) || x.id - y.id)
+  const qOld = queued.filter(w => !isNew(w)), qNew = queued.filter(isNew).slice(0, 3)
+  const revPool = qOld.concat(dueList.filter(w => !w.queuedNext))
+  const review = revPool.slice(0, Math.max(0, cfg.reviewPhrasesPerTrack, qOld.length))
+  const newPool = qNew.concat(fresh.filter(w => !w.queuedNext)), nNew = Math.max(Math.max(0, cfg.newPhrasesPerTrack), qNew.length)
+  const newPhrases = newPool.slice(0, nNew)
+  return { newPhrases, review, duePhrases: dueList.length, newAvailable: fresh.length, newCount: newPhrases.length }
+}
+// the Daily's targets: the 30 words with the phrases laid on top (words are chosen first, from jazhWordsOnly(vocab); the phrase plan only adds to / swaps one NEW place)
+function jazhWithPhrases(targets, vocab, lang, mode, o) {
+  const list = targets || []
+  if (mode !== 'daily' || (lang !== 'ja' && lang !== 'zh') || !list.length) return list
+  const today = (o && o.today) || new Date().toISOString().slice(0, 10)
+  let pp
+  try { pp = jazhPhrasePlan(vocab, lang, today, o) } catch (e) { return list }
+  if (!pp.newPhrases.length && !pp.review.length) return list
+  const out = list.slice()
+  const as = (p, role, stage, extra) => ({ ...p, selectionRole: role, originalSrsStatus: p.status, _selectorStage: stage, ...(extra || {}) })
+  pp.newPhrases.forEach(pn => {
+    // never at the expense of a word the learner queued by hand: the phrase takes the last NEW word that was not queued; a phrase the learner queued may also take the last non-queued place
+    let at = -1; out.forEach((w, i) => { if (!isJazhPhraseEntry(w) && isGenuinelyNew(w) && w._selectorStage !== 'queued' && !w.queuedNext) at = i })
+    if (at < 0 && pn.queuedNext) out.forEach((w, i) => { if (!isJazhPhraseEntry(w) && w._selectorStage !== 'queued' && !w.queuedNext) at = i })
+    if (at < 0) return
+    out[at] = as(pn, 'new', 'phrase-new')
+  })
+  pp.review.forEach(p => { if (!out.some(w => w.id === p.id)) out.push(as(p, 'due', 'phrase-review', { _phraseReview: true })) })
+  return out.map((w, i) => ({ ...w, targetIndex: i }))
+}
+// Function-word cap (Thai: THAI_FUNCTION_TARGETS_PER_TRACK = 2). Pronouns, conjunctions, particles, prepositions, measure words and question words are real targets,
+// but a lesson must not be mostly function words: the first JAZH_FUNCTION_TARGETS_PER_TRACK keep their place, any further one is skipped (it stays due, nothing is
+// rated) and the next word takes the place. The class comes from the part of speech in the word-list tags. A word the learner queued by hand is exempt.
+const JAZH_FUNCTION_TARGETS_PER_TRACK = 2
+const JAZH_FUNCTION_POS = { ja: /^(pronoun|conjunction)$/, zh: /^(pronoun|conjunction|particle|preposition|measure word|question)$/ }
+function isJazhFunctionWord(w, lang) { const rx = JAZH_FUNCTION_POS[lang]; return !!(rx && w && !isJazhPhraseEntry(w) && rx.test(String(w.partOfSpeech || ''))) }
+function jazhCapFunctionWords(targets, lang, vocab) {
+  let fn = 0; const dropIds = new Set()
+  const have = new Set((targets || []).map(w => w && w.id))
+  // a NEW word over the cap is replaced by the next unseen non-function word (the Daily's new-word count must still hold); a learnt one is simply skipped
+  const unseen = (vocab || []).filter(w => w && w.status === 'new' && !w.queuedNext && (w.repCount || 0) === 0 && !w.lastSeen && !have.has(w.id) && !isJazhFunctionWord(w, lang) && !isJazhPhraseEntry(w) && jazhTargetEligible(w, lang))
+    .sort((a, b) => (a.unlockOrder || a.id || 0) - (b.unlockOrder || b.id || 0))
+  let u = 0
+  const kept = []
+  ;(targets || []).forEach(w => {
+    if (!w || !isJazhFunctionWord(w, lang) || w.queuedNext || w._selectorStage === 'queued') { kept.push(w); return }
+    if (fn < JAZH_FUNCTION_TARGETS_PER_TRACK) { fn++; kept.push(w); return }
+    dropIds.add(w.id)
+    if (w.selectionRole === 'new' && u < unseen.length) { const r = unseen[u++]; kept.push({ ...r, selectionRole: 'new', originalSrsStatus: r.status, _selectorStage: 'function-cap-replacement' }) }
+  })
+  return { kept, dropIds }
+}
+// "Next in queue": the words the learner put in the queue come FIRST in the next Daily. A queued NEW word takes one of the belt's new places (the last new words give way,
+// so the allowance still holds); a queued word already learnt is reviewed. Only eligible words are used; the rest of the queue waits (Thai: pickWords).
+function jazhApplyQueued(targets, vocab, lang, o) {
+  const list = targets || []
+  const qAll = (vocab || []).filter(w => w && w.queuedNext && !w.duplicateOf && !isJazhPhraseEntry(w) && jazhTargetEligible(w, lang))
+    .sort((a, b) => String(a.queuedNext).localeCompare(String(b.queuedNext)) || a.id - b.id)
+  if (!qAll.length || !list.length) return list
+  const limit = (o && o.newLimit != null) ? o.newLimit : newWordsPerTrack(lang, 'daily', (o && o.rankVocab) || vocab)
+  const qNew = qAll.filter(w => isGenuinelyNew(w)).slice(0, limit), qOld = qAll.filter(w => !isGenuinelyNew(w))
+  const picks = qNew.concat(qOld).slice(0, TRACK_CONTRACT.TARGETS).map(w => ({ ...w, selectionRole: isGenuinelyNew(w) ? 'new' : 'due', originalSrsStatus: w.status, _selectorStage: 'queued' }))
+  const pickIds = new Set(picks.map(w => w.id)); let newLeft = Math.max(0, limit - qNew.length)
+  const rest = list.filter(w => !pickIds.has(w.id)).filter(w => { if (!isGenuinelyNew(w)) return true; if (newLeft > 0) { newLeft--; return true } return false })
+  return picks.concat(rest).slice(0, Math.max(list.length, TRACK_CONTRACT.TARGETS)).map((w, i) => ({ ...w, targetIndex: i }))
+}
+// the whole Daily composition for Japanese / Mandarin, in Thai's order: function-word cap → the 30-word contract → queued words first → phrases on top
+function jazhDailyTargets(raw, vocab, lang, o) {
+  const words = jazhWordsOnly(vocab), cap = jazhCapFunctionWords(raw, lang, words)
+  const pool = cap.dropIds.size ? words.filter(w => !cap.dropIds.has(w.id)) : words
+  const t = jazhApplyQueued(jazhContractTargets(cap.kept, lang, pool, 'daily'), words, lang, o)
+  return jazhWithPhrases(t, vocab, lang, 'daily', o)
+}
+
 // §12 — "introduced" means actually encountered. A word rated Hard stays status
 // 'new' (it holds its slot) but the learner HAS seen it and it stays usable.
 function isMandarinIntroduced(w, activeIds) {
@@ -12789,6 +12892,8 @@ function getStats(vocab) {
   })
   // phrase / word split (off by default): phrases are counted on their own and never added to the word figures
   if (THAI_PHRASE_SPLIT.on && vocab.some(isThaiPhraseEntry)) return { ...count(vocab.filter(w => !isThaiPhraseEntry(w))), phrases: count(vocab.filter(isThaiPhraseEntry)) }
+  // v745 — Japanese / Mandarin: the same split (their phrases carry entryType 'phrase'); a bank without phrases is counted exactly as before
+  if (vocab.some(isJazhPhraseEntry)) return { ...count(vocab.filter(w => !isJazhPhraseEntry(w))), phrases: count(vocab.filter(isJazhPhraseEntry)) }
   return count(vocab)
 }
 
@@ -28310,6 +28415,8 @@ function trackTargetsRequired(lang, kws, newIds) {
   let n = TRACK_CONTRACT.TARGETS
   const nw = new Set(newIds || [])
   if (lang === 'th' && THAI_PHRASE_SPLIT.on) n += (kws || []).filter(k => k && THAI_PHRASE_IDS.has(k.wordId) && !k.isNew && !nw.has(k.wordId)).length
+  // v745 — Japanese and Mandarin carry their own phrase list (ids collide numerically with Thai, so each language reads its own set)
+  else if (lang === 'ja' || lang === 'zh') { const ps = jazhPhraseIdSet(lang); if (ps && ps.size) n += (kws || []).filter(k => k && ps.has(k.wordId) && !k.isNew && !nw.has(k.wordId)).length }
   return n
 }
 const TRACK_INTEGRITY_VERSION = 'v657'
@@ -37088,7 +37195,7 @@ function listeningSnapshotOf(lang, snap) {
 //   JA: selectRevisionTrackTargets → jazhContractTargets(…, 'revision')
 //   ZH: selectRevisionTrackTargets → feasibility gate (teachable with the learner's bank) → jazhContractTargets(…, 'revision')
 function selectRevisionTargets(lang, vocab) {
-  const V = vocab || []
+  const V = lang === 'th' ? (vocab || []) : jazhWordsOnly(vocab)        // Japanese / Mandarin phrases are scheduled apart: a revision track holds words
   if (lang === 'th') {
     const rv30 = selectThaiRevisionTargets(V, REVISION_TRACK_MAX)
     const rvAll = selectThaiRevisionTargets(V, 100000)
@@ -44259,18 +44366,24 @@ function BeltVocabView({ vocab, beltLabel, beltName, displayName, beltColor, onB
 
 // Word list opened by the dashboard stat tiles (Words / Due / Learning / Known) in Japanese and Mandarin — the same tap-through the
 // Thai dashboard has. Read-only: search, a filter row, and one line per word (script, reading, meaning, status).
-function WordListView({ vocab, lang, initialFilter, onBack }) {
+function WordListView({ vocab, lang, initialFilter, onBack, onVocabUpdate }) {
   const [filter, setFilter] = useState(initialFilter || 'all')
   const [q, setQ] = useState('')
   const today = new Date().toISOString().slice(0, 10)
   const script = w => lang === 'ja' ? w.japanese : lang === 'zh' ? w.chinese : w.thai
   const reading = w => lang === 'ja' ? [w.reading, w.romaji].filter(Boolean).join(' · ') : lang === 'zh' ? w.pinyin : w.phonetic
+  // v745: phrases are listed apart from the words (Words / Due / Learning / Known count words only), a 'phrases' chip shows them, and — as in the Thai vocabulary bank —
+  // a word can be queued ("Next in queue": it goes first into the next Daily)
+  const isPh = isJazhPhraseEntry
+  const queuedCount = (vocab || []).filter(w => w && w.queuedNext).length
   const rows = useMemo(() => (vocab || []).filter(w => {
     if (!w || w.duplicateOf) return false
-    const okF = filter === 'all' ? true : filter === 'due' ? (w.status !== 'new' && w.dueDate && w.dueDate <= today) : w.status === filter
+    if (filter !== 'phrases' && isPh(w)) return false
+    const okF = filter === 'all' ? true : filter === 'phrases' ? isPh(w) : filter === 'queued' ? !!w.queuedNext : filter === 'due' ? (w.status !== 'new' && w.dueDate && w.dueDate <= today) : w.status === filter
     const ql = q.trim().toLowerCase()
     return okF && (!ql || String(script(w) || '').includes(q.trim()) || String(w.english || '').toLowerCase().includes(ql) || String(reading(w) || '').toLowerCase().includes(ql))
   }), [vocab, filter, q])
+  const queueWord = (w, on) => { if (!onVocabUpdate) return; const r = thaiQueueApply(vocab, new Set([w.id]), on); onVocabUpdate(r.vocab) }
   const SC = { known:'#10b981', learning:'#4a90e2', new:'var(--muted)', locked:'var(--muted)' }
   return (
     <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
@@ -44278,12 +44391,12 @@ function WordListView({ vocab, lang, initialFilter, onBack }) {
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search words..."
         style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 12px', color:'var(--text)', fontSize:14 }} />
       <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-        {['all', 'due', 'learning', 'known', 'new'].map(f => (
+        {['all', 'due', 'learning', 'known', 'new'].concat((vocab || []).some(isPh) ? ['phrases'] : [], onVocabUpdate ? ['queued'] : []).map(f => (
           <button key={f} onClick={() => setFilter(f)} style={{ fontSize:12, padding:'6px 12px', borderRadius:16, cursor:'pointer',
-            background: filter === f ? 'var(--gold)' : 'var(--surface2)', color: filter === f ? '#000' : 'var(--text)', border:'1px solid var(--border)' }}>{f}</button>
+            background: filter === f ? 'var(--gold)' : 'var(--surface2)', color: filter === f ? '#000' : 'var(--text)', border:'1px solid var(--border)' }}>{f === 'queued' ? 'queued (' + queuedCount + ')' : f}</button>
         ))}
       </div>
-      <p style={{ fontSize:11, color:'var(--muted)', margin:0 }}>{rows.length} word{rows.length === 1 ? '' : 's'}</p>
+      <p style={{ fontSize:11, color:'var(--muted)', margin:0 }}>{rows.length} {filter === 'phrases' ? 'phrase' : 'word'}{rows.length === 1 ? '' : 's'}</p>
       <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
         {rows.slice(0, 400).map(w => (
           <div key={w.id} style={{ display:'flex', alignItems:'baseline', gap:8, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 10px', minWidth:0 }}>
@@ -44291,6 +44404,9 @@ function WordListView({ vocab, lang, initialFilter, onBack }) {
             <span className="phon" style={{ color:'var(--muted)', fontSize:11 }}>{reading(w)}</span>
             <span style={{ color:'var(--muted)', fontSize:11, marginLeft:'auto', textAlign:'right' }}>{w.english}</span>
             <span style={{ fontSize:9, fontWeight:700, color: SC[w.status] || 'var(--muted)' }}>{String(w.status || '').toUpperCase()}</span>
+            {onVocabUpdate && <button data-queue-word={w.id} onClick={() => queueWord(w, !w.queuedNext)}
+              style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, padding:'0 3px', lineHeight:1, fontWeight:700, color: w.queuedNext ? 'var(--gold)' : 'var(--muted)' }}
+              title={w.queuedNext ? 'Queued as first in the next track — tap to remove' : 'Put this word first in the next track'}>{w.queuedNext ? '⏭ queued' : '⏭'}</button>}
           </div>
         ))}
         {rows.length > 400 && <p style={{ fontSize:11, color:'var(--muted)', textAlign:'center' }}>Showing the first 400 — search to narrow.</p>}
@@ -48795,6 +48911,8 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
         <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>{stats.known} known {'\u00B7'} {stats.learning} learning {'\u00B7'} {stats.newW} new</p>
       </Card>
 
+      <JazhPhraseStrip stats={stats.phrases} />
+
       {/* Belt Rank */}
       <BeltRankCard vocab={vocab} onNav={onNav} langName="Japanese" />
 
@@ -52787,9 +52905,24 @@ function jaSceneRows(vocab, store, sceneText, register) {
 
 // One "what this track will teach" block, shared by Thai, Japanese-style and Mandarin generate screens:
 // the TARGETING summary line (counts by NEW / DUE / REINFORCE...) and one chip per target word.
+// v745 — one line on the dashboard for the phrases (counted apart from the words, as on the Thai dashboard)
+function JazhPhraseStrip({ stats }) {
+  if (!stats || !stats.total) return null
+  return (
+    <Card style={{ padding:'10px 16px' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
+        <span style={{ fontSize:13, fontWeight:600 }}>Phrases</span>
+        <span style={{ fontSize:11, color:'var(--muted)' }}>{stats.known + stats.learning} learnt of {stats.total} {'·'} {stats.due} due</span>
+      </div>
+    </Card>
+  )
+}
 function GenTargetPreview({ targets, availableCount, textOf, subOf, basics, basicLabel }) {
-  const list = targets || []
-  const bl = basics || []
+  // v745 — Japanese / Mandarin phrases among the targets are listed as basics (the Thai split): words as chips, phrases below
+  const _phr = (targets || []).filter(isJazhPhraseEntry)
+  const list = _phr.length ? (targets || []).filter(w => !isJazhPhraseEntry(w)) : (targets || [])
+  const bl = (basics || []).concat(_phr.map(w => ({ id: w.id, text: textOf(w), sub: subOf ? subOf(w) : '', english: w.english,
+    role: String(w.selectionRole || (w.status === 'new' ? 'new' : '')).toUpperCase() })))
   if (!list.length && !bl.length) return null
   return (
     <div>
@@ -53942,6 +54075,8 @@ function JapaneseTeacher({ lang, onSetLang }) {
     // Only a Daily Track holds new-word slots. A revision track must neither use
     // nor add to the Daily allowance.
     if (trackMode !== 'revision') saveSlots((targets || []).map(t => t.id))
+    // v745 — the queue ("Next in queue") is emptied of the words this Daily used (a Revision track leaves it alone, as for Thai)
+    try { if (trackMode !== 'revision') { const _cl = thaiQueueClearUsed(vocab, { ...track, selectedTargetIds: track.selectedTargetIds || (targets || []).map(t => t.id) }); if (_cl) saveVocabJa(_cl) } } catch (e) {}
     if (track && track._qcDone) {
       setActiveTrack(track); setPlayerResumeCompleted(false); setView('player'); return
     }
@@ -54025,7 +54160,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
     () => [...tracks].reverse().slice(0, 3).map(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)),
     [tracks])
   const selection = useMemo(() => hasVocab ? selectTrackTargets({
-    vocab, targetCap: TRACK_TARGET_CAP, recentTrackWordIds, lang: 'ja',
+    vocab: jazhWordsOnly(vocab), targetCap: TRACK_TARGET_CAP, recentTrackWordIds, lang: 'ja',     // phrases are scheduled apart (jazhWithPhrases)
     newSelector: v => japaneseSelectNewSlots(v, slots),      // §5 unchanged new-slot logic
   }) : { targets: [], counts: { total:0, new:0, due:0, reinforce:0 }, expectedRecalls: 0 },
   [vocab, slots, hasVocab, recentTrackWordIds])
@@ -54048,7 +54183,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
   const listeningSelection = revisionCanon
   // v649 §2: the frozen 30-target contract (same core as Thai and Mandarin)
   const targets = useMemo(() => trackMode === 'revision' ? revisionCanon.targets
-    : jazhContractTargets(dailyTargets, 'ja', vocab, 'daily'), [trackMode, revisionCanon, dailyTargets, vocab])
+    : jazhDailyTargets(dailyTargets, vocab, 'ja'), [trackMode, revisionCanon, dailyTargets, vocab])
 
   function startTrack() {
     if (!hasVocab) { setNotice('Japanese vocabulary has not been loaded yet.'); return }
@@ -54088,7 +54223,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
         {view === 'rank-test' && <RankTestView vocab={vocab} lang="ja" onBack={() => setView('dashboard')} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="ja" onBack={() => setView('dashboard')} />}
         {view === 'topics' && <TopicsView lang="ja" vocab={vocab} onBack={() => setView('dashboard')} />}
-        {String(view).startsWith('browse-') && <WordListView vocab={vocab} lang="ja" initialFilter={String(view).slice(7)} onBack={() => setView('dashboard')} />}
+        {String(view).startsWith('browse-') && <WordListView vocab={vocab} lang="ja" initialFilter={String(view).slice(7)} onBack={() => setView('dashboard')} onVocabUpdate={saveVocabJa} />}
         {view === 'generate' && (
           <ErrorBoundary>
             <JapaneseGenerator vocab={vocab} targets={targets} selection={trackMode === 'revision' ? revisionSelection : selection} trackMode={trackMode} register={register} cred={cred}
@@ -56753,16 +56888,7 @@ function japaneseSelectNewSlots(vocab, savedSlots) {
 // §43/§45 — Mandarin dashboard. Same visual language as Thai/Japanese.
 function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack, notice,
                              onOpenTrack, onDeleteTrack, onLearnWords, onStartSrsTrack, srsDue, onNav, selection, revisionSelection, listeningSelection, onStartListening, onRebuildListening }) {
-  const stats = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10)
-    return {
-      total: vocab.length,
-      due: vocab.filter(w => w.status !== 'new' && w.dueDate && w.dueDate <= today).length,
-      learning: vocab.filter(w => w.status === 'learning').length,
-      known: vocab.filter(w => w.status === 'known').length,
-      newW: vocab.filter(w => w.status === 'new').length,
-    }
-  }, [vocab])
+  const stats = useMemo(() => getStats(vocab), [vocab])        // v745: the same word / phrase split as Thai and Japanese (phrases counted apart)
   const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
   const recent = useMemo(() => [...tracks].reverse().slice(0, 8), [tracks])
   return (
@@ -56790,6 +56916,8 @@ function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack,
         </div>
         <p style={{ fontSize:11, color:'var(--muted)', marginTop:6 }}>{stats.known} known {'\u00b7'} {stats.learning} learning {'\u00b7'} {stats.newW} new</p>
       </Card>
+
+      <JazhPhraseStrip stats={stats.phrases} />
 
       <BeltRankCard vocab={vocab} onNav={onNav} langName="Mandarin" />
 
@@ -56910,7 +57038,7 @@ function MandarinTeacher({ lang, onSetLang }) {
     () => [...tracks].reverse().slice(0, 3).map(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)),
     [tracks])
   const newSelection = useMemo(() => (vocab.length ? selectTrackTargets({
-    vocab, targetCap: TRACK_TARGET_CAP, recentTrackWordIds, lang: 'zh',
+    vocab: jazhWordsOnly(vocab), targetCap: TRACK_TARGET_CAP, recentTrackWordIds, lang: 'zh',     // phrases are scheduled apart (jazhWithPhrases)
     newSelector: v => mandarinSelectTargets(v, slots),
   }) : { targets: [], counts:{ total:0, new:0, due:0, reinforce:0 }, expectedRecalls:0 }),
   [vocab, slots, recentTrackWordIds])
@@ -56937,15 +57065,16 @@ function MandarinTeacher({ lang, onSetLang }) {
     try {
       const inv0 = mandarinLearnerInventory(vocab, raw), rules0 = scarcityRules(inv0)
       const isRev = trackMode === 'revision' || trackMode === 'srs'
+      const wv = jazhWordsOnly(vocab)
       const pool = isRev
-        ? selectRevisionTrackTargets({ vocab, maxTargets: 100000, language: 'zh' }).targets
-        : [...vocab].sort((a, b) => (a.unlockOrder || 0) - (b.unlockOrder || 0))
+        ? selectRevisionTrackTargets({ vocab: wv, maxTargets: 100000, language: 'zh' }).targets
+        : [...wv].sort((a, b) => (a.unlockOrder || 0) - (b.unlockOrder || 0))
       const g = gateTargetsByFeasibility(raw, pool,
         w => mandarinTargetTeachable(w, inv0, vocab, rules0),
         w => !hasBeenIntroduced(w))
       g.deferred.forEach(d => console.info('[zh] deferred ' + d.target.chinese +
         ' (not expressible with current vocabulary)' + (d.replacedBy ? ' → ' + d.replacedBy.chinese : '')))
-      return jazhContractTargets(g.targets, 'zh', vocab, isRev ? 'revision' : 'daily')
+      return isRev ? jazhContractTargets(g.targets, 'zh', wv, 'revision') : jazhDailyTargets(g.targets, vocab, 'zh')
     } catch (e) { return raw }        // the gate can never block a track
   }, [selection, vocab, trackMode, revisionCanon])
 
@@ -56960,6 +57089,8 @@ function MandarinTeacher({ lang, onSetLang }) {
     }
     // §17 — only a new-word track consumes daily-new slots.
     if (trackMode === 'daily') saveSlots((targets || []).map(t => t.id))
+    // v745 — the queue ("Next in queue") is emptied of the words this Daily used (other track kinds leave it alone, as for Thai)
+    try { if (trackMode === 'daily') { const _cl = thaiQueueClearUsed(vocab, { ...track, selectedTargetIds: track.selectedTargetIds || (targets || []).map(t => t.id) }); if (_cl) saveVocabZh(_cl) } } catch (e) {}
     setPendingReviewTrack(track)
     setQcReturnContext('post-generation')
     setView('quality-review')
@@ -57045,7 +57176,7 @@ function MandarinTeacher({ lang, onSetLang }) {
         {view === 'rank-test' && <RankTestView vocab={vocab} lang="zh" onBack={() => setView('dashboard')} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="zh" onBack={() => setView('dashboard')} />}
         {view === 'topics' && <TopicsView lang="zh" vocab={vocab} onBack={() => setView('dashboard')} />}
-        {String(view).startsWith('browse-') && <WordListView vocab={vocab} lang="zh" initialFilter={String(view).slice(7)} onBack={() => setView('dashboard')} />}
+        {String(view).startsWith('browse-') && <WordListView vocab={vocab} lang="zh" initialFilter={String(view).slice(7)} onBack={() => setView('dashboard')} onVocabUpdate={saveVocabZh} />}
         {view === 'learn' && (
           <ErrorBoundary>
             <MandarinLearnWords words={newTargets.filter(w => w.selectionRole === 'new')} gcpTtsKey={cred.gcpTtsKey}

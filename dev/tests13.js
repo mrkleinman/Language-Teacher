@@ -81,7 +81,11 @@ const msg = [{ role: 'user', content: 'Segment this Thai sentence into individua
   // ── 6. Source invariants: one transport, zero banned identifiers ──
   // v717: the embedded gap-fill module data is one long base64 string (gzip); random letters in it can spell a banned name by accident, so the
   // scan reads the source without that data block (it holds no identifiers)
+  // v745: the Japanese and Mandarin word lists are embedded as data (JA_BANK / ZH_BANK blocks, generated from the CSVs). They contain real vocabulary, among it the
+  // Japanese word 俳句 (romaji "haiku", "haiku poem"), which this identifier scan mistook for a model name. The blocks hold word data only, no code, so — like the
+  // gzip module data above — the scan reads the source without them (the rest of the source, and every other identifier, is scanned exactly as before).
   const src = fs.readFileSync('tt.jsx', 'utf8').replace(/(THAI_MODULES_DATA_BEGIN\n)[\s\S]*?(\n\/\/ THAI_MODULES_DATA_END)/, '$1const THAI_MODULES_GZ = ""$2')
+    .replace(/(\/\/ ══ (?:JA|ZH)_BANK begin[^\n]*\n)[\s\S]*?(\/\/ ══ (?:JA|ZH)_BANK end\n)/g, '$1$2')
   const shell = (() => { const h = fs.readFileSync(fs.existsSync('/mnt/user-data/uploads/index-1.html') ? '/mnt/user-data/uploads/index-1.html' : require('path').join(__dirname, 'build/index-1.shell.html'), 'utf8'); return h.slice(0, h.indexOf('<script type="text/babel">')) + h.slice(h.lastIndexOf('</script>')) })()
   const BANNED = /qwen|anthropic|claude|openai|gpt-|openrouter|deepseek|mistral|groq|ollama|huggingface|together\.ai|fallbackProvider|secondaryProvider|fallbackModel|secondaryModel|alternateModel|haiku|sk-or-|x-api-key|chat\/completions/i
   // v685 (owner brief 2026-10-12): Claude Haiku 5.5 is an owner-approved OPTIONAL generation model. Its names may appear only in

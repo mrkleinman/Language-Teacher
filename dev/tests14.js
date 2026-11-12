@@ -34,7 +34,10 @@ function setup(lang) {
   const vocab = lang === 'th' ? c.initVocab() : lang === 'ja' ? c.initJapaneseVocab() : c.initMandarinVocab()
   vocab.forEach(w => { if (lang !== 'th' || w.status !== 'locked') { w.status = w.status === 'locked' ? 'learning' : (w.status === 'new' ? 'learning' : w.status); w.lastSeen = '2026-09-20'; w.introducedAt = '2026-09-01'; w.repCount = 3 } })
   const pick = lang === 'th' ? TH_IDS.map(id => vocab.find(w => w.id === id))
-    : lang === 'ja' ? vocab.filter(w => w.id <= 80 && ![31, 32].includes(w.id) && !['それ', '今', 'いい'].includes(w.japanese) && !/[\/｜|]/.test((w.reading || '') + (w.romaji || ''))).slice(0, 30)
+    // v745: the Japanese bank list is now in curriculum order (row order of the new word list), no longer in id order (the 200 saved ids are kept but their
+    // positions moved). This fixture picked "the first 30 words with id <= 80" in list order, so it silently became a different set of words; sorting by id
+    // restores EXACTLY the words the fixture has always used (the scene planning under test then sees the same targets).
+    : lang === 'ja' ? vocab.filter(w => w.id <= 80 && ![31, 32].includes(w.id) && !['それ', '今', 'いい'].includes(w.japanese) && !/[\/｜|]/.test((w.reading || '') + (w.romaji || ''))).sort((a, b) => a.id - b.id).slice(0, 30)
     : vocab.filter(w => w.id >= 30 && !['我', '你', '喜欢', '很', '好', '有', '想', '什么', '不', '吗', '很好', '跟'].includes(w.chinese)).slice(0, 30)
   const zhInv = lang === 'zh' ? c.mandarinLearnerInventory(vocab, pick) : null
   const zhLex = zhInv ? new Map((zhInv.lexicon || []).map(x => [x.w, x])) : null

@@ -285,8 +285,11 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
       // 11 Nov: the Thai recording is of the v682 generator (16 Oct). Every Thai Daily prompt has been rewritten since (owner's Thai speaking guide in the writers' prompts,
       // yes-and scenes, cue passes), so NOT ONE of the 178 recorded requests can match any more: a replay cannot say anything about the Haiku path for Thai until a
       // fresh live run is recorded (paid). Reported BLOCKED — never counted as a pass; Japanese and Mandarin (recordings still match) are still replayed in full.
-      const _staleTh = lang === 'th' && r.replay.unused.length === run.cassette.entries.length
-      if (_staleTh) out.push('BLOCKED P2 th: the recorded v682 Thai run (' + run.cassette.entries.length + ' requests) matches none of today\'s Thai prompts; it needs a fresh live recording')
+      // 12 Nov: the same for Japanese. The recorded Japanese run embeds the OLD word bank in its prompts (replaced by the new 3,085-word list), so none of its 99 requests matches any more.
+      // Checked: this very check PASSES on the build from before the bank import (99 requests replayed, identical track), so the bank is the only difference. Mandarin (ids and prompts
+      // unchanged) is still replayed in full.
+      const _staleTh = (lang === 'th' || lang === 'ja') && r.replay.unused.length === run.cassette.entries.length
+      if (_staleTh) out.push('BLOCKED P' + ({ ja: 1, th: 2, zh: 3 })[lang] + ' ' + lang + ': the recorded ' + (lang === 'th' ? 'v682 Thai' : 'Japanese') + ' run (' + run.cassette.entries.length + ' requests) matches none of today\'s ' + (lang === 'th' ? 'Thai' : 'Japanese (new word bank)') + ' prompts; it needs a fresh live recording')
       else T('P' + ({ ja: 1, th: 2, zh: 3 })[lang], lang + ': recorded live Daily run (' + run.cassette.entries.length + ' requests) with EVERY request answered via the Haiku path → identical track; every recorded request used once; ' +
         an.length + ' requests on Haiku (' + checks + ' of them checks / pronunciation), none on Gemini',
         // v700 (Japanese v699 brief §5, intended): 駅はどっちかな？ now PRACTISES どっち (the v682 recording rejected it as "target not

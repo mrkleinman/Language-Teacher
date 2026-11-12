@@ -85,7 +85,10 @@ function thaiPairsOf(text) {
     // v700 (Japanese v699 brief §4): the explanatory ん is its own word (nai n da, hima nan da) and the contraction is wakannai — a persisted
     // line differing ONLY by those segmentations is the improvement the brief asks for; any other difference still fails
     const v700 = r => String(r).replace(/\b([Nn])a nda\b/g, '$1an da').replace(/(\w) nda\b/g, '$1 n da').replace(/n'n/g, 'nn')
-    const diff = JA.filter(p => p.reading && p.romaji).filter(p => c.jaFinalRomaji({ japanese: p.japanese, reading: p.reading, romaji: p.romaji }, bank, null).romaji !== v700(p.romaji))
+    // 12 Nov: the new word list knows こと / の / に as separate words next to 3,000 others, so two persisted lines whose old romaji glued a particle (pair 44 "no mise nokoto", pair 61 "kotonishita")
+    // are now split ("no koto", "koto ni shita"). A line that differs from the persisted one ONLY by extra spaces (same letters, more word breaks) is that improvement; any other difference still fails.
+    const spaceOnlyBetter = (a, b) => a.replace(/\s/g, '') === b.replace(/\s/g, '') && (b.match(/ /g) || []).length > (a.match(/ /g) || []).length
+    const diff = JA.filter(p => p.reading && p.romaji).filter(p => { const now = c.jaFinalRomaji({ japanese: p.japanese, reading: p.reading, romaji: p.romaji }, bank, null).romaji; return now !== v700(p.romaji) && !spaceOnlyBetter(v700(p.romaji), now) })
     T('J13', 'readings / romaji: every persisted romaji equals the app\'s deterministic romaji of its reading (no particle glued to a word, は read wa)', diff.length === 0, diff.slice(0, 5).map(p => p.n + ' ' + p.romaji + ' → ' + c.jaFinalRomaji({ japanese: p.japanese, reading: p.reading, romaji: p.romaji }, bank, null).romaji))
   } catch (e) { T('ERR', 'section J13 crashed: ' + String(e && e.stack).slice(0, 300), false) }
 

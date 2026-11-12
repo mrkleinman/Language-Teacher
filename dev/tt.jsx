@@ -27654,6 +27654,7 @@ function buildLanguageLexiconAdapter(lang, vocab) {
   byLang[lang] = a
   return a
 }
+const JA_KANA_SPELLING_DENY = new Set(['にし', 'よっか'])
 function _jaLexiconAdapter(vocab) {
   const bank = [], seen = new Set()
   ;[...(vocab || []), ...(typeof RAW_JAPANESE_VOCAB !== 'undefined' ? RAW_JAPANESE_VOCAB : []), ...JA_LANGUAGE_LEXICON, ...(oct13On() ? JA_LANGUAGE_LEXICON_V694 : [])].forEach(w => {
@@ -27670,7 +27671,9 @@ function _jaLexiconAdapter(vocab) {
       if (s.length < 2 && !_jaIsKanji(s) && !/[゠-ヿ]/.test(s)) return
       put({ s, r, lemma, kind: 'lexeme', word: w })
       // the kana spelling of the same lexeme (すき = 好き, いく = 行く)
-      if (r && r !== s && r.length >= 2 && /^[ぁ-ゟー]+$/.test(r)) put({ s: r, r, lemma, kind: 'lexeme', word: w, kanaSpelling: true })
+      // kana spellings that are almost always something else in casual speech are not indexed: にし is "に + し…" (にする / にしよう / にして), not 西, and よっか is the end of a kana
+      // run (しよっか), not 四日. Without this, the 3,000-word list turned どれにしよっか into "dore nishi yokka" (西 + 四日); with the old 200-word bank neither word existed.
+      if (r && r !== s && r.length >= 2 && /^[ぁ-ゟー]+$/.test(r) && !JA_KANA_SPELLING_DENY.has(r)) put({ s: r, r, lemma, kind: 'lexeme', word: w, kanaSpelling: true })
     })
     // every listed reading of the dictionary form is a kana spelling too (何 = なに / なん)
     readings.slice(1).forEach(r => { if (r.length >= 2 && /^[ぁ-ゟー]+$/.test(r)) put({ s: r, r, lemma, kind: 'lexeme', word: w, kanaSpelling: true }) })
@@ -32768,7 +32771,11 @@ function jaDeterministicReading(text, bank) {
       if (w && /[\/／|]/.test(String(w.reading || '')) && t.surface === (w.japanese || '')) reading = resolveJapaneseReading(t.surface, w.reading, following)
     } else if (t.kind === 'unknown' && /^[ぁ-ゟ゠-ヿー]+$/.test(t.surface)) { reading = t.surface; how = 'kana' }
     if (!reading || /[一-鿿々]/.test(reading)) { unresolved.push({ surface: t.surface, index: segs.length }); segs.push({ surface: t.surface, reading: null, type: 'unresolved' }); return }
-    segs.push({ surface: t.surface, reading, type: t.kind === 'function' ? 'grammar' : 'content', lemma: t.lemma || t.surface, how })
+    // a listed word that carries its particle (一緒に "issho ni", お大事に "odaiji ni") keeps the list's romaji spacing: the particle is never glued to the word (the list's own romaji is the authority)
+    let romajiOverride = null
+    { const w = t.entry && t.entry.word
+      if (t.kind === 'lexeme' && w && w.romaji && /\s/.test(String(w.romaji)) && t.surface === (w.japanese || '') && kanaToRomaji(reading).replace(/\s/g, '') === String(w.romaji).replace(/\s/g, '')) romajiOverride = String(w.romaji).trim().replace(/\s+/g, ' ') }
+    segs.push({ surface: t.surface, reading, type: t.kind === 'function' ? 'grammar' : 'content', lemma: t.lemma || t.surface, how, ...(romajiOverride ? { romajiOverride } : {}) })
   })
   return { segs, unresolved }
 }
@@ -32778,7 +32785,7 @@ function _jaAssemble(segs) {
   segs.forEach(s => {
     if (s.type === 'punct') { if (s.reading) parts.push(s.surface === '、' ? ',' : s.surface === '。' ? '.' : s.surface === '？' ? '?' : s.surface === '！' ? '!' : s.surface); return }
     if (!s.reading) return
-    const ro = s.type === 'grammar' && s.surface === 'は' ? 'wa' : s.type === 'grammar' && s.surface === 'へ' ? 'e' : kanaToRomaji(s.reading)
+    const ro = s.type === 'grammar' && s.surface === 'は' ? 'wa' : s.type === 'grammar' && s.surface === 'へ' ? 'e' : (s.romajiOverride || kanaToRomaji(s.reading))
     if (ro) parts.push(ro)
   })
   const romaji = parts.join(' ').replace(/\s+([,.?!])/g, '$1').replace(/\s{2,}/g, ' ').trim()

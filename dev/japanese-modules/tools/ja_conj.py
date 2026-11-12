@@ -58,6 +58,8 @@ def adj_forms(word, cls):
             pred = word
             if word.endswith('いい'): s = word[:-2] + 'よ'
         return {'pred': word, 'neg': s + 'くない', 'past': s + 'かった', 'negpast': s + 'くなかった', 'te': s + 'くて', 'adv': s + 'く', 'attr': word}
+    if cls == 'no-adj':   # colour-type nouns used with だ / の (青, 赤, 黒): no adverb form
+        return {'pred': word + 'だ', 'neg': word + 'じゃない', 'past': word + 'だった', 'negpast': word + 'じゃなかった', 'te': word + 'で', 'attr': word + 'の'}
     if cls == 'na-adj':
         return {'pred': word + 'だ', 'neg': word + 'じゃない', 'past': word + 'だった', 'negpast': word + 'じゃなかった', 'te': word + 'で', 'adv': word + 'に', 'attr': word + 'な'}
     raise ValueError(cls)

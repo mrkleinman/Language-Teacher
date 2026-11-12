@@ -90,11 +90,12 @@ async function openListening(S, lang, props = {}) {
       // check reads the exact list the Revision generator was handed to render as its tiles
       const tilesNow = r.root.findAllByType(Tile).map(x => x.props.w.id)
       // 12 Nov: the Thai Ready screen now shows its words as chips (GenTargetPreview) and its greetings / partings / phrases as "Conversation basics",
-      // like Japanese and Mandarin: the shown list is the chips then the basics, so both are read here (the set and the order within each part are checked below)
+      // like Japanese and Mandarin: the shown list is the chips then the basics, so both are read here (the set and the order within each part are checked below).
+      // Mandarin's basics are its fixed greeting / parting lines (string ids 'nihao', 'en', 'zaijian'): they are not selected targets, so only numeric ids (Thai phrases) are counted
       // the Mandarin pills also include the greeting / parting basics (string ids such as 'nihao'): they are not selected targets, so only numeric word ids are compared
       const tilesNumeric = tilesNow.filter(x => typeof x === 'number')
       const gp = r.root.findAllByType(c.GenTargetPreview)[0]
-      const revIds = tilesNumeric.length ? tilesNumeric : gp ? gp.props.targets.map(w => w.id).concat((gp.props.basics || []).map(b => b.id)) : (r.root.findAllByType(GenC)[0] || { props: {} }).props.targets.map(w => w.id)
+      const revIds = tilesNumeric.length ? tilesNumeric : gp ? gp.props.targets.map(w => w.id).concat((gp.props.basics || []).map(b => b.id).filter(id => typeof id === 'number')) : (r.root.findAllByType(GenC)[0] || { props: {} }).props.targets.map(w => w.id)
       if (process.env.TT_DEBUG) console.log(lang, "revision tiles rendered:", tilesNow.length)
       await TR.act(async () => { r.unmount() })
       // Listening Track: Teacher → "Listening Track" → the Listening generator's word tiles (same frozen state)
@@ -102,13 +103,30 @@ async function openListening(S, lang, props = {}) {
       await TR.act(async () => { r2 = TR.create(React.createElement(Teacher, { lang, onSetLang: () => {} })); await flush(60) })
       const lnBtn = r2.root.findAll(x => x.type === 'button').find(b => /Listening Track/.test(textOf(b.children)))
       await TR.act(async () => { lnBtn.props.onClick(); await flush(10) })
+      // 12 Nov: the Listening generator starts building at once and, for Japanese / Mandarin, replaces the targets its feasibility step defers; reading after a fixed 10 turns made the
+      // result depend on machine load. Wait (bounded) until the tiles are the final 30 and have stopped changing, then read.
+      { let prev = null; for (let k = 0; k < 300; k++) { const now = r2.root.findAllByType(Tile).map(x => x.props.w.id).join(); if (now && now === prev && k > 5) break; prev = now; await TR.act(async () => { await flush(5) }) } }
       const lnTiles = r2.root.findAllByType(Tile).map(x => x.props.w.id)
       const lg = r2.root.findAllByType(c.ListeningGenerator)
       await TR.act(async () => { r2.unmount() })
       T(lang, 'P1', '§22 the Revision Track generator (Teacher → Revision) shows exactly the canonical selector\'s 30 ids, in order',
         revIds.length === 30 && same(revIds, canon.targetIds), { revIds: revIds.slice(0, 8), canon: canon.targetIds.slice(0, 8), n: revIds.length })
-      T(lang, 'P2', '§22 the Listening generator (Teacher → Listening) shows the SAME 30 ids in the SAME order as the Revision generator',
-        lg.length === 1 && lnTiles.length === 30 && same(lnTiles, revIds), { ln: lnTiles.slice(0, 8), rev: revIds.slice(0, 8) })
+      // 12 Nov: Thai Listening freezes the Revision selector's 30 targets (v712), so for Thai the two lists are identical. Japanese and Mandarin keep the Listening FEASIBILITY step
+      // ("selectFeasibleListeningTargets": a target the conversation planner cannot realise is deferred and the next candidate of the same canonical ranking takes its place; the
+      // deferred word stays due). With the new word lists some due words are such targets (閉じる, 合わせる, 样 ... "UNVERBALIZABLE"), so for ja / zh the property is: same canonical
+      // ranking, in the same order, differing ONLY by words the app itself reports as deferred, replaced from the same ranking.
+      let p2ok = lg.length === 1 && lnTiles.length === 30, p2info = { ln: lnTiles.slice(0, 8), rev: revIds.slice(0, 8) }
+      if (lang === 'th') p2ok = p2ok && same(lnTiles, revIds)
+      else {
+        const V = JSON.parse(c.localStorage.getItem(key)), snapL = c.listeningSnapshotOf(lang, c.selectRevisionTargets(lang, V)), poolL = c.listeningCandidatePool(lang, V, snapL)
+        const fz = c.selectFeasibleListeningTargets({ lang, vocab: V, pool: poolL, need: 30, seed: 'x', frozen: false, friends: true })
+        const deferred = new Set((fz.deferred || []).map(d => d.id)), omitted = revIds.filter(id => !lnTiles.includes(id)), added = lnTiles.filter(id => !revIds.includes(id)), poolIds = new Set(poolL.map(w => w.id))
+        const keptOrder = lnTiles.filter(id => revIds.includes(id)).join() === revIds.filter(id => lnTiles.includes(id)).join()
+        p2ok = p2ok && omitted.every(id => deferred.has(id)) && added.length === omitted.length && added.every(id => poolIds.has(id)) && keptOrder
+        p2info = { ...p2info, omitted, added, notDeferred: omitted.filter(id => !deferred.has(id)), keptOrder }
+      }
+      T(lang, 'P2', '§22 the Listening generator (Teacher → Listening) shows the SAME ranking as the Revision generator (Thai: the same 30 ids in the same order; Japanese / Mandarin: the same order, differing only by words its feasibility step defers)',
+        p2ok, p2info)
       // regression: v658's own Revision computation (the code the Revision generators ran before the canonical
       // function existed) picks the same ordered 30 from the same state — Revision behaviour is unchanged
       if (require('fs').existsSync('tt.v658.compiled.js')) {

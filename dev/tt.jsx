@@ -36134,6 +36134,15 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
         if (resumeDraft && resumeDraft.pairs && resumeDraft.pairs.length > 0) {
           pairs = [...resumeDraft.pairs, ...(pairs || [])]
         }
+        // nothing was written at all (every request failed or was refused): stop here and say why, instead of sending 0 lines to the
+        // quality check, which would show 100% and then spend a paid recovery request on every one of the 30 targets
+        if (!pairs || !pairs.length) {
+          let why = ''
+          try { why = AI_LEDGER.filter(r => r && r.runId === aiRunRef.current && !r.ok).slice(-3).map(r => (r.provider || '') + ' http=' + (r.http == null ? 'none' : r.http) + (r.error ? ' ' + String(r.error).slice(0, 90) : '')).join(' | ') } catch (e) {}
+          setPhase('error')
+          setError('NO_LINES_GENERATED: no sentence could be written, so no track was built and nothing was sent to the quality check.' + (why ? '\n\nLast failed requests: ' + why : '\n\nNo request failure was recorded for this run.') + '\n\nTry Generate again; if it repeats, use ⬇ log and send it.')
+          return
+        }
         const allTargets = resumeDraft ? (resumeDraft.targets || targets) : targets
         // v698 — on a Topic Track "new" is the selector's role (a due topic word rated Hard keeps status 'new' but is REVISION)
         const _topicNewIds = topic ? ((_revCanon && _revCanon.selectedNewTargetIds) || (resumeDraft && resumeDraft.selectedNewTargetIds) || null) : null

@@ -218,7 +218,7 @@ function mock(S, lang, opt = {}) {
           let text = per[k].map(w => { const frames = FR[lang].rec.map((f, j) => j).filter(j => lang !== 'th' || FR.th.rec[j][0] === sp); const j = frames[(st.frameK++) % frames.length]; const s0 = sentence(S, lang, w, 'rec', j); return lang === 'th' ? s0.thai : lang === 'ja' ? s0.japanese : s0.chinese }).join(lang === 'th' ? ' ' : '')
           if (!text) text = lang === 'th' ? (sp === 'A' ? 'ดีมากครับ' : 'ดีค่ะ') : lang === 'ja' ? 'そうね。' : '好。'
           if (ln.atomicNoop) text = ((b.match(new RegExp(id + ' [AB]: (.*?) \\(')) || [])[1]) || text
-          if (ln.atomicBadIssue === issueId) text = text + (lang === 'th' ? 'พิเศษ' : lang === 'ja' ? '特別' : '特别')
+          if (ln.atomicBadIssue === issueId) text = text + (lang === 'th' ? 'พิเศษ' : lang === 'ja' ? 'サーカス' : '蜻蜓')   // 12 Nov: 特別 / 特别 are bank words in the new word lists, so the "unauthorised word" is now サーカス / 蜻蜓 (in neither bank, characters included)
           // v665: atomicLong:'i1' — that issue's patch is valid vocabulary but far too long for the learner's belt
           if (ln.atomicLong === issueId) { const h = lang === 'th' ? text.replace(/(ครับ|ค่ะ|คะ)$/, '') : text.replace(/[。？]$/, '') + '，'; text = h + h + h + h + text }   // ~5× — above any low-belt hardMax
           return { lineId: id, text, english: 'Mock repair.' }

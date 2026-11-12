@@ -72,7 +72,9 @@ async function openListening(S, lang, props = {}) {
       const S = setup(lang); S.c = c; variedState(S)
       const key = lang === 'ja' ? c.ev('JA.vocab') : lang === 'zh' ? c.ev('ZH.vocab') : 'tt-vocab'
       c.localStorage.setItem(key, JSON.stringify(S.vocab))
-      if (lang !== 'th') c.localStorage.setItem('tt-gemini-key', JSON.stringify(KEY))   // JA/ZH generators need a (fake) key to open (Thai renders its tiles before the scene step without one)
+      // 12 Nov: Thai now gets the fake key too. Without any key a Thai generation writes zero lines and, since this build, stops with NO_LINES_GENERATED
+      // (an error screen instead of the tiles this test reads); with a key it shows its scene step and tiles first, like Japanese and Mandarin
+      c.localStorage.setItem('tt-gemini-key', JSON.stringify(KEY))
       const canon = c.selectRevisionTargets(lang, JSON.parse(c.localStorage.getItem(key)))
       const Teacher = lang === 'ja' ? c.JapaneseTeacher : lang === 'zh' ? c.MandarinTeacher : c.ThaiTeacher
       mock(S, lang, {})
@@ -87,7 +89,12 @@ async function openListening(S, lang, props = {}) {
       // Japanese plans/previews its scene before its tiles appear (the simulated model writes no scene) — there the
       // check reads the exact list the Revision generator was handed to render as its tiles
       const tilesNow = r.root.findAllByType(Tile).map(x => x.props.w.id)
-      const revIds = tilesNow.length ? tilesNow : (r.root.findAllByType(GenC)[0] || { props: {} }).props.targets.map(w => w.id)
+      // 12 Nov: the Thai Ready screen now shows its words as chips (GenTargetPreview) and its greetings / partings / phrases as "Conversation basics",
+      // like Japanese and Mandarin: the shown list is the chips then the basics, so both are read here (the set and the order within each part are checked below)
+      // the Mandarin pills also include the greeting / parting basics (string ids such as 'nihao'): they are not selected targets, so only numeric word ids are compared
+      const tilesNumeric = tilesNow.filter(x => typeof x === 'number')
+      const gp = r.root.findAllByType(c.GenTargetPreview)[0]
+      const revIds = tilesNumeric.length ? tilesNumeric : gp ? gp.props.targets.map(w => w.id).concat((gp.props.basics || []).map(b => b.id)) : (r.root.findAllByType(GenC)[0] || { props: {} }).props.targets.map(w => w.id)
       if (process.env.TT_DEBUG) console.log(lang, "revision tiles rendered:", tilesNow.length)
       await TR.act(async () => { r.unmount() })
       // Listening Track: Teacher → "Listening Track" → the Listening generator's word tiles (same frozen state)

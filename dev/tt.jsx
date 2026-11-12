@@ -42078,7 +42078,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           let why = ''
           try { why = AI_LEDGER.filter(r => r && r.runId === aiRunRef.current && !r.ok).slice(-3).map(r => (r.provider || '') + ' http=' + (r.http == null ? 'none' : r.http) + (r.error ? ' ' + String(r.error).slice(0, 90) : '')).join(' | ') } catch (e) {}
           setPhase('error')
-          setError('NO_LINES_GENERATED: no sentence could be written, so no track was built and nothing was sent to the quality check.' + (why ? '\n\nLast failed requests: ' + why : '\n\nNo request failure was recorded for this run.') + '\n\nTry Generate again; if it repeats, use ⬇ log and send it.')
+          setError('NO_LINES_GENERATED: no sentence could be written, so no track was built and nothing was sent to the quality check.' + (why ? '\n\nLast failed requests: ' + why : '\n\nNo request failure was recorded for this run.') + (isGeminiApiKey(apiKey) ? '' : '\n\nNo Gemini key is saved in THIS browser. The checking and pronunciation steps always use Gemini, even when Claude Haiku writes the lines, and the key is stored per browser: add it in Settings in this browser.') + '\n\nTry Generate again; if it repeats, use ⬇ log and send it.')
           return
         }
         const allTargets = resumeDraft ? (resumeDraft.targets || targets) : targets

@@ -9,7 +9,8 @@ const out = []; let fails = 0, n = 0
 const T = (lang, id, name, pass, detail) => { n++; if (!pass) fails++; out.push((pass ? 'PASS ' : 'FAIL ') + lang.toUpperCase() + ' ' + id.padEnd(4) + name + (!pass && detail !== undefined ? '\n      ' + (typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 900) : '')) }
 const LANGS = process.argv[2] ? process.argv[2].split(',') : ['th', 'ja', 'zh']
 const KEY = 'AIzaSyTEST-harness-key-000000'
-const FORBIDDEN = { th: 'จักรวาล', ja: '宇宙', zh: '宇宙' }      // not in the learner's bank (checked: listeningUnexposedWords flags it)
+// 12 Nov: the new word lists contain 宇宙 (T5), so it is no longer an untaught word; the probe is now ブラックホール / 蝴蝶 (absent from both banks, checked)
+const FORBIDDEN = { th: 'จักรวาล', ja: 'ブラックホール', zh: '蝴蝶' }      // not in the learner's bank (checked: listeningUnexposedWords flags it)
 const surfOf = (lang, w) => lang === 'th' ? w.thai : lang === 'ja' ? w.japanese : w.chinese
 function learner(lang) {
   const S = setup(lang)

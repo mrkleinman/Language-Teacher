@@ -123,7 +123,8 @@ async function run(S, ln, opt = {}) {
     const S = learner()
     const post = (q, r) => { if (!/ATOMIC REPAIR of .* LISTENING lines/.test(q) || !/CLOSED_VOCAB/.test(q)) return r
       const j = JSON.parse(r); (j.repairs || []).forEach(x => (x.lines || []).forEach(l => { l.text = toPolite(l.text) })); return JSON.stringify(j) }
-    const r = await run(S, {}, { speechStyle: 'natural', post, inject: (sid, j) => { if (sid === 'LS2' && j.turns[1]) j.turns[1].text = j.turns[1].text.replace(/([。？！])?$/, m => '宇宙' + m) } })
+    // 12 Nov: 宇宙 is a bank word now; the injected untaught word is ブラックホール (not in the Japanese bank)
+    const r = await run(S, {}, { speechStyle: 'natural', post, inject: (sid, j) => { if (sid === 'LS2' && j.turns[1]) j.turns[1].text = j.turns[1].text.replace(/([。？！])?$/, m => 'ブラックホール' + m) } })
     T('E1', '§22/§33 Natural line 明日行く？-style + CLOSED_VOCAB → the repair removes the word but returns です/ます → PATCH_REJECTED reason=REGISTER_REGRESSION (original kept, never committed)',
       r.logs.some(l => /PATCH_REJECTED issue=i\d+ .*reason=REGISTER_REGRESSION/.test(l)) && !r.lines.some(t => /です/.test(t)), r.logs.filter(l => /PATCH_REJECTED/.test(l)).slice(0, 2))
   }

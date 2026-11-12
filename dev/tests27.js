@@ -17,7 +17,8 @@ const out = []; let fails = 0, n = 0
 const T = (lang, id, name, pass, detail) => { n++; if (!pass) fails++; out.push((pass ? 'PASS ' : 'FAIL ') + lang.toUpperCase() + ' ' + id.padEnd(4) + name + (!pass && detail !== undefined ? '\n      ' + (typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 900) : '')) }
 const LANGS = process.argv[2] ? process.argv[2].split(',') : ['th', 'ja', 'zh']
 const KEY = 'AIzaSyTEST-harness-key-000000'
-const F = { th: 'จักรวาล', ja: '宇宙', zh: '宇宙' }
+// 12 Nov: 宇宙 is now in the new word lists (T5), so the untaught-word probe is ブラックホール / 蝴蝶 (in neither bank, checked; Mandarin is checked by character, so a word whose characters are all in the bank would not count as unknown)
+const F = { th: 'จักรวาล', ja: 'ブラックホール', zh: '蝴蝶' }
 const textOf = x => x == null ? '' : typeof x === 'string' ? x : Array.isArray(x) ? x.map(textOf).join(' ') : textOf(x.children)
 const flush = async () => { for (let i = 0; i < 40; i++) await new Promise(r => setImmediate(r)) }
 const addWord = (lang, text, w) => lang === 'th' ? text.replace(/(ครับ|ค่ะ|คะ)?$/, m => w + m) : text.replace(/([。？！])?$/, m => w + m)

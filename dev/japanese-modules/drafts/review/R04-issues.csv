@@ -1,0 +1,152 @@
+﻿module_id,word_id,line,kind,severity,problem,suggested_fix
+N_HEALTH.ILL-T3-04,341,B,english,MINOR,"""On a day with your illness"" is awkward English and 病気の日 is odd",休んだらどう？ {W}の時は、無理に会社に行かなくてもいいと思うよ。
+N_HEALTH.ILL-T3-04,967,B,english,MINOR,"""On a day with your cold"" is awkward English and 風邪の日 is odd",休んだらどう？ {W}の時は、無理に会社に行かなくてもいいと思うよ。
+N_HEALTH.ILL-T4-03,341,ALL,fit,FIX,"""a new drug for illness"" / drugs for illness is not a sensible thing to say; also 病気に困っている is not a collocation",exclude 341
+N_HEALTH.ILL-T4-03,1799,A2,japanese,MINOR,癌に困っている人 is odd; 癌で困っている / 癌で苦しんでいる is natural,うん。{W}で苦しんでいる人が多いから、いい薬が早く出るといいね。
+N_HEALTH.ILL-T4-06,1740,ALL,fit,MINOR,a cavity that is worse because the body is chilled and rainy days is an odd cause; reads like a headache or joint pain,exclude 1740
+N_HEALTH.ILL-T4-06,341,ALL,fit,MINOR,illness that is worse in the rain and bothers you on rainy days is vague and odd,exclude 341
+N_HEALTH.ILL-T4-01,1740,B,fit,MINOR,sleeping all day for a cavity is odd (should go to the dentist),
+N_HEALTH.ILL-T5-02,341,ALL,fit,FIX,"""tea that is good for an illness"" / 病気には熱いお茶 is meaningless for generic illness",exclude 341
+N_HEALTH.ILL-T5-10,2648,ALL,japanese,FIX,"中毒を減らす is not natural (addiction is not reduced like that; 依存/中毒 needs a kind) and English ""cut down on my addiction"" is odd",exclude 2648
+N_HEALTH.ILL-T5-06,819,ALL,japanese,FIX,花粉症が止まらない / 花粉症も止まる is not natural: hay fever as a condition does not stop with water and rest,exclude 819
+N_HEALTH.ILL-T5-06,2356,ALL,english,MINOR,"""My yawn hasn't stopped"" is not natural English (yawning / the yawns)",
+N_HEALTH.MED-T4-03,1278,A2,japanese,FIX,注射を使った is not natural; the verb for an injection is 打つ,うん、そうするよ。今日は{W}を打ったから、昨日より少し楽なんだ。
+N_HEALTH.MED-T5-05,2658,A1,english,FIX,"""for a X-ray"" wrong article (tag: english_slot X-ray gets {a}=a; needs ""an"")",
+N_HEALTH.MED-T5-08,2658,A1,english,FIX,"""I have a X-ray"" wrong article (english_slot X-ray gets {a}=a; needs ""an"")",
+N_HEALTH.MED-T5-08,2658,B,english,FIX,"""I had a X-ray"" wrong article",
+N_HEALTH.MED-T5-07,2727,B,english,FIX,"English line starts a sentence with lowercase ""eye drops"" after ""right?"" ({Es} is not capitalised) and 病院で受ける目薬 is unnatural","JA: ねえ、千円は軽くかかったよね？ 病院でもらう{W}は、いつも値段が高いからね。 || EN: It must have cost over a thousand yen, right? At a hospital, you always pay a lot for {Es}."
+N_HEALTH.MED-T5-07,301,B,english,FIX,"Sentence starts with lowercase ""medicine"" and ""medicine at a hospital always cost a lot"" has wrong agreement; 病院で受ける薬 is unnatural","JA: ねえ、千円は軽くかかったよね？ 病院でもらう{W}は、いつも値段が高いからね。 || EN: It must have cost over a thousand yen, right? At a hospital, you always pay a lot for {Es}."
+N_HOME.FIXTURE-T2-02,797,ALL,fit,FIX,"Asking where the window is in a friend's house, a toilet near the window, and ""going to look at the window"" make no sense",exclude 797
+N_HOME.FIXTURE-T4-01,1273,A1,english,MINOR,"""tap water bill"" is awkward English (water bill); english_slot ""tap water"" for 水道 reads oddly in bills/company/paperwork",
+N_HOME.FIXTURE-T4-02,1273,B,english,MINOR,"""tap water company"" is not natural English (water company)",
+N_HOME.FIXTURE-T4-05,1273,A1,english,MINOR,"""paperwork for the tap water"" is awkward (water service/utilities)",
+N_HOME.FIXTURE-T5-05,2174,ALL,fit,FIX,"""the atmosphere around the door"", seeing a door in a Japanese-style room, and a room ""with a door"" are odd; the module is about 襖/障子-type fixtures",exclude 2174
+N_HOME.FIXTURE-T5-02,250,ALL,fit,MINOR,cleaning the door as the year-end big cleaning job with a helper is fine but see roof: roof cleaning at year end is odd,
+N_HOME.FIXTURE-T5-02,2255,ALL,fit,MINOR,Cleaning the roof of a house as year-end cleaning (and asking a friend to help) is dangerous and unusual,exclude 2255
+N_HOME.FIXTURE-T5-07,2255,B,japanese,MINOR,屋根の音が大きくて (the sound of the roof) is odd after an earthquake,
+N_HOME.FIXTURE-T5-10,250,A1,japanese,MINOR,ドアが悪くなっている is unnatural (ドアが壊れかけている / ドアが傷んでいる); 工事 for a door is heavy,
+N_HOME.FURNITURE-T3-01,1085,B,japanese,MINOR,安くて木の机 is awkward (安い木の机),駅前の店に、安い木の{W}がたくさんあるよ。
+N_HOME.FURNITURE-T4-06,1296,A1,japanese,MINOR,窓や壁にカーテンを付ける is odd; curtains go on windows,新しい部屋の窓に{W}を付けたいんだけど、自分でできるかな？
+N_HOME.FURNITURE-T4-07,1555,A1,english,MINOR,"""doing the kotatsu"" is awkward English",
+N_HOME.FURNITURE-T4-07,962,ALL,fit,MINOR,"Cleaning the table being the hardest year-end cleaning job and ""doing the table"" is odd",exclude 962
+N_HOME.FURNITURE-T5-02,2598,A1,english,MINOR,"""the hotel's sheet"" singular is odd; sheets are normally plural (tag english_slot/english_plural for シーツ)",
+N_HOME.ROOM-T2-03,519,ALL,fit,MINOR,"Asking whether there is a ""bath"" near here and a small bath to the right of the station only makes sense as a public bath (銭湯)",exclude 519
+N_HOME.ROOM-T3-03,1200,A1,english,MINOR,"""When I get to the station"" does not match the Japanese, where 駅に着いたら is addressed to B (when you get to the station)","When you get to the station, I'll be waiting in front of the {E}. I'll call you too."
+N_HOME.ROOM-T4-01,1821,A2,fit,MINOR,Cleaning the kitchen from morning to night is an odd amount of work for guests staying over,exclude 1821
+N_HOME.ROOM-T4-02,1821,A1,fit,MINOR,A cold kitchen making it hard to get up in the morning is odd (bedroom),exclude 1821
+N_HOME.ROOM-T4-10,69,ALL,fit,MINOR,A spacious toilet being the main reason for choosing a home is odd,exclude 69
+N_HOME.ROOM-T5-01,2206,ALL,fit,MINOR,A messy changing room is not what you panic about when a friend drops by; reads oddly,exclude 2206
+N_HOME.ROOM-T5-05,2520,ALL,fit,FIX,"住宅 is not used for your own home: 住宅に日が入る / 住宅の電気 and ""the residence gets sun"" are unnatural",exclude 2520
+N_HOME.ROOM-T5-10,2520,ALL,fit,FIX,"住宅の生活 / 住宅に住んでいる and ""Since I live in a residence"" are unnatural and the English is nonsensical",exclude 2520
+N_HOME.ROOM-T5-09,2520,ALL,english,MINOR,"""the residence"" is stiff English for a place seen in photos (english_slot residence reads oddly in conversation)",
+N_ITEM.CARD-T2-03,169,A2,fit,MINOR,"""my first time seeing someone else's ticket"" is odd; tickets are seen all the time",exclude 169
+N_ITEM.CARD-T2-03,743,A2,fit,MINOR,"""my first time seeing someone else's business card"" is odd for an adult friend",exclude 743
+N_ITEM.CARD-T4-08,1566,ALL,fit,MINOR,"""no trip without the residence card"" overstates it for an ordinary trip",exclude 1566
+N_ITEM.CARD-T4-10,1566,A2,english,FIX,"English line starts a new sentence with lowercase ""a residence card is something..."" ({a} at sentence start is not capitalised)",Next time I'll smile a little more for the photo. It's {a} {E} you use for years.
+N_ITEM.CARD-T5-03,2193,ALL,english,MINOR,"Japanese says マイナンバー (the number) but english_slot is ""My Number card""; ""renew My Number card"" and 更新 do not match the word",
+N_ITEM.CARD-T5-03,305,A2,english,MINOR,"""make a reservation for the passport"" is unnatural English (appointment)",
+N_ITEM.CARD-T5-03,2193,A2,english,MINOR,"""make a reservation for the My Number card"" is unnatural English (appointment)",
+N_ITEM.CARD-T5-06,2443,ALL,fit,FIX,"Selling advance tickets at the venue on the day of the concert is contradictory (those are day-of tickets), and ""ask if there's an advance ticket"" makes no sense",exclude 2443
+N_ITEM.CULTURE-T5-02,9034,ALL,fit,MINOR,"A newcomer asking neighbors how to ""handle"" a paper lantern is odd",exclude 9034
+N_ITEM.CULTURE-T5-07,9034,B,english,FIX,"English sentence starts with lowercase ""a paper lantern"" ({a} at sentence start is not capitalised)","Good idea. It'll go over well with people there if it's {a} {E} with a Japanese feel, and your brother will be happy too."
+N_ITEM.CULTURE-T5-08,2199,ALL,fit,FIX,"""the most important thing at the shrine visit is the offering money"" and ""with the offering money the visit gets more fun"" are not sensible lines",exclude 2199
+N_ITEM.DAILY-T3-01,1089,ALL,fit,MINOR,"Tidying up cigarettes before a friend comes over, and cigarettes lying on a chair, is an odd scenario",
+N_ITEM.DAILY-T3-03,1089,A1,english,MINOR,"""Where do I put it all?"" does not match plural ""cigarettes""",
+N_ITEM.DAILY-T4-01,1709,ALL,fit,FIX,"ガソリンを買って来る (pick up gas on the way home) is wrong: you fill the car at a station, you do not buy gasoline to carry home",exclude 1709
+N_ITEM.DAILY-T5-01,484,ALL,fit,MINOR,Hotels always have tissues; asking the front desk for tissues and bringing your own is odd,exclude 484
+N_ITEM.DAILY-T5-02,484,ALL,fit,MINOR,"""forgot to put in my tissue"" (singular) and ""my usual tissue is the most relaxing"" are odd for tissues",exclude 484
+N_ITEM.DAILY-T5-09,484,A2,english,MINOR,"""get you a new tissue as a thank-you"" is odd English with a singular tissue (tag english_slot tissue; a box/pack of tissues)",
+N_ITEM.DAILY-T5-03,2345,A2,fit,FIX,Forgetting an ashtray making the afternoon long and boring is incoherent (it is the cigarette that matters),exclude 2345
+N_ITEM.GIFT-T5-01,2208,ALL,fit,MINOR,"お歳暮 is sent by delivery to superiors at year end, not prepared for a family visit to an uncle",exclude 2208
+N_ITEM.GIFT-T5-02,2208,ALL,fit,FIX,"A friend dropping in and giving you お歳暮, and you bringing お歳暮 when you visit a friend, is wrong; お歳暮 is a seasonal formal gift",exclude 2208
+N_ITEM.GIFT-T5-01,258,A1,english,MINOR,"""souvenirs"" for a visit to an uncle is wrong in English (gift); 土産 here is a visiting gift",
+N_ITEM.MAIL-T4-05,1305,A1,english,MINOR,"""send an envelope for a friend's birthday"" is odd; you send a letter/card/parcel in an envelope",
+N_ITEM.MATERIAL-T4-04,1306,A1,english,FIX,"""cutting back on vinyl"" and ""try not to use vinyl"" is not natural English for ビニール (plastic bags); english_slot ""vinyl"" is wrong for this sense",
+N_ITEM.MATERIAL-T4-04,1306,B,english,FIX,"""I try not to use vinyl either"" is not natural English (plastic bags); tag english_slot",
+N_ITEM.MATERIAL-T5-03,2938,ALL,fit,FIX,"""nylon trash"" and sorting nylon as a separate waste category is not a thing (that is plastic)",exclude 2938
+N_ITEM.PAPER-T2-02,122,ALL,fit,MINOR,Losing a restaurant menu and going to look for it at the station is odd,exclude 122
+N_ITEM.PAPER-T2-06,636,ALL,english,MINOR,"""write the meeting place on the notebook"" should be ""in the notebook"" (preposition)",
+N_ITEM.PAPER-T3-04,309,ALL,fit,FIX,"""Do you still use the receipt?"" and ""the receipt matters to me"" make no sense for a receipt",exclude 309
+N_ITEM.PAPER-T3-06,309,ALL,fit,FIX,"Phoning the shop again and again until a forgotten receipt turns up, then thanking them with coffee, is not sensible",exclude 309
+N_ITEM.PAPER-T4-02,352,ALL,fit,FIX,"""Fix the paper"" / 紙を直す for a sheet with a typo is odd; the module is about a document",exclude 352
+N_ITEM.PAPER-T4-06,1524,ALL,fit,FIX,Photographing a page as one of the joys of travel is nonsense,exclude 1524
+N_ITEM.PAPER-T4-07,309,ALL,fit,FIX,Asking the station staff for a receipt left on the train and going to collect it tomorrow is not a plausible story,exclude 309
+N_ITEM.PAPER-T4-09,1376,A2,fit,MINOR,"""I only use it once in a while"" is odd for a calendar",
+N_ITEM.PAPER-T5-01,1851,ALL,english,MINOR,"english_slot ""rail map"" is not natural English (train map / route map); also checking exits on a route map is odd",
+N_ITEM.PAPER-T5-02,2307,A1,english,MINOR,"""write my plans ... on my notebook"" should be ""in""; english_slot for 手帳 would read better as ""planner""",
+N_ITEM.PAPER-T5-04,309,ALL,fit,MINOR,Going back home for a receipt because you cannot do the day's work without it is odd,exclude 309
+N_ITEM.PAPER-T5-05,309,ALL,fit,MINOR,Feeling nostalgic about old receipts and regretting throwing them out is odd,exclude 309
+N_ITEM.PAPER-T5-06,2914,ALL,fit,FIX,Thinking while looking at a phone book and the head getting sorted by opening a phone book make no sense,exclude 2914
+N_ITEM.PAPER-T5-08,2307,ALL,fit,FIX,"A 手帳 is a personal planner; ""feelings reach the other person"" and ""people will read the notebook you wrote"" do not fit it",exclude 2307
+N_ITEM.PLAY-T5-01,1251,ALL,fit,MINOR,Buying a ball with a bonus after wanting it for ages is odd for a ball,exclude 1251
+N_ITEM.PLAY-T5-02,1251,ALL,fit,MINOR,Lending a ball from your dad that must be used with great care and returned cleaned is odd,exclude 1251
+N_ITEM.STATIONERY-T5-01,2758,B,english,MINOR,"""I have writing materials on my desk, so I'll go and get that"" has a singular ""that"" for a plural noun",
+N_ITEM.STATIONERY-T5-03,1288,B,english,MINOR,"A1 says ""new pencils"" but B says ""How much did the pencil cost?"" (number mismatch)",
+N_ITEM.STATIONERY-T5-06,2556,ALL,fit,MINOR,Mechanical pencils for a child starting elementary school (and small ones with names written on each) is odd; elementary schools use pencils,exclude 2556
+N_ITEM.STATIONERY-T5-07,1288,A2,english,MINOR,"""the new pencil"" singular after ""pencils"" in A1/B (number mismatch)",
+N_ITEM.TABLE-T3-03,203,ALL,fit,FIX,"Dropping chopsticks at a friend's house, asking if the friend's chopsticks cost a lot and replacing ""a new one"" is incoherent (chopsticks do not break; English singular ""a new one"" vs plural slot)",exclude 203
+N_ITEM.TABLE-T4-01,1796,ALL,fit,MINOR,"Packing the pot last ""because I eat every day"" does not fit a thermos/pot; english_slot ""pot"" is ambiguous for ポット",exclude 1796
+N_ITEM.TABLE-T4-09,1796,ALL,fit,FIX,"Borrowing pots ""enough for five people"" (one pot per person) is odd for ポット",exclude 1796
+N_ITEM.TABLE-T5-01,2757,B,fit,MINOR,"""The chopping board is old, so be careful when you use it"" is odd (that is a knife warning)",exclude 2757
+N_ITEM.TABLE-T5-02,2757,A1,english,MINOR,"""my old chopping boards"" plural in A1 but ""the chopping board"" singular in B (number mismatch)",
+N_ITEM.THING-T2-06,736,ALL,fit,FIX,"Going shopping for a (plastic) bag on a day off, replacing an old one, and looking for a ""good and cheap"" plastic bag makes no sense",exclude 736
+N_ITEM.THING-T2-03,660,A1,english,MINOR,"english_slot ""handbag"" is wrong for バッグ (bag); a man calling ""my handbag"" precious reads oddly (tag english_slot)",
+N_ITEM.THING-T2-04,660,A1,english,FIX,"""could I borrow your handbag"" for バッグ: english_slot should be ""bag""; as written a man borrowing a handbag is odd",
+N_ITEM.THING-T2-09,763,B,english,MINOR,"""the person who had the lost item"" should be the owner; awkward English",
+N_ITEM.THING-T5-04,2790,A1,japanese,MINOR,製品 is stiff for a shop in casual speech (商品 would be natural); a friend would not say 製品 about goods in a store,exclude 2790
+N_ITEM.THING-T5-05,2790,A1,japanese,MINOR,人気の製品 / 製品を店に並べる is stiff for items in a shop (商品),exclude 2790
+N_ITEM.THING-T5-10,2553,ALL,fit,MINOR,"A (a man, 僕) using his own old handbag and looking for a new handbag is unusual",exclude 2553
+N_ITEM.THING-T5-11,2553,A1,fit,MINOR,A man (僕) leaving his handbag on the train is unusual,exclude 2553
+N_ITEM.TOOL-T2-04,653,A2,english,MINOR,"""I like phones with a button"" is odd English (buttons)",
+N_ITEM.TOOL-T5-05,2653,B,english,FIX,"English sentence starts with lowercase ""a rope"" after ""Nice."" ({a} at sentence start is not capitalised)","Nice. It's handy to have {a} {E} for hanging luggage in trees, so it's reassuring to have one."
+N_MEDIA.HEAR-T4-01,1830,B,english,FIX,"""I used my loud voice without thinking"" and ""keep your loud voice down"" are not natural English (raised my voice / shouted); english_slot ""loud voice"" does not work as a noun phrase here",
+N_MEDIA.HEAR-T4-06,1830,A1,english,FIX,"""you can often hear the loud voice at night"" has no referent in English (loud voices / people shouting); english_slot ""loud voice"" breaks the phrase",
+N_MEDIA.HEAR-T4-02,1830,B,english,MINOR,"""hearing that kind of loud voice"" is awkward English",
+N_MEDIA.HEAR-T5-03,2777,ALL,english,MINOR,"""the crying voice"" is not natural English (crying); english_slot for 泣き声 should be ""crying""",
+N_MEDIA.HEAR-T5-04,471,A2,fit,FIX,"""I don't sit near the voice"" (声の近くには座らない) is nonsense; the line only works for a specific noisy source such as crying",exclude 471
+N_MEDIA.HEAR-T5-04,2777,A2,english,MINOR,"""I don't sit near the crying voice"" is awkward English (crying)",
+N_MEDIA.READ-T5-03,2909,B,fit,MINOR,"Being curious about weekly magazines but ""not having the money"" is odd (they are cheap), and ""the weekly magazine we talked about"" reads oddly",exclude 2909
+N_MEDIA.READ-T5-04,2909,ALL,fit,FIX,A mailbox always stuffed with weekly magazines that you toss unread makes no sense (those are free newspapers/flyers),exclude 2909
+N_MEDIA.READ-T5-05,2909,ALL,fit,FIX,Someone handing out weekly magazines for free in front of the station is not a thing (free papers),exclude 2909
+N_MEDIA.READ-T3-04,1047,A2,english,MINOR,"""put the newspaper in a box"" is singular after ""a ton of newspapers"" (number mismatch)",
+N_MEDIA.READ-T5-07,2786,A1,english,MINOR,"""read an article a little every day"" / ""keep reading an article"" is odd with a singular slot (articles); tag english_slot/english_plural for 記事",
+N_MEDIA.SEE-T1-02,105,ALL,fit,FIX,"""新しい映画か。買うよ"" (I'll buy one) is wrong: you do not buy a movie; the module only works for things you buy",exclude 105
+N_MEDIA.SEE-T2-01,683,ALL,fit,MINOR,Asking whether she likes or hates weather forecasts and talking about them every day is odd,exclude 683
+N_MEDIA.SEE-T2-02,683,ALL,fit,FIX,"""Which weather forecast do you like best?"" / 一番好きな天気予報はどれ is not a sensible question",exclude 683
+N_MEDIA.SEE-T2-08,106,ALL,fit,MINOR,"Looking for a photo as a birthday present and ""browsing the photos at the shop"" is odd",exclude 106
+N_MEDIA.SEE-T4-02,1792,ALL,fit,FIX,Choosing which commercial to pick and always picking the same commercials makes no sense (you do not choose commercials),exclude 1792
+N_MEDIA.SEE-T4-08,104,A2,english,MINOR,"""it's books time"" is ungrammatical English",
+N_MEDIA.SEE-T4-08,1789,A2,english,MINOR,"""it's quizzes time"" is ungrammatical English",
+N_MEDIA.SEE-T5-05,105,A1,fit,MINOR,"""watched a movie for the first time"" (first movie ever) reads oddly; the module is about a performing art like rakugo",exclude 105
+N_MEDIA.SEE-T5-06,104,ALL,fit,FIX,"""a new story begins in the popular book"" and re-enjoying ""the book"" from the start for a new instalment is incoherent for 本",exclude 104
+N_MONEY.INCOME-T5-03,3026,B,japanese,MINOR,利益が大きく動いた (profits moved a lot overnight) is odd for profits,
+N_MONEY.INCOME-T5-04,2681,ALL,fit,FIX,"Keeping a personal monthly record of ""sales"" to cut wasteful spending makes no sense",exclude 2681
+N_MONEY.INCOME-T5-04,3026,ALL,fit,FIX,"Keeping a personal monthly record of ""profits"" to cut wasteful spending makes no sense",exclude 3026
+N_MONEY.INCOME-T5-07,2681,ALL,fit,FIX,"Increasing sales by cutting wasteful spending, and looking at how you spend money before increasing sales, makes no sense",exclude 2681
+N_MONEY.INCOME-T5-08,2456,A2,english,MINOR,"""how strong yen move"" has the wrong verb number (moves); english_slot ""strong yen"" needs article/singular handling",
+N_MONEY.PAY-T3-01,546,ALL,fit,MINOR,"""I need to talk to you about service ... worried about service for a long time"" is vague and odd",exclude 546
+N_MONEY.PAY-T3-02,1184,ALL,fit,FIX,"Looking up the rules on salaries of the country you visit before a trip, and leaving before looking up salaries, makes no sense",exclude 1184
+N_MONEY.PAY-T3-02,605,A2,english,MINOR,"""left before looking up splitting the bill"" is awkward English (customs around splitting bills)",
+N_MONEY.PAY-T3-03,546,ALL,fit,MINOR,"Reading up on ""service"" until you lose track of time, and ""knowing a little about service makes things easier"", is vague and odd",exclude 546
+N_MONEY.PAY-T4-01,546,ALL,fit,MINOR,"""A friend asked me about service"" and not being confident enough to answer is odd for サービス",exclude 546
+N_MONEY.PAY-T4-02,546,ALL,fit,MINOR,"""rules about service will change next month"" is vague and odd",exclude 546
+N_MONEY.PAY-T4-03,1426,ALL,fit,FIX,"Thinking about money exchange in high school, learning its value as an adult, and parents talking about it a lot all make no sense for 両替",exclude 1426
+N_MONEY.PAY-T4-03,546,ALL,fit,FIX,"""learned the value of service"" and ""my parents used to talk about service so much"" make no sense for サービス",exclude 546
+N_MONEY.PAY-T5-01,546,ALL,fit,FIX,"""young people should study up more on service"" and school teaching nothing about ""service"" make no sense",exclude 546
+N_MONEY.PAY-T5-02,546,ALL,fit,MINOR,"The news covering ""service"" and it being unexpectedly interesting is vague and odd",exclude 546
+N_MONEY.PAY-T5-03,546,ALL,fit,FIX,"""think properly about service for the future"" and ""thinking about service gives me a headache"" make no sense",exclude 546
+N_MONEY.PAY-T5-10,572,ALL,english,MINOR,"""looking up change"" / ""practices for change"" is unnatural English (giving change / tipping and change customs)",
+N_MONEY.PRICE-T3-06,1004,ALL,fit,FIX,"Paying a fare by a due date (""it's due today"") makes no sense; a fare is paid when you ride",exclude 1004
+N_MONEY.PRICE-T5-01,336,A1,japanese,FIX,"値段を少なくする is not a collocation (値段を下げる / 安くする); English ""keep the price as low as I can"" also mismatches 少なく",exclude 336
+N_MONEY.PRICE-T5-05,2505,ALL,fit,FIX,"価格を払う / ""forgot to pay the price"" and paying the 価格 late makes no sense",exclude 2505
+N_MONEY.PRICE-T5-07,2505,ALL,fit,FIX,"""by when do I have to pay the price"" and ""the paper for the price"" make no sense for 価格",exclude 2505
+N_NUMBER.NUM-T2-06,454,A2,english,FIX,"English sentence starts with lowercase ""ten thousand yen"" after ""Thanks."" (slot at sentence start is not capitalised)",Thanks. It'll be enough if you have {E} yen.
+N_NUMBER.TSU-T2-04,439,A1,english,MINOR,"""just buy three ice cream"" is ungrammatical (three ice creams)",It's hot. Maybe I'll just buy {E} ice creams.
+N_NUMBER.TSU-T5-02,383,ALL,fit,FIX,"Asking whether ordering two dumplings for everyone would be ""a bit much"" is nonsense (the line only works for larger counts)",exclude 383
+N_NUMBER.TSU-T5-03,383,ALL,fit,MINOR,"Warning that eating two cakes will ruin dinner, and ""I could easily finish two"", is weak for two",exclude 383
+N_NUMBER.TSU-T5-07,383,ALL,fit,FIX,"With only two concert tickets, ""invite some friends and let's all go together"" and ""you can invite any friend you like"" is contradictory",exclude 383
+N_NUMBER.NUM-T4-07,171,ALL,fit,MINOR,"""A number that ends in one is easy to remember"" is a weak line for 一",exclude 171
+N_OUTDOORS.NATURE-T2-06,544,ALL,fit,MINOR,"""I've loved the air since I was little"" / liking ""the air"" as a hobby is odd",
+N_OUTDOORS.NATURE-T5-01,2905,B,english,MINOR,"""The woods is far"" has wrong verb agreement (english_slot woods needs plural handling; same in ""The woods looks..."", ""the woods here really is amazing"", ""what the woods is like"")",
+N_OUTDOORS.NATURE-T5-07,2229,ALL,fit,MINOR,"A single stone staying hot after camping that kids might go near, and ""make the stone safe with water"", is odd (fire pit stones)",exclude 2229
+N_OUTDOORS.NATURE-T5-10,2349,ALL,fit,MINOR,"Wanting to move so as to feel the shade every day, and enjoying ""the shade"" on weekends, is odd for 日陰",exclude 2349

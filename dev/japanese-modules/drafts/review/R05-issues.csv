@@ -1,0 +1,168 @@
+﻿module_id,word_id,line,kind,severity,problem,suggested_fix
+N_OUTDOORS.STAR-T2-01,521,ALL,fit,MINOR,"""空の勉強"" (a lesson about the sky) is an odd collocation",
+N_OUTDOORS.STAR-T2-02,521,ALL,fit,FIX,"""空の映画"" (a movie about the sky) is not a natural thing for sky",exclude 521
+N_OUTDOORS.STAR-T2-05,467,A2,japanese,MINOR,"A2 repeats B's ""世界には国が多いけど"" almost word for word",
+N_OUTDOORS.STAR-T3-01,1023,A1,english,MINOR,"""look into the moon"" reads as peering into the moon rather than researching it",Did you ever look things up about the {E} when you were little?
+N_OUTDOORS.STAR-T4-02,1633,ALL,english,FIX,"english_slot ""star"" singular gives ""the star"" (a TV show introducing the star) - needs plural ""stars""",
+N_OUTDOORS.STAR-T4-03,1633,ALL,english,FIX,"english_slot ""star"" singular gives ""a big photo of the star"" - needs plural ""stars""",
+N_OUTDOORS.STAR-T4-03,467,ALL,fit,FIX,"""a photo of the world"" / ""cheap and expensive photos of the world"" makes no sense for world",exclude 467
+N_OUTDOORS.STAR-T4-04,1633,ALL,english,FIX,"english_slot ""star"" singular gives ""looking at the star from the roof"" - needs plural ""stars""",
+N_OUTDOORS.STAR-T4-05,1633,ALL,english,FIX,"""get to the star"" / ""go to the star"" is not meaningful English; slot ""star"" should be ""stars"" or module excluded",exclude 1633
+N_OUTDOORS.STAR-T4-08,1633,ALL,english,FIX,"english_slot ""star"" singular gives ""looking at the star from the window"" - needs plural ""stars""",
+N_PERSONROLE.GROUP-T4-03,1690,A1,japanese,FIX,"""来月から政府が...発表した"" mixes a future start date with a past announcement; ""starting next month"" attaches to the wrong thing",ニュースで見たんだけど、{W}が来月から新しいルールを始めると発表したらしいよ。
+N_PERSONROLE.GROUP-T5-01,2788,A2,english,MINOR,"""That's big for a citizen"" is awkward English (needs ""citizens""/""for the people"")","Last week too, the same vegetables at the supermarket were a hundred yen more, and I was shocked. That is a big deal for {Es}."
+N_PERSONROLE.GROUP-T5-03,1945,ALL,fit,FIX,"""members"" of what? no group is given so the news opinions of ""all kinds of members"" is vague and incoherent",exclude 1945
+N_PERSONROLE.GROUP-T5-04,1945,ALL,fit,FIX,"a town does not have a ""number of members""",exclude 1945
+N_PERSONROLE.GROUP-T5-04,2788,ALL,fit,FIX,"a town's residents are 住民; ""国民の数が増えている"" for a town is wrong (国民 = nationals of a country)",exclude 2788
+N_PERSONROLE.GROUP-T5-05,895,ALL,fit,MINOR,"""チームの仕事を続けている"" after graduating (working for the team) is odd for チーム",exclude 895
+N_PERSONROLE.GROUP-T5-07,895,B,fit,MINOR,"""チームの発表はいつも難しい"" (a team's announcements always hard to follow) is odd",
+N_PERSONROLE.GROUP-T5-09,3039,ALL,fit,FIX,a union office handling moving paperwork makes no sense,exclude 3039
+N_PERSONROLE.JOB-T3-01,1058,B,english,MINOR,"""because of a police officer, everyone in town is helped"" - generic singular reads oddly (needs plural)","It really is. But with {Es} around, everyone in town is helped."
+N_PERSONROLE.JOB-T4-02,1217,B,fit,MINOR,"""困った時に頼む運転手"" (a driver to turn to when in trouble) is odd for 運転手",
+N_PERSONROLE.JOB-T4-03,1058,ALL,fit,FIX,"lost items on trains and asking at the station go to station staff; お巡りさん does not fit ""駅に行って...聞く""",exclude 1058
+N_PERSONROLE.JOB-T4-04,949,B,japanese,FIX,"""直るのも早い"" should be 治る for an illness",早く{W}に見てもらった方がいいよ。早く行くほど、治るのも早いから。
+N_PERSONROLE.JOB-T4-04,949,A2,japanese,MINOR,"""近くにあるお医者さん"" - a person is not ""ある""; use 近くのお医者さん",そうだね。仕事が終わったら、近くの{W}を調べて、明日予約するよ。
+N_PERSONROLE.JOB-T5-07,2943,B,english,FIX,"English B starts ""True. reporters do work..."" with lowercase after a full stop (slot not capitalised)","True. I think {Es} don't get much time to rest, since they work for other people."
+N_PERSONROLE.JOB-T5-07,422,B,english,FIX,"English B starts ""True. station attendants do work..."" with lowercase after a full stop","True. I think {Es} don't get much time to rest, since they work for other people."
+N_PERSONROLE.PEOPLE-T2-03,58,ALL,fit,FIX,"""there are a lot of friends at the station"" / ""all the friends go out"" makes no sense",exclude 58
+N_PERSONROLE.PEOPLE-T2-04,59,A1,japanese,MINOR,"""テレビで人を見た"" / ""saw a person on TV"" is oddly vague (someone)",
+N_PERSONROLE.PEOPLE-T2-05,58,ALL,fit,MINOR,a friend sitting right next to you whom you do not greet is odd,
+N_PERSONROLE.PEOPLE-T2-07,58,ALL,fit,FIX,"you would know your friend's name; ""ask the friend for a name"" is nonsense",exclude 58
+N_PERSONROLE.PEOPLE-T3-01,1003,ALL,fit,FIX,"nostalgic reunion (""that takes me back"", ""still look well?"") does not fit 外人",exclude 1003
+N_PERSONROLE.PEOPLE-T3-01,58,A2,japanese,MINOR,male A says 私 in casual speech; use 僕,うん、元気だったよ。{W}も僕を見て、驚いてたよ。
+N_PERSONROLE.PEOPLE-T3-02,59,B,japanese,FIX,"""人は結局、どこに行きたかったの"" - bare 人 as topic is unnatural, needs その人",へえ、そうなんだ。その{W}は結局、どこに行きたかったの？
+N_PERSONROLE.PEOPLE-T3-02,59,A2,japanese,FIX,"""人は駅前の郵便局を探してた"" - bare 人 as topic is unnatural, needs その人",その{W}は駅前の郵便局を探してたよ。近いから、一緒に歩いたんだ。
+N_PERSONROLE.PEOPLE-T3-04,58,ALL,fit,FIX,"a shop ""popular with friends"" makes no sense",exclude 58
+N_PERSONROLE.PEOPLE-T3-05,1048,ALL,fit,MINOR,"""talking to the other party/partner first when in trouble"" is vague; 相手 only works in a relationship context",
+N_PERSONROLE.PEOPLE-T3-09,58,A2,fit,FIX,"""知らない友達"" / ""a friend you don't know"" is a contradiction",exclude 58
+N_PERSONROLE.PEOPLE-T4-02,58,ALL,fit,FIX,"""more friends in front of the station"" and heading home early makes no sense",exclude 58
+N_PERSONROLE.PEOPLE-T4-03,59,ALL,fit,FIX,"""news talked about a person all the time / the person thing is a big deal"" is vacuous for 人",exclude 59
+N_PERSONROLE.PEOPLE-T4-04,1800,ALL,fit,FIX,"you cannot tell a liar by seeing one on the street; being scared of / nervous talking to ""liars"" is incoherent",exclude 1800
+N_PERSONROLE.PEOPLE-T4-05,1818,ALL,fit,MINOR,"work is fun because an acquaintance is nearby, cherishing the closest acquaintance - 知り合い is too weak a relationship",exclude 1818
+N_PERSONROLE.PEOPLE-T4-06,58,A1,japanese,FIX,"""友達と友達も誘ってもいいかな"" is a nonsensical repetition",exclude 58
+N_PERSONROLE.PEOPLE-T4-08,1818,ALL,fit,MINOR,valuing an acquaintance's opinion at company meetings is vague,
+N_PERSONROLE.PEOPLE-T4-08,58,ALL,fit,MINOR,"valuing ""the friend's opinion"" at company meetings is vague",
+N_PERSONROLE.PEOPLE-T4-09,1840,ALL,fit,FIX,"""何年経っても、未成年は時々間違える"" - minors grow up, so ""no matter how many years pass"" is incoherent",exclude 1840
+N_PERSONROLE.PEOPLE-T4-11,1800,ALL,fit,MINOR,"""call someone at the station when you meet a liar"" is odd (a liar is not a safety threat)",
+N_PERSONROLE.PEOPLE-T5-01,2713,ALL,fit,MINOR,a 病人 (bedridden patient) sitting next to you on the last train is odd; 具合の悪い人 would be natural,
+N_PERSONROLE.PEOPLE-T5-01,58,ALL,fit,FIX,"you sit next to a friend and say nothing; ""was the friend alone?"" makes no sense",exclude 58
+N_PERSONROLE.PEOPLE-T5-02,2713,ALL,fit,FIX,"""病人がかなり増えた"" near the station and ""hear about sick people every day"" is incoherent",exclude 2713
+N_PERSONROLE.PEOPLE-T5-03,2379,A2,english,FIX,"English A2 begins ""Lucky. girls ..."" with lowercase after a full stop",Lucky. There is still plenty of time for {Es} to study slowly from scratch.
+N_PERSONROLE.PEOPLE-T5-03,251,A2,english,FIX,"English A2 begins ""Lucky. girls ..."" with lowercase after a full stop",Lucky. There is still plenty of time for {Es} to study slowly from scratch.
+N_PERSONROLE.PEOPLE-T5-04,59,ALL,fit,FIX,"""病院で人が長い間待ってた"" and ""人には声を掛けられなかった"" is vacuous with bare 人",exclude 59
+N_PERSONROLE.PEOPLE-T5-06,58,ALL,fit,FIX,"a pub ""gets lots of friends at night"" makes no sense",exclude 58
+N_PERSONROLE.PEOPLE-T5-07,2009,ALL,fit,FIX,"""他の人に聞くより、他人に直接聞いた方が早い"" is self-contradictory and ""ask the stranger directly"" makes no sense",exclude 2009
+N_PERSONROLE.PEOPLE-T5-09,2009,ALL,fit,FIX,calling a stranger first so as not to trouble them tomorrow makes no sense,exclude 2009
+N_PERSONROLE.PEOPLE-T5-12,59,ALL,fit,FIX,"""人もきっと安心して"" / ""人の顔も明るくなってた"" is vacuous with bare 人",exclude 59
+N_PERSONROLE.SCHOOL-T3-04,1104,ALL,fit,FIX,"""小さい時からずっと生徒になりたい"" - wanting to be a student since childhood makes no sense",exclude 1104
+N_PERSONROLE.SCHOOL-T3-05,1104,ALL,fit,MINOR,calling a 生徒 to ask about homework (as if a peer) is odd,
+N_PERSONROLE.SCHOOL-T3-08,1104,A1,fit,MINOR,a drinking party for graduating 生徒 (school pupils) is odd,
+N_PERSONROLE.SCHOOL-T5-03,2897,ALL,fit,FIX,"""中学生は朝から晩まで働いて"" - junior high students do not work from morning till night",exclude 2897
+N_PERSONROLE.SCHOOL-T5-04,2222,A1,japanese,FIX,"""コンビニの店員は、夜も朝も、アルバイトをしてる留学生は本当に多い"" has two topics and is ungrammatical",コンビニでは、夜も朝も、アルバイトをしてる{W}が本当に多いよね。
+N_PERSONROLE.SCHOOL-T5-06,957,A1,english,FIX,"English A1 says ""an university student"" - article {a} wrong for ""university"" (should be ""a"")",
+N_PERSONROLE.SCHOOL-T5-09,2897,ALL,fit,FIX,"wanting to ""become a junior high school student"" and ""it is hard to become one"" makes no sense",exclude 2897
+N_PERSONROLE.STAR-T4-04,1638,A1,japanese,MINOR,写真を取った should be 写真を撮った,コンサートの帰りに、偶然{W}に会って、一緒に写真を撮ったんだ。
+N_PERSONROLE.STAR-T4-08,1771,ALL,fit,MINOR,"""fans"" with no object (fans of what?) makes the exchange vague",
+N_PERSONROLE.STAR-T5-02,1108,A2,english,FIX,"English A2 ends ""...watches TV. an athlete is only human too."" lowercase after a full stop","Sort of. But when he's home he just eats and watches TV, because {a} {E} is only human too."
+N_PERSONROLE.STAR-T5-02,2826,A2,english,FIX,"English A2 ends ""...watches TV. a model is only human too."" lowercase after a full stop","Sort of. But when he's home he just eats and watches TV, because {a} {E} is only human too."
+N_PERSONROLE.STAR-T5-04,2826,ALL,fit,MINOR,"models ""never skipping daily practice"" is odd for モデル",
+N_PERSONROLE.WORK-T2-02,747,ALL,fit,FIX,"you would know your boss's name; ""ask the boss for a name"" is nonsense",exclude 747
+N_PERSONROLE.WORK-T2-06,747,ALL,fit,FIX,"""あそこの上司"" always on his feet from morning to night, bringing the boss a drink - boss does not fit",exclude 747
+N_PERSONROLE.WORK-T4-07,518,ALL,fit,MINOR,"going to a movie with a customer on your day off, ""客って明るい人"" is odd",
+N_PERSONROLE.WORK-T4-09,518,A2,fit,MINOR,"""客が説明すると、難しい事も簡単に聞こえる"" - customers do not explain things",
+N_PERSONROLE.WORK-T5-07,518,ALL,fit,MINOR,"customers ""always helping me out"" so I give a thank-you present is odd",
+N_PERSONROLE.WORK-T5-09,518,ALL,fit,MINOR,a customer recommending a book and later asking them about it is odd,
+N_PLACE.AREA-T2-03,765,ALL,fit,FIX,"""県の天気がいいね"" / ""県も寒かった"" - nobody says the weather of a prefecture this way; reads as nonsense",exclude 765
+N_PLACE.AREA-T2-04,765,A1,japanese,MINOR,"bare ""県の古いお寺"" with no which-prefecture is vague/unnatural",
+N_PLACE.AREA-T2-05,765,ALL,fit,MINOR,"""県の名前の意味"" with no which-prefecture is vague (asking about the name of an unspecified prefecture)",
+N_PLACE.AREA-T2-06,765,ALL,japanese,MINOR,"bare ""県に行った"" / ""県の食べ物"" with no which-prefecture is unnatural",
+N_PLACE.AREA-T3-02,1044,ALL,fit,FIX,"""the north or the south of the foreign country"" - no specific country so the choice makes no sense",exclude 1044
+N_PLACE.AREA-T3-06,892,A1,japanese,MINOR,male A says あなたの in casual speech to a friend; use 君の,今度行きたいんだけど、君の{W}には、好きな場所ってある？
+N_PLACE.AREA-T4-02,1706,ALL,fit,MINOR,"""全国の本 / a book about the whole country"" is odd for 全国",
+N_PLACE.AREA-T4-04,1706,ALL,fit,FIX,"""全国の空気は凄くきれい"" and ""全国に行ってゆっくりしたい"" (go to the whole country) make no sense",exclude 1706
+N_PLACE.AREA-T5-04,2526,ALL,fit,MINOR,"a particular ""city's"" New Year food/family customs (""都市のお正月"") is odd; 都市 is a generic urban area",
+N_PLACE.AREA-T5-05,2526,ALL,fit,MINOR,"""都市の人みんなで協力して毎週土曜日に準備"" does not suit a big city (fits 町)",
+N_PLACE.DIR-T2-02,196,A1,english,MINOR,"""I'm walking right right now"" - English slot ""right"" reads clumsily (should be ""to the right"")",I'm walking {E} at the moment. I'll be there soon.
+N_PLACE.DIR-T2-03,196,ALL,fit,FIX,"""右に三十分歩いて駅まで行く"" - walking ""right"" for thirty minutes is not a direction you can walk; makes no sense for 右",exclude 196
+N_PLACE.EAT-T2-05,408,A2,fit,MINOR,reserving a table at a 食堂 (cafeteria) is odd,
+N_PLACE.EAT-T3-02,1010,A2,japanese,MINOR,male A says 私たち in casual speech; use 僕たち,いいなあ。今度は僕たちも、みんなで{W}に行こうよ。
+N_PLACE.EAT-T3-02,201,A2,japanese,MINOR,male A says 私たち in casual speech; use 僕たち,いいなあ。今度は僕たちも、みんなで{W}に行こうよ。
+N_PLACE.EAT-T3-06,1010,ALL,fit,MINOR,"an adult going to a cafe for the first time, thinking it would be expensive, is odd for 喫茶店",
+N_PLACE.EAT-T4-05,1581,ALL,english,MINOR,"""Prices at a food stall"", ""I still like a food stall"" - generic singular reads wrongly (needs plural/""them"")",
+N_PLACE.EAT-T4-05,201,ALL,english,MINOR,"""Prices at a pub"", ""I still like a pub"" - generic singular reads wrongly (needs plural/""them"")",
+N_PLACE.EAT-T4-07,1581,A2,fit,FIX,"a 屋台 cannot be reserved (""屋台の席を予約して"")",exclude 1581
+N_PLACE.GO-T1-01,115,ALL,english,MINOR,"""We take the train to the school"" / ""go to the school"" - for school English needs no article (""to school"")",
+N_PLACE.GO-T1-02,115,ALL,english,MINOR,"""Are you going to the school today?"" - English needs ""to school"" without article",
+N_PLACE.GO-T1-03,115,ALL,english,MINOR,"""I'm going to the school tomorrow morning"" - English needs ""to school"" without article",
+N_PLACE.GO-T5-01,2574,ALL,english,MINOR,"""Have you ever been to the facility?"" - 施設 with no antecedent reads as a vague/odd specific reference",
+N_PLACE.GO-T5-02,2574,ALL,english,MINOR,"""go to the facility, then have lunch"" - vague/odd specific reference for 施設",
+N_PLACE.POS-T2-02,795,ALL,fit,FIX,"""隣にいるの？見えないなあ"" - someone standing next to you would be seen; English ""standing next door""/""look next door"" makes no sense",exclude 795
+N_PLACE.POS-T2-03,795,ALL,english,MINOR,"English slot ""next door"" gives ""I left my bag next door"" where 隣 means next to/beside (english_slot for 隣 is wrong in position modules)",
+N_PLACE.POS-T4-02,795,ALL,fit,FIX,"""隣に来てね"" / ""come next door"" and ""get next door"" make no sense (隣 = next to me)",exclude 795
+N_PLACE.POS-T4-04,795,ALL,fit,FIX,"""どこか隣に行って"" / ""go next door somewhere"" makes no sense",exclude 795
+N_PLACE.POS-T4-05,795,ALL,fit,FIX,"""隣をよく見ててね"" / ""keep a good eye next door"" makes no sense",exclude 795
+N_PLACE.POS-T4-08,1620,A1,japanese,MINOR,"""部屋の表"" is not a natural way to say the front of a room",
+N_PLACE.POS-T5-04,2612,ALL,fit,FIX,"dropping a wallet ""underfoot"" and searching ""underfoot"" makes no sense (it would be at your feet)",exclude 2612
+N_PLACE.POS-T5-06,795,A2,fit,FIX,"""一緒に隣を探しに行かない？"" - nobody needs to search for a bakery next door",exclude 795
+N_PLACE.POS-T5-07,2633,B,fit,FIX,"""ビルの内部は...駅の改札からも、よく見えるよ"" - the interior of a building cannot be seen from the ticket gate",exclude 2633
+N_PLACE.POS-T5-08,2633,B,english,MINOR,"English ""guide you at the inside of the parking lot"" is awkward",
+N_PLACE.POS-T5-09,2633,ALL,english,MINOR,"English ""sit at the inside of the place"" / ""reserve a seat at the inside"" is awkward",
+N_PLACE.POS-T5-10,2542,A2,japanese,FIX,"""先に手前の大きさを確認して"" - checking the size of the near side makes no sense (should be the sofa)",確かに。じゃあ、先にソファーの大きさを確認して、もう少し考えるよ。
+N_PLACE.POS-T5-10,596,A2,japanese,FIX,"""先に向こうの大きさを確認して"" - checking the size of the other side makes no sense (should be the sofa)",確かに。じゃあ、先にソファーの大きさを確認して、もう少し考えるよ。
+N_PLACE.POS-T5-11,2465,B,japanese,FIX,"""部屋の位置を考えようかな"" means the position of the room; should be the furniture position",へえ、凄いね。{W}って、大事なんだね。私も部屋の家具の{W}を考えようかな。
+N_PLACE.ROAD-T2-02,427,A1,english,MINOR,"""cross the railroad crossing"" is redundant English (cross at / use the crossing)",
+N_PLACE.ROAD-T2-06,427,B,english,MINOR,"""crossing the railroad crossing"" is redundant English",
+N_PLACE.ROAD-T5-03,2157,ALL,fit,FIX,"""コースを使うと早く着く"" - a bare ""the course"" with no referent is meaningless in a conversation about getting somewhere in a hurry",exclude 2157
+N_PLACE.ROAD-T5-09,2397,B,fit,FIX,"""車道の近くは車や電車が通る"" - trains do not run beside a roadway (only fits 踏切)",exclude 2397
+N_PLACE.SHOP-T2-04,752,A1,fit,MINOR,"""百貨店、安いし、便利"" - department stores are not typically described as cheap",
+N_PLACE.SHOP-T5-05,2204,ALL,fit,MINOR,an internet cafe being closed on Mondays and needing to check before going is odd (they are usually open every day),
+N_PLACE.SIGHT-T2-07,643,ALL,fit,MINOR,"""雨だね。博物館はまた今度にする？"" - a museum is a good rainy-day choice, so putting it off for rain is illogical",
+N_PLACE.SIGHT-T4-05,256,ALL,fit,FIX,"""温泉は暖房が入ってる"" and taking your coat off once inside the hot spring make no sense",exclude 256
+N_PLACE.SIGHT-T5-06,2539,ALL,fit,FIX,Obon visit to a countryside 教会 with flowers for a mother waiting there is a Buddhist/grave-visit scenario; does not fit a church,exclude 2539
+N_PLACE.SIGHT-T5-08,2539,A2,fit,MINOR,"""教会に行くと、家族の昔の話を思い出して"" and 手を合わせる fit a temple/grave better than a church",
+N_PLACE.SPOT-T2-07,675,A2,japanese,FIX,"""近所の近くで電話してね"" is redundant/nonsense (near the neighborhood)",exclude 675
+N_PLACE.SPOT-T2-08,565,ALL,fit,MINOR,a station attendant telling you not to use the bus stop is odd,
+N_PLACE.SPOT-T3-02,875,ALL,fit,FIX,"""駅前の前で待ち合わせ"" / ""in front of the station front"" is nonsense",exclude 875
+N_PLACE.SPOT-T3-03,875,ALL,fit,FIX,"""駅前の場所が前と違う ... 駅前がもっと近くにあった ... 駅前を探す"" - a station front is not something you search for or that moves",exclude 875
+N_PLACE.SPOT-T3-04,875,ALL,fit,FIX,"""駅前の近くを走ると危ない"" - ""near the station front"" is redundant",exclude 875
+N_PLACE.SPOT-T3-06,929,A2,japanese,FIX,"bare ""所の雰囲気"" is unnatural; needs 住む所 / that place",便利なのも大事だけど、僕は住む{W}の雰囲気が一番大切かな。
+N_PLACE.SPOT-T3-08,875,ALL,fit,FIX,"""駅前の近くにある喫茶店"" / ""駅前を出て"" - redundant/nonsense with 駅前",exclude 875
+N_PLACE.SPOT-T3-10,929,A2,japanese,FIX,"bare ""所を離れるのは嫌だな"" is unnatural; needs ここ/その所",便利だし、友達もいるから、この{W}を離れるのは嫌だな。近所の人も優しいしね。
+N_PLACE.SPOT-T4-02,1721,ALL,fit,FIX,"meeting ""in front of the rooftop"" for lunch and walking around looking for a place makes no sense",exclude 1721
+N_PLACE.SPOT-T4-05,1721,ALL,fit,MINOR,"a rooftop being ""dark and old"" before and ""bright and spacious"" now is odd for an outdoor rooftop",
+N_PLACE.SPOT-T4-06,567,ALL,english,MINOR,"English ""relax at the second floor"" - should be ""on the second floor""",
+N_PLACE.SPOT-T5-01,2863,ALL,fit,MINOR,"arriving at ""the stage"" by train and calling when you get to the stage reads like a station module; stage does not fit",exclude 2863
+N_PLACE.SPOT-T5-06,2863,ALL,fit,FIX,"a convenience store that never closes ""right next to the stage"" for someone who just moved here makes no sense",exclude 2863
+N_PLACE.SPOT-T5-07,2863,ALL,fit,FIX,"""毎朝みんなで舞台を丁寧に掃除 ... 舞台がきれいだと歩く時に気持ちがいい"" - walking around a clean stage makes no sense",exclude 2863
+N_PLACE.WORK-T5-01,1522,ALL,japanese,FIX,"""職場に就職した"" (got a job at a workplace) is not a valid collocation",exclude 1522
+N_PLACE.WORK-T5-01,2911,ALL,japanese,FIX,"""事務室に就職した"" (got a job at an office room) is not a valid collocation",exclude 2911
+N_PLACE.WORK-T5-02,2125,A1,japanese,MINOR,male A says あなたはどう思う in casual speech; use 君,将来は、できれば{W}に就職したいと思ってるんだけど、君はどう思う？
+N_PLACE.WORK-T5-02,2673,A1,japanese,MINOR,male A says あなたはどう思う in casual speech; use 君,将来は、できれば{W}に就職したいと思ってるんだけど、君はどう思う？
+N_PLACE.WORK-T5-04,2911,ALL,fit,MINOR,"commuting to a 事務室 (an office room) is odd; 事務室 does not suit ""place you commute to""",
+N_PLACE.WORK-T5-07,2125,A1,japanese,MINOR,male A says あなたも見た in casual speech; use 君,昨日の夜にテレビで、{W}の仕事を紹介してたんだけど、君も見た？
+N_PLACE.WORK-T5-07,2673,A1,japanese,MINOR,male A says あなたも見た in casual speech; use 君,昨日の夜にテレビで、{W}の仕事を紹介してたんだけど、君も見た？
+N_PLACE.WORK-T5-08,2911,ALL,fit,MINOR,"""事務室の残業"" is odd for 事務室",
+N_STUDYWORK.CLASS-T4-02,1600,A1,fit,MINOR,"""来週の研究のために"" (for next week's research) is odd",
+N_STUDYWORK.CLASS-T4-03,1600,A1,prompt,MINOR,"Prompt ""Ask her why you don't take a break"" reads like asking for a reason; the line is a suggestion",Suggest taking a break from the research this weekend and going to see a movie.
+N_STUDYWORK.CLASS-T4-04,1600,ALL,fit,FIX,"""昨日の研究、先生は何て言ってた？ ... 緊張が無くなったよ ... 研究が終わると楽"" reads like a test or presentation, not research",exclude 1600
+N_STUDYWORK.CLASS-T5-02,1600,ALL,fit,FIX,"""授業に遅れたから研究を見せて ... 研究は先生が最後にまた説明する"" - class notes/material, not research",exclude 1600
+N_STUDYWORK.CLASS-T5-02,3031,ALL,japanese,MINOR,"bare ""章をちょっと見せてくれない"" (show me the chapter) with no number is vague/unnatural",
+N_STUDYWORK.CLASS-T5-03,2939,ALL,fit,FIX,"""予習の途中で、先生が面白い例を出してくれた"" - preparation/previewing is done alone before class, so a teacher giving an example in the middle makes no sense",exclude 2939
+N_STUDYWORK.CLASS-T5-07,1084,A2,fit,FIX,"""復習に必要なデータを全部集める"" - collecting data for a review makes no sense (fits a chapter/report)",exclude 1084
+N_STUDYWORK.CLASS-T5-08,1599,ALL,fit,MINOR,"job interviews always asking about ""your announcement/presentation"" and answering honestly about it is vague",
+N_STUDYWORK.CLASS-T5-08,2706,ALL,fit,FIX,"""就職の面接で中級について色々聞かれて ... 中級は正直に話す"" makes no sense for intermediate level",exclude 2706
+N_STUDYWORK.CLASS-T5-10,2706,ALL,fit,FIX,"""自分の中級は友達に話すのが恥ずかしい ... これから中級も頑張る"" makes no sense for intermediate level",exclude 2706
+N_STUDYWORK.FIELD-T5-01,2554,A1,japanese,MINOR,"""農業に就職したい"" is loose (you take a job in a company/sector); also male A says あなた, use 君",将来は、できれば{W}の会社に就職したいと思ってるんだけど、君はどう思う？
+N_STUDYWORK.FIELD-T5-01,3028,A1,japanese,MINOR,"""出版に就職したい"" should be 出版社 (publishing house); male A says あなた, use 君",将来は、できれば{W}の会社に就職したいと思ってるんだけど、君はどう思う？
+N_STUDYWORK.LANG-T3-02,1188,B,prompt,FIX,"B prompt is corrupted: ""he wrote in hisn'tebook"" (should be ""his notebook"")","Say sure, and ask him to show you the numbers he wrote in his notebook."
+N_STUDYWORK.LANG-T3-02,932,B,prompt,FIX,"B prompt is corrupted: ""he wrote in hisn'tebook"" (should be ""his notebook"")","Say sure, and ask him to show you the kanji he wrote in his notebook."
+N_STUDYWORK.LANG-T3-06,1188,B,fit,FIX,"""地図に数字と一緒に英語も書いてあれば"" - numbers on a map are not the problem English would fix (fits 漢字)",exclude 1188
+N_STUDYWORK.LANG-T4-09,1551,ALL,fit,MINOR,travellers in Japan being advised to learn Kansai dialect because you see it at shops and stations is odd (fits 漢字),
+N_STUDYWORK.LANG-T5-01,2268,ALL,fit,FIX,"""読みを読む"" - reading the reading is tautological; the module is about learned items (fits 漢字)",exclude 2268
+N_STUDYWORK.LANG-T5-01,2268,B,prompt,FIX,"B prompt is corrupted: ""he wrote in hisn'tebook"" (should be ""his notebook"")","Say wow, that was fast, and that it helps to read the {E} he wrote in his notebook before bed."
+N_STUDYWORK.LANG-T5-01,932,B,prompt,FIX,"B prompt is corrupted: ""he wrote in hisn'tebook"" (should be ""his notebook"")","Say wow, that was fast, and that it helps to read the kanji he wrote in his notebook before bed."
+N_STUDYWORK.LANG-T5-06,2314,ALL,english,MINOR,"English slot ""way of writing"" gives ""the way of writing of my new coworker's name"" (awkward; ""how to write"")",
+N_STUDYWORK.LANG-T5-07,2042,ALL,fit,FIX,"a foreigner struggling because signs have ""only romaji"" and English being the fix makes no sense (romaji is readable by foreigners)",exclude 2042
+N_STUDYWORK.SUBJECT-T5-02,2918,ALL,fit,FIX,"""掛け算の授業が一番好き / 掛け算の試験"" - multiplication is not a class/exam subject of its own",exclude 2918
+N_STUDYWORK.SUBJECT-T5-03,2027,A1,japanese,MINOR,"""大学では理科を勉強したい"" - 理科 is a school subject, not a university field; male A says あなた (use 君)",大学では{W}を一番勉強したいと思ってるんだけど、君はどう思う？
+N_STUDYWORK.SUBJECT-T5-03,3050,A1,japanese,MINOR,male A says あなたはどう思う in casual speech; use 君,大学では{W}を一番勉強したいと思ってるんだけど、君はどう思う？

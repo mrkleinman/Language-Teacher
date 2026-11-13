@@ -1,0 +1,174 @@
+﻿module_id,word_id,line,kind,severity,problem,suggested_fix
+V_HANDLE.CHECK-T4-05,1642,A2,fit,MINOR,评估 is for situations/costs/risks; B line English also does not match the Chinese (评估得很仔细 = assesses very carefully),
+V_HANDLE.CHECK-T5-01,2927,ALL,fit,FIX,"审查 (vet/scrutinize documents, plans) does not fit checking/going over exam results together",exclude 2927
+V_HANDLE.CHECK-T5-04,2927,ALL,fit,FIX,审查 is not used for inspecting goods for quality (that is 检查/检验),exclude 2927
+V_HANDLE.CLEAN-T3-02,971,B,chinese,FIX,把它们整理 has no result or 一下 after the verb so 把 sentence is incomplete,知道了，我先把它们{W}一下，再去洗澡。
+V_HANDLE.CLEAN-T5-04,2020,A2,english,FIX,"""who could break it"" is the wrong tense; needs ""who could have broken it""",
+V_HANDLE.CLEAN-T5-05,2908,ALL,fit,MINOR,修正 (correct errors) with a vague 这个 and no stated object is unclear and bookish for friends,
+V_HANDLE.CLEAN-T5-06,2908,ALL,fit,FIX,修正 does not mean repair a broken system (that is 修复/修理),exclude 2908
+V_HANDLE.COMPUTER-T3-01,479,A2,prompt,MINOR,"Prompt says ""once she can open the door"" but the line is just ""once you open the door"" (stray ""can"")",
+V_HANDLE.COMPUTER-T4-01,479,A2,prompt,MINOR,"Prompt says ""once she can open the window"" but the line is ""once you open the window"" (stray ""can"")",
+V_HANDLE.COMPUTER-T2-04,479,A2,prompt,MINOR,"Prompt says ""once she can open the book"" but the line is ""once you open the book"" (stray ""can"")",
+V_HANDLE.COMPUTER-T5-05,2693,A2,prompt,MINOR,"Prompt says ""after she can set the reminder"" but the line is ""after you set it"" (stray ""can"")",
+V_HANDLE.COMPUTER-T5-07,2832,A2,prompt,MINOR,"Prompt says ""after she can transfer the information"" but the line is ""after you transfer"" (stray ""can"")",
+V_HANDLE.EVENT-T4-01,1448,ALL,english,MINOR,"Slot gloss ""organise"" is British spelling while text elsewhere is American (""fall""); same in all 举办 modules","use ""organize"""
+V_HANDLE.EVENT-T5-01,2560,A1,english,MINOR,"""host tomorrow morning"" drops the meeting; 主持 a meeting is ""chair/run"", and ""host"" reads oddly",Who is actually going to host tomorrow morning's meeting?
+V_ROUTINE.ADDED-T3-07,3101,ALL,english,FIX,"""kick some football / I love to kick football / let's kick a while longer"" is not natural English (play football)",exclude 3101
+V_ROUTINE.ADDED-T3-08,3101,ALL,english,FIX,"""we have to kick properly today / You start to kick"" is not natural English",exclude 3101
+V_ROUTINE.ADDED-T4-02,3219,ALL,fit,FIX,"""Why don't you want to ask for leave? I don't want to because I'm too tired"" is illogical (tired people want leave)",exclude 3219
+V_ROUTINE.ADDED-T4-04,3250,ALL,fit,FIX,"""What time do you smoke every day? ... no wonder you have more energy than me"" does not follow for 抽烟",exclude 3250
+V_ROUTINE.DAILY-T2-01,517,A2,english,MINOR,"English starts ""OK, but not too late"" but the Chinese line has no ""OK""","Don't stay up too late. You've got work tomorrow, so sleep early."
+V_ROUTINE.DAILY-T2-05,517,A2,prompt,FIX,"Prompt ""after she sleep"" is ungrammatical","Say health comes first, and she'll feel much better after she sleeps."
+V_ROUTINE.DAILY-T2-07,427,A2,prompt,FIX,"Prompt ""while she charge"" is ungrammatical",Suggest she rests and listens to music while she charges it.
+V_ROUTINE.DAILY-T3-01,1013,ALL,english,MINOR,"""take off shoes"" lacks a possessive/object form; reads unnaturally in all 脱鞋 modules (take your shoes off)",
+V_ROUTINE.DAILY-T3-02,517,A2,prompt,FIX,"Prompt ""after she sleep"" is ungrammatical","Say OK, but after she sleeps, no more phone."
+V_ROUTINE.DAILY-T4-07,1231,A1,prompt,FIX,"Prompt ""if she do laundry"" is ungrammatical",Ask her if she does laundry at home every weekend.
+V_ROUTINE.DAILY-T4-07,1231,B,chinese,FIX,"一个星期的衣服都在周末洗衣服 repeats 衣服 (verb-object 洗衣服 already contains it), so it is ungrammatical",exclude 1231
+V_ROUTINE.DAILY-T5-07,2300,A1,prompt,FIX,"Prompt ""whether she still cover up"" is ungrammatical",Ask her whether she still covers up with a quilt when she sleeps in this heat.
+V_ROUTINE.DAILY-T5-08,2513,A1,prompt,FIX,"Prompt ""how she usually relax"" is ungrammatical",Ask her how she usually relaxes on weekends.
+V_ROUTINE.LEISURE-T2-03,436,A2,chinese,MINOR,不拍照太久 is awkward (verb-object plus 太久); people say 拍不了多久,
+V_ROUTINE.LEISURE-T2-05,436,A1,prompt,FIX,"Prompt ""where she usually take photos"" is ungrammatical",Ask her where she usually takes photos.
+V_ROUTINE.LEISURE-T4-01,1558,ALL,fit,MINOR,"K歌 on a nice-weather weekend (""Sunday morning is the best time to sing karaoke"") fits exercise better than karaoke",
+V_ROUTINE.LEISURE-T4-05,1558,ALL,fit,FIX,"Teaching a child to sing karaoke (""tell him how to K歌"") makes no sense; K歌 is not a skill taught by a teacher",exclude 1558
+V_ROUTINE.LEISURE-T4-06,1558,ALL,fit,FIX,"""I never learned to K歌, I'll find a teacher to learn K歌"" makes no sense for karaoke",exclude 1558
+V_ROUTINE.LEISURE-T4-07,1558,ALL,fit,FIX,"""K歌 is not hard, I can teach you... slowly learn to K歌"" makes no sense for karaoke",exclude 1558
+V_ROUTINE.LEISURE-T5-04,1558,ALL,fit,FIX,Getting up half an hour earlier every day to K歌 is implausible for a karaoke outing,exclude 1558
+V_ROUTINE.STUDY-T3-01,919,ALL,english,MINOR,"""take an exam"" with no determiner/possessive is unnatural English in all 考试 modules (take the exam / have an exam)",
+V_ROUTINE.STUDY-T3-03,919,ALL,fit,MINOR,"""Let's take an exam together this time"" is odd for 考试 (suggesting to take it together)",
+V_ROUTINE.STUDY-T5-02,2792,A2,chinese,MINOR,"明天一早去入学 is odd; one goes to register (报到/办入学), not ""go start school""",
+V_ROUTINE.WORK-T1-01,37,A1,prompt,MINOR,"Prompt ""where she usually goes to work"" differs from the line ""where do you work""",Ask her where she works.
+V_ROUTINE.WORK-T1-05,37,A1,prompt,FIX,"Prompt says ""if he wants to work here too"" but the line asks whether he works here too",Ask her if he works here too.
+V_ROUTINE.WORK-T1-05,37,A2,prompt,FIX,"Prompt says ""where he is going to work"" but the line asks where he works",Ask her where he works.
+V_HANDLE.EVENT-T5-02,2560,A1,english,MINOR,"""host this year"" drops what is hosted (the annual party/meeting) so it reads incomplete",Who do you think we should ask to host this year's party?
+V_HANDLE.EVENT-T5-04,2560,ALL,fit,FIX,"主持 means to host/chair an event, not to publicize it online so people know",exclude 2560
+V_HANDLE.EVENT-T5-07,2462,ALL,fit,MINOR,"开放教育 / ""open up education"" in one class is vague and unnatural as casual talk",
+V_HANDLE.EVENT-T5-08,2462,ALL,english,MINOR,"""open up"" is the slot gloss; a museum opening is just ""open""",
+V_HANDLE.FIND-T2-04,48,A2,chinese,FIX,A2 tells B not to worry although B was not worried (A lost the passport); the reply does not follow,好，我们分开找更快。
+V_HANDLE.FIND-T5-05,2636,A2,chinese,FIX,"朋友寻求帮助很正常 means friends seeking help is normal; 向 is missing so it does not match the English ""seek help from friends""",向朋友{W}帮助很正常，下次你先找我。
+V_HANDLE.FIND-T5-07,2039,A2,prompt,MINOR,"Prompt says ""after she can find out the problem"" but the line is ""after you find out the problem"" (stray ""can"")",
+V_HANDLE.FIND-T5-08,2636,ALL,chinese,MINOR,寻求信息 / 从朋友那里寻求 is stiff for friends chatting (would say 找/查/问),
+V_HANDLE.GIVE-T1-02,45,A2,prompt,FIX,"Prompt says ""give it to your mom"" but the mom is B's, so it should be ""her mom""",Tell her to hurry up and give it to her mom.
+V_HANDLE.GIVE-T1-05,45,B,prompt,FIX,"B prompt says ""your brother already has one"" but the brother is A's; should be ""his brother""",Tell him his brother already has one and he could give him money.
+V_HANDLE.GIVE-T1-06,45,B,english,MINOR,"English ""She'll give me lots of things"" is future but the Chinese is a general present statement",She gives me lots of things.
+V_HANDLE.GIVE-T4-03,1342,A2,english,MINOR,"""If someone will provide help"" is ungrammatical conditional English","That's great. If someone provides help, I'm not afraid."
+V_HANDLE.GIVE-T5-07,2367,A2,english,MINOR,"""If the school will give support"" is ungrammatical conditional English","If the school gives support, everyone will adapt faster."
+V_HANDLE.GIVE-T5-07,2367,B,english,MINOR,"""give more opportunities for them"" is awkward",The school should give them more opportunities.
+V_HANDLE.KITCHEN-T5-01,2282,ALL,fit,FIX,"腌 means marinate/pickle, so ""I will marinate tonight, come and eat"" does not make sense (the meat is not ready to eat)",exclude 2282
+V_HANDLE.KITCHEN-T5-08,2282,ALL,fit,FIX,"""It smells so good, did you marinate again?"" and wanting to marinate every day do not fit 腌",exclude 2282
+V_HANDLE.MAKE-T4-02,1848,ALL,fit,MINOR,创造 new product / 别创造没人买的东西 is odd; people say 开发/做 for products,
+V_HANDLE.MAKE-T4-06,1636,A1,prompt,FIX,"Prompt ""ask what she mainly does to manufacture"" is garbled and does not match the line",Say you heard she joined a car company and ask what they mainly manufacture.
+V_HANDLE.MAKE-T5-09,2460,ALL,fit,FIX,生产价值 is not a collocation (people say 创造价值); does not fit 生产,exclude 2460
+V_HANDLE.MAKE-T5-10,2460,ALL,fit,FIX,"生产 a TV show is wrong (节目 is 制作/做, not 生产)",exclude 2460
+V_HANDLE.PLACE-T3-06,1161,A1,english,MINOR,"""I'd look better if I wear the red one"" has the wrong verb form",Do you think I'd look better wearing the red one or the yellow one?
+V_HANDLE.PLACE-T4-02,1808,ALL,chinese,MINOR,加上 for adding salt to soup is stiff; 加 / 再加一点 is what people say,
+V_HANDLE.PLACE-T4-03,1808,ALL,chinese,MINOR,一块一块慢慢加上 chocolates into a box and 加上的时候要小心 are odd (put in / 放进去),
+V_HANDLE.PROTECT-T5-06,2356,ALL,fit,FIX,"维护 is for systems/equipment/rights, not ""data""; 好好维护资料 and weekly 维护 of data are unnatural",exclude 2356
+V_HANDLE.PROTECT-T5-07,2228,ALL,fit,FIX,确保座位 (ensure seats) is stiff and not how people reserve seats,exclude 2228
+V_HANDLE.STUDY-T2-03,317,A2,english,FIX,"English line starts with a lowercase ""write"" after the period (""No problem. write it slowly."")",No problem. Write it slowly.
+V_HANDLE.STUDY-T4-03,1329,ALL,fit,FIX,研究一次 / 看我研究一次 does not work for learning to do a task; 研究 is not a how-to skill verb,exclude 1329
+V_HANDLE.STUDY-T4-04,1329,ALL,fit,FIX,"""study a bit every day or you'll forget"" is 学习/复习, not 研究 (research)",exclude 1329
+V_HANDLE.STUDY-T5-05,2532,ALL,fit,FIX,"纪录 is not the verb for noting things down in mainland usage (记录), and the learning-method context does not fit",exclude 2532
+V_HANDLE.TAKE-T2-01,796,ALL,fit,FIX,"带来 means bring here/bring about; going to a friend's place you would say 带 (带去), not 带来",exclude 796
+V_HANDLE.TAKE-T2-02,796,ALL,fit,FIX,带来 does not mean help carry things; people say 拿/带,exclude 796
+V_HANDLE.TAKE-T2-03,796,ALL,fit,FIX,你在店里带来了什么 makes no sense with 带来 (would be 拿/带),exclude 796
+V_HANDLE.TAKE-T2-06,796,ALL,fit,MINOR,带来 to a meeting is odd; 带 is what people say,
+V_HANDLE.TAKE-T3-01,980,ALL,fit,FIX,收 is unclear for fetching a friend's things from his home (would be 取/拿); lines are incoherent,exclude 980
+V_HANDLE.TAKE-T3-01,980,A2,prompt,MINOR,"Prompt says ""after she can receive the stuff"" but the line says ""after you receive it"" (stray ""can"")",
+V_HANDLE.TAKE-T3-02,979,ALL,english,FIX,"Slot gloss ""pick up"" is wrong English for withdrawing money (""pick up enough money"") in all three lines",exclude 979
+V_HANDLE.TAKE-T3-03,994,A2,english,MINOR,"""Wait a second before you photograph."" has no object and reads oddly",Wait a second before you take it.
+V_HANDLE.TAKE-T5-01,51,ALL,fit,MINOR,"""What exactly did you take last time you went there?"" with no context reads like an accusation and is vague",
+V_HANDLE.TAKE-T5-02,51,ALL,fit,FIX,"你会拿吗 / 看我拿一次 (know how to take it, watch me take it) makes no sense for 拿",exclude 51
+V_HANDLE.TAKE-T5-05,2047,ALL,english,MINOR,"""raise this side / raise it up"" for a box is unnatural English (lift)",
+V_HANDLE.USE-T2-03,534,A1,chinese,MINOR,使用 is stiff for offering friends medicine (用 / 吃),
+V_HANDLE.USE-T2-05,534,ALL,fit,FIX,使用你的车 is unnatural for borrowing a car (借/开) and 慢慢使用 is odd,exclude 534
+V_HANDLE.USE-T3-02,1137,A1,prompt,FIX,"Prompt ""Ask her if she practise every night"" is ungrammatical",Ask her if she practises every night.
+V_HANDLE.USE-T3-01,1137,ALL,english,MINOR,"Slot gloss ""practise"" is British spelling; same in all 练习 modules","use ""practice"""
+V_HANDLE.USE-T3-06,1128,A1,chinese,MINOR,我们去尝试 with no object is incomplete for trying a restaurant (去尝尝/试试),
+V_HANDLE.USE-T4-09,1615,A1,chinese,MINOR,怎么在说话的时候掌握 has no object and is awkward,
+V_HANDLE.WORK-T2-04,699,A2,english,FIX,"""If you be responsible for it"" is ungrammatical English","Great. If you're responsible for it, my treat."
+V_HANDLE.WORK-T3-02,921,ALL,english,FIX,"Slot gloss ""handle"" makes unnatural English for 搞 (""What are you trying to handle over there?"", ""trying to handle the computer"")",
+V_HANDLE.WORK-T3-03,934,ALL,english,MINOR,"""manage them"" for little kids is unnatural; reads as ""look after them""",
+V_HANDLE.WORK-T4-02,1449,ALL,english,FIX,"""carry out them / carry out it"" is wrong word order for a separable particle verb with a pronoun (""carry them out"")",
+V_HANDLE.WORK-T4-08,1449,A1,english,FIX,"""carry out it on time"" is wrong word order (""carry it out"")",
+V_HANDLE.WORK-T4-09,1449,A2,english,FIX,"""how to carry out it"" is wrong word order (""carry it out"")",
+V_HANDLE.WORK-T4-04,1610,ALL,english,FIX,"""handle a bank card / To handle a bank card / can I handle it now"" is not English; gloss ""handle"" fails for getting a card issued",
+V_HANDLE.WORK-T4-06,1396,ALL,fit,FIX,"经营 is for running a business, not for heading a department (that is 管理/负责)",exclude 1396
+V_MIND.ADDED-T4-02,3241,ALL,english,MINOR,"British spelling ""sympathise/apologised"" mixed with American elsewhere; also ""sympathise with me"" whatever happens reads stiff",
+V_MIND.ADDED-T4-03,3150,ALL,fit,FIX,"""He apologised, allow him this once / I can't allow him"" means forgive (原谅); 允许 is not the right verb and A2 makes no sense",exclude 3150
+V_MIND.ADDED-T4-10,3144,ALL,fit,MINOR,"""I don't want to guess anything any more today"" is an odd, vague topic",
+V_MIND.ADDED-T4-10,3241,ALL,fit,FIX,不想再同情什么了 / 同情什么都没有用 is nonsensical for 同情,exclude 3241
+V_MIND.ADDED-T4-U02,3234,A1,prompt,FIX,"Prompt ""your team still will lack two people"" is ungrammatical","Say your team still lacks two people, and ask her if she knows anyone who wants to join."
+V_MIND.BELONG-T2-01,769,A2,english,MINOR,"""I thought you would come from China"" should be ""I thought you came from China""",Really? I thought you came from China.
+V_MIND.BELONG-T2-03,769,A2,english,MINOR,"""I thought they'd all come from abroad"" should be past: ""I thought they all came from abroad""",I see. I thought they all came from abroad.
+V_MIND.CONSIDER-T2-05,682,A2,english,FIX,"""Take your time to think about."" has no object",It's fine. Take your time to think about it. I'll wait for you.
+V_MIND.CONSIDER-T4-04,1830,A2,chinese,MINOR,把别的地方也分析一下 (analyze other places) is odd; 分析 does not fit comparing destinations,
+V_MIND.CONSIDER-T4-07,1789,ALL,chinese,MINOR,想像 is the non-mainland form; mainland Simplified is 想象 (affects every 想像 module),use 想象
+V_MIND.CONSIDER-T4-08,1830,ALL,fit,MINOR,分析一下他 / 分析了他很久 (analyze a person to see if he lies) is unnatural; people say 观察/判断,
+V_MIND.DECIDE-T3-02,1027,A2,english,MINOR,"English adds ""I think so too"" that is not in the Chinese line (and the prompt repeats it)","Whatever you do, don't refuse this chance."
+V_MIND.DECIDE-T4-03,1775,ALL,english,FIX,"定机票 means book the tickets, but the English says ""decide on the plane tickets""",exclude 1775
+V_MIND.EXPERIENCE-T4-05,1593,A2,english,FIX,"""even if we be faced with bigger pressure"" is ungrammatical (also in the prompt)","As long as we're all ready, we won't be scared even if we're faced with bigger pressure."
+V_MIND.EXPERIENCE-T5-02,2093,ALL,fit,FIX,体验 means to deliberately experience something; it does not fit having to go through changes at work (that is 经历),exclude 2093
+V_MIND.FEEL-T3-03,974,A2,english,MINOR,"English starts ""I know."" which is not in the Chinese line and prompt says ""Say you know""",Let's hear the details first. It's not too late to doubt it afterwards.
+V_MIND.FEEL-T5-01,2970,ALL,fit,MINOR,"质疑 (challenge/question a claim) is odd for doubting a person (""don't doubt him so much, relax"")",
+V_MIND.FEEL-T5-02,2970,ALL,fit,MINOR,该不该质疑他 / 决定要不要质疑他 about a friend acting strange is unnatural for 质疑,
+V_MIND.HAVE-T2-03,789,ALL,english,MINOR,"""Would it suit your brother?"" / ""it won't really suit"" is unnatural English for a book (suitable for / right for)",
+V_MIND.HAVE-T2-05,789,A1,english,MINOR,"""The library would really suit studying"" is not natural English",The library is really good for studying.
+V_MIND.HAVE-T2-06,789,ALL,english,MINOR,"""Do you think it'll suit?"" has no object; also ""mum"" vs ""mom"" spelling elsewhere",
+V_MIND.HAVE-T3-05,789,ALL,english,MINOR,"""Will they suit my feet?"" should be ""fit""/""be right for""",
+V_MIND.HAVE-T3-06,789,ALL,english,MINOR,"""you'd suit being a teacher"" / ""suit it more"" is unnatural English",
+V_MIND.HAVE-T4-05,1644,A1,prompt,FIX,"Prompt ""she totally match your requirements"" is ungrammatical and the English subject (You) differs from the Chinese (your qualifications)",Tell her her qualifications are great and match your requirements completely.
+V_MIND.HAVE-T4-05,1644,A2,prompt,FIX,"Prompt ""she match all the criteria"" is ungrammatical","Tell her not to worry, she meets all the criteria, and she can start next week."
+V_MIND.HAVE-T5-04,2537,ALL,english,MINOR,"""possess"" for a phone's functions (""As long as it can possess these"") is not natural English (have)",
+V_MIND.KNOW-T3-05,1062,ALL,english,MINOR,"""be familiar with it/them soon"", ""be familiar with it as we go"" is unnatural English (get to know / get used to)",
+V_MIND.KNOW-T5-05,1062,A2,english,MINOR,"""be familiar with it as we go"" is unnatural English",No worries. Let's walk around together and get to know it as we go.
+V_MIND.NOTICE-T1-04,144,ALL,fit,FIX,"想看到朋友 / 明天就能看到他们 is unnatural; meeting friends is 见/见到, 看到 only means catching sight of",exclude 144
+V_MIND.NOTICE-T5-03,2017,A2,english,MINOR,"""I couldn't realize anything at all"" is unnatural English (didn't notice)",
+V_MIND.NOTICE-T5-07,2017,A1,english,MINOR,"""none of us could realize how much pressure he was under"" is unnatural English",
+V_MIND.PLAN-T3-01,1175,A2,english,MINOR,"""then we both promise to, starting tomorrow"" ends with a dangling ""to""","OK, then we both promise, starting tomorrow!"
+V_MIND.PLAN-T3-04,1175,A1,chinese,FIX,我保证你 is not grammatical (promise someone is 我向你保证 / 我跟你保证),我向{W}你，这次一定不会再迟到了。
+V_MIND.PLAN-T3-04,1175,B,prompt,FIX,"Prompt ""Tell him he promise every time"" is ungrammatical","Tell him he promises every time, but he is late every time."
+V_MIND.PLAN-T3-08,1175,B,english,MINOR,"""you have to really promise to"" ends with a dangling ""to""",
+V_MIND.PLAN-T5-01,2233,ALL,fit,FIX,设法 (try to find a way) does not work for asking whether they plan to move offices next year; the lines are nonsensical,exclude 2233
+V_MIND.PLAN-T5-03,2233,ALL,fit,FIX,"设法 (try to find a way) does not fit ""do you really intend to study abroad next year""",exclude 2233
+V_MIND.PLAN-T5-06,2475,A1,prompt,FIX,"Prompt ""ask her whether they have decided or plan where to travel"" is garbled",Ask her whether they have planned where to travel for the holiday yet.
+V_MIND.PLAN-T5-06,2475,ALL,chinese,MINOR,规划去哪儿旅游 is written-style; friends would say 打算/计划,
+V_MIND.PLAN-T5-07,2475,A1,prompt,FIX,"Prompt ""ask her whether they have plan where to hold the wedding"" is ungrammatical",Ask her whether they have planned where to hold the wedding yet.
+V_MIND.PLAN-T5-07,2475,ALL,chinese,MINOR,规划婚礼 / 先看看价格再规划 is bookish for a wedding (筹备/打算),
+V_MIND.THINK-T1-01,39,A1,prompt,MINOR,"Prompt ""if she'd think this is tasty"" is odd conditional wording",Ask her if she thinks this is tasty.
+V_MIND.THINK-T1-02,39,A1,prompt,MINOR,"Prompt ""ask what she'd think"" is odd conditional wording",Say it's too hot today and ask what she thinks.
+V_MIND.THINK-T1-03,39,A1,prompt,MINOR,"Prompt ""what she'd think of this one"" is odd conditional wording",Ask her what she thinks of this one.
+V_MIND.THINK-T1-05,39,A1,prompt,MINOR,"Prompt ""ask what she'd think"" is odd conditional wording",Say he doesn't know and ask what she thinks.
+V_MIND.THINK-T1-06,39,A1,prompt,MINOR,"Prompt ""ask what she'd think"" is odd conditional wording",Say he's coming and ask what she thinks.
+V_MIND.THINK-T2-03,759,A1,chinese,MINOR,我感到自己有点渴 is stiff and odd for thirst; people say 觉得/有点渴,
+V_MIND.THINK-T3-03,991,A1,prompt,MINOR,"Prompt ""whether she managed to hear"" adds ""managed to"" that is not in the line",Ask her if she has heard why he stopped coming.
+V_MIND.THINK-T3-04,991,A2,english,MINOR,"""It's just something I hear"" has the wrong tense (heard)","A coworker said so. It's just something I heard, so it might not be true."
+V_MIND.THINK-T4-01,1785,ALL,chinese,MINOR,预计 is written/forecast style for a casual guess about a friend's flight; friends say 估计,
+V_MIND.THINK-T4-05,991,A1,prompt,MINOR,"Prompt ""if she managed to hear who took your package"" adds ""managed to""",Ask her if she heard who took your package.
+V_MIND.THINK-T4-06,1785,ALL,chinese,MINOR,我预计要等一个小时 in a queue is stiff for friends (估计),
+V_MIND.THINK-T5-03,2577,ALL,english,MINOR,"""I advocate that we should take the train"" is stiff, unnatural spoken English for a casual choice",
+V_MIND.THINK-T5-05,991,A1,prompt,MINOR,"Prompt ""when she was able to hear"" adds ""was able to""",Ask her when she heard he was going abroad alone.
+V_MOVE.ADDED-T3-02,3151,ALL,english,MINOR,"""I love to stroll / whenever I stroll I want to buy"" is odd English for 逛 as browsing/shopping",
+V_MOVE.ADDED-T4-05,3249,ALL,english,FIX,"""We didn't be stuck in traffic for long"" / ""did not be stuck"" is ungrammatical English",exclude 3249
+V_MOVE.ADDED-T4-05,3249,ALL,fit,FIX,"没堵车多久 is a strange pattern and the lines contradict (not stuck long today vs ""don't get stuck that long again""; ""didn't get stuck because I was tired"")",exclude 3249
+V_MOVE.GO-T1-02,53,ALL,fit,FIX,回我家 / 回的时候 is wrong: B is not returning to A's home (would be 来/去),exclude 53
+V_MOVE.GO-T1-06,54,ALL,fit,FIX,你想现在到这里吗 (do you want to arrive here now) is nonsensical with 到,exclude 54
+V_MOVE.GO-T2-03,674,A1,chinese,MINOR,我们怎么经过医院 (how do we pass through the hospital) is an odd question,
+V_MOVE.GO-T3-04,53,ALL,fit,FIX,回我家 / 回你家 is wrong when visiting someone else's home (来/去),exclude 53
+V_MOVE.GO-T3-06,963,ALL,chinese,MINOR,"来到办公室 is written style; people say 到办公室; prompts also add ""ready to/chance to""",
+V_MOVE.GO-T3-06,963,A1,prompt,MINOR,"Prompt ""before she is ready to arrive"" adds ""ready to"" not in the line","Tell her to call you first, before she arrives at the office."
+V_MOVE.GO-T5-02,244,ALL,fit,FIX,"离开机场 does not fit ""leave first thing tomorrow so sleep early / pack before leaving the airport"" (you leave home/hotel)",exclude 244
+V_MOVE.GO-T5-05,244,ALL,fit,FIX,"""how should I leave the hospital, is it far? the map says leaving takes 20 minutes"" is nonsensical; asking the way to the hospital",exclude 244
+V_MOVE.GO-T5-08,244,ALL,fit,FIX,"""we have to leave the train station before six or we won't make it"" is illogical (you must get to the station)",exclude 244
+V_MOVE.GO-T5-08,2221,ALL,chinese,MINOR,走进火车站 is odd; people say 进站/到火车站,
+V_MOVE.HOME-T5-01,2303,ALL,prompt,FIX,"Prompts say ""return to my hometown"" (slot gloss leaks ""my"") so the learner is told to say my hometown instead of their own","Use ""return to your hometown"" in the prompts"
+V_MOVE.HOME-T5-02,2303,ALL,prompt,FIX,"Prompts say ""return to my hometown"" (slot gloss leaks ""my"")","Use ""return to your hometown"" in the prompts"
+V_MOVE.HOME-T5-03,2303,ALL,prompt,FIX,"Prompts mix ""your hometown"" and ""return to my hometown"" (slot gloss leaks ""my"")","Use ""return to your hometown"" in the prompts"
+V_MOVE.HOME-T5-04,2303,ALL,prompt,FIX,"Prompts say ""return to my hometown"" (slot gloss leaks ""my"")","Use ""return to your hometown"" in the prompts"
+V_MOVE.HOME-T5-01,2303,A1,chinese,MINOR,回乡 is literary; friends say 回老家,
+V_MOVE.RIDE-T3-01,1111,A1,chinese,MINOR,这种新车 is ambiguous with 骑 (a bike?) and reads as a car,
+V_MOVE.STAY-T2-01,772,ALL,fit,FIX,"""Where do you want to stand? I want to stand near the school."" makes no sense with 站",exclude 772
+V_MOVE.STAY-T2-05,349,A1,prompt,FIX,"Prompt ""Ask her where she live now"" is ungrammatical",Ask her where she lives now.
+V_MOVE.TRIP-T2-01,488,A2,fit,MINOR,"B says leave ""on the weekend"" but A2 says ""you've got to set off tomorrow"", which clashes",
+V_MOVE.TRIP-T5-04,1866,B,prompt,FIX,"Prompt ""since he has so many relatives to visit relatives"" is garbled by the slot gloss","Ask if a week is enough, since he has so many relatives to see."
+V_MOVE.WALK-T2-02,284,ALL,english,FIX,"English uses ""walk"" for 走 meaning leave/walk around (""Once class is over you can walk"") which is wrong",exclude 284
+V_MOVE.WALK-T3-03,1057,A1,fit,MINOR,"它 has no referent, so the opening line ""look how fast it can jump"" is incoherent",

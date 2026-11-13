@@ -1,0 +1,185 @@
+﻿module_id,word_id,line,kind,severity,problem,suggested_fix
+N_MONEY.COST-T4-01,1818,ALL,fit,FIX,"成本 is a business/production cost; a trip's cost is 费用, so the whole exchange sounds wrong.",exclude 1818
+N_MONEY.COST-T5-01,373,A2,chinese,FIX,"减少价格 is not a collocation (price is 降低, not 减少).",exclude 373
+N_MONEY.COST-T5-07,1818,ALL,fit,FIX,"Buyers deciding to buy now because the 成本 may rise is illogical; they face the price, not the seller's cost.",exclude 1818
+N_MONEY.EARN-T3-01,1086,B,prompt,MINOR,"Prompt says ""most of your monthly income"" but the line says all of it.",Say it is just enough and all your monthly income goes on rent.
+N_MONEY.EARN-T3-03,1086,A1,chinese,MINOR,"每个月的收入要多少 is awkward; you need an amount of income, not ""income needs how much"".",在这里生活，每个月要有多少{W}？
+N_MONEY.EARN-T3-06,1086,A1,prompt,MINOR,"Prompt ends with a stray "", using income"" instruction.",Ask her if your two incomes together are enough to buy a house.
+N_MONEY.EARN-T5-01,1086,A2,chinese,MINOR,有更好的收入 is slightly awkward for a company's income.,太好了，{W}更高，大家工作会更开心。
+N_MONEY.EARN-T5-01,2839,A2,chinese,MINOR,有更好的利润 is awkward; profit is high/higher.,太好了，{W}更高，大家工作会更开心。
+N_MONEY.EARN-T5-04,2099,B,chinese,FIX,一份奖 uses the wrong measure word for 奖.,有，赢的人可以拿到一个不错的{W}。
+N_MONEY.EARN-T5-04,2099,A2,chinese,FIX,奖多不多 is not natural for how big a prize is.,我也想参加，{W}大不大不重要，主要是玩得开心。
+N_MONEY.EARN-T5-05,2930,ALL,fit,FIX,Writing down 份子 every month and seeing whether it is more or less makes no sense; 份子 is occasional wedding gift money.,exclude 2930
+N_MONEY.EARN-T5-07,2930,ALL,fit,FIX,"""How did you work out this year's 份子"" and it went up quite a bit does not make sense for gift money.",exclude 2930
+N_MONEY.FINANCE-T4-04,1522,B,prompt,MINOR,"Prompt says ""takes too much money"" but the line says a lot of money.","Say you think so, but this investment takes a lot of money."
+N_MONEY.FINANCE-T5-01,1522,A2,chinese,MINOR,简单的投资的书 has a clumsy double 的.,好，周末我去书店，找一本简单的{W}书。
+N_MONEY.FINANCE-T5-01,2653,A2,chinese,MINOR,简单的财务的书 has a clumsy double 的.,好，周末我去书店，找一本简单的{W}书。
+N_MONEY.FINANCE-T5-05,2653,ALL,fit,FIX,大家都在说财务 and 财务的新闻 do not make sense as news topics; fits investment/fund style words only.,exclude 2653
+N_MONEY.FINANCE-T5-06,2592,B,chinese,MINOR,工作时候 is missing 的.,这样不太好，你要跟他说，工作的时候别看{W}。
+N_MONEY.FINANCE-T5-08,2653,A1,chinese,MINOR,想大学学财务 is awkward word order.,你儿子想上大学学{W}，这个专业好找工作吗？
+N_MONEY.MONEY-T4-01,1275,ALL,fit,MINOR,"A tells an adult friend to keep her 压岁钱 safe and not spend it carelessly, as if she were a child.",
+N_MONEY.MONEY-T5-03,2818,ALL,fit,FIX,"""His 资本 is in the bank"" and ""doesn't look like he has a lot of 资本"" is unnatural; people say he has a lot of money.",exclude 2818
+N_MONEY.MONEY-T5-04,2818,ALL,fit,FIX,Managing and clearly splitting 资本 after marriage is not a natural thing to say; people would say 财产/钱.,exclude 2818
+N_MONEY.MONEY-T5-05,2663,A1,english,MINOR,"English says ""my son"" but the Chinese only says 孩子 (child).","When my child grows up, I want to leave part of my {E} to him/her."
+N_MONEY.MONEY-T5-08,2868,A1,english,FIX,"""Is there really enough funds"" has a plural noun with singular verb.",Is there really enough {E} for your research? -> Do you really have enough {E} for your research?
+N_MONEY.PAY-T3-01,828,A2,fit,FIX,试试人民币 (try renminbi next time) makes no sense for the national currency; the exchange fits payment methods.,exclude 828
+N_MONEY.PAY-T4-05,828,ALL,fit,FIX,"People not carrying 人民币 and only using phones is contradictory; it reads as cash, which is a different word.",exclude 828
+N_MONEY.PAY-T4-08,828,ALL,fit,MINOR,"""Use renminbi because it is faster"" while queuing is odd; the contrast is with cash vs phone payment.",exclude 828
+N_MONEY.PAY-T3-05,826,B,chinese,FIX,拍一下二维码 is wrong; you 扫 a QR code.,就在这里，你用手机扫一下{W}就行。
+N_MONEY.PAY-T3-05,826,A2,chinese,FIX,我拍好了 is wrong for scanning a QR code; use 扫.,好了，我扫好了，用{W}真方便。
+N_MONEY.PAY-T5-03,2241,B,chinese,MINOR,换成钱 (change into money) is vague and odd; say 换成人民币.,
+N_OUTDOORS.NATURE-T2-02,644,B,chinese,FIX,去过海 is unnatural; you see the sea (看海) or go to the seaside.,好啊，我还没有看过{W}呢。
+N_OUTDOORS.NATURE-T2-02,644,A2,english,MINOR,"English says ""lunch"" but the Chinese only says 吃饭 (eat/have a meal).",Let's leave early and eat by the {E}.
+N_OUTDOORS.NATURE-T4-01,1726,A1,english,MINOR,"English says ""on Saturday morning"" but the Chinese says 周末早上 (weekend morning).",I want to take a walk near the {E} on the weekend morning. Want to come?
+N_OUTDOORS.NATURE-T4-05,368,ALL,fit,FIX,"""Protect/damage/love the mountain"" (爱山, 破坏山) does not read naturally for 山; fits forest/nature words.",exclude 368
+N_OUTDOORS.NATURE-T5-01,2791,ALL,fit,FIX,"大地 is literary; ""the earth here was wonderful when I was little"" and a ruined 大地 beside buildings is not what friends say.",exclude 2791
+N_OUTDOORS.NATURE-T5-02,2791,ALL,fit,FIX,"""The earth here left a deep impression"", ""love the earth here in the morning"" and showing the kids 这里的大地 is unnatural.",exclude 2791
+N_OUTDOORS.SKY-T5-02,2642,ALL,english,MINOR,"""a show about the satellite"" / ""the satellite we don't know"" sounds odd; should be satellites in general.","use plural/generic ""satellites"""
+N_OUTDOORS.SKY-T5-03,2642,ALL,english,FIX,"""interested in the satellite"", ""answers about the satellite"", ""a book about the satellite"" is not natural English (singular with article).","use plural/generic ""satellites"""
+N_OUTDOORS.SKY-T5-04,2642,ALL,english,MINOR,"""the part on the satellite"" / ""satellite stuff"" is slightly off for this topic.","use plural/generic ""satellites"""
+N_PERSONROLE.ADDED-T2-04,3038,B,prompt,FIX,"B talks to a man but the prompt says ""she should ask the waiter again"".","Say it starts at seven, but he should ask the waiter again."
+N_PERSONROLE.CITIZEN-T4-01,1850,ALL,english,FIX,"English uses the singular ""the resident"" (e.g. ""open to the resident"", ""the resident said"") which is not natural English.","use plural ""residents"""
+N_PERSONROLE.CITIZEN-T4-02,1850,ALL,english,FIX,"English uses the singular ""the resident"" (e.g. ""open to the resident"", ""the resident said"") which is not natural English.","use plural ""residents"""
+N_PERSONROLE.CITIZEN-T4-03,1850,ALL,english,FIX,"English uses the singular ""the resident"" (e.g. ""open to the resident"", ""the resident said"") which is not natural English.","use plural ""residents"""
+N_PERSONROLE.CITIZEN-T4-04,1850,ALL,english,FIX,"English uses the singular ""the resident"" (e.g. ""open to the resident"", ""the resident said"") which is not natural English.","use plural ""residents"""
+N_PERSONROLE.CITIZEN-T4-05,1850,ALL,english,FIX,"English uses the singular ""the resident"" (e.g. ""open to the resident"", ""the resident said"") which is not natural English.","use plural ""residents"""
+N_PERSONROLE.CITIZEN-T4-06,1850,ALL,english,FIX,"English uses the singular ""the resident"" (e.g. ""open to the resident"", ""the resident said"") which is not natural English.","use plural ""residents"""
+N_PERSONROLE.CITIZEN-T5-01,1426,ALL,fit,FIX,"人民 is political/official register; friends would say 大家/老百姓, so the casual exchange sounds like a speech.",exclude 1426
+N_PERSONROLE.CITIZEN-T5-03,1426,ALL,fit,FIX,"人民 is political/official register; friends would say 大家/老百姓, so the casual exchange sounds like a speech.",exclude 1426
+N_PERSONROLE.CITIZEN-T5-04,1426,ALL,fit,FIX,"人民 is political/official register; friends would say 大家/老百姓, so the casual exchange sounds like a speech.",exclude 1426
+N_PERSONROLE.CITIZEN-T5-09,1426,ALL,fit,FIX,"人民 is political/official register; friends would say 大家/老百姓, so the casual exchange sounds like a speech.",exclude 1426
+N_PERSONROLE.CITIZEN-T5-01,2897,ALL,english,FIX,"English uses singular ""the fellow citizen"" (""easier for the fellow citizen"", ""the fellow citizen would happily take"") which is not natural.","use plural ""fellow citizens"""
+N_PERSONROLE.CITIZEN-T5-04,2897,ALL,english,FIX,"English uses singular ""the fellow citizen"" (""easier for the fellow citizen"", ""the fellow citizen would happily take"") which is not natural.","use plural ""fellow citizens"""
+N_PERSONROLE.CITIZEN-T5-03,2897,ALL,fit,FIX,"国人 as the object of 关心/帮帮 or as people who 随便吃 is stiff and the English singular ""the fellow citizen"" is unnatural.",exclude 2897
+N_PERSONROLE.CITIZEN-T5-09,2897,ALL,fit,FIX,"国人 as the object of 关心/帮帮 or as people who 随便吃 is stiff and the English singular ""the fellow citizen"" is unnatural.",exclude 2897
+N_PERSONROLE.CITIZEN-T5-02,2548,ALL,fit,FIX,"""Please do not disturb the citizen's rest"" is sign/notice style; friends would say 邻居/别人, and English singular is unnatural.",exclude 2548
+N_PERSONROLE.CITIZEN-T5-05,2799,ALL,english,MINOR,"English singular ""the modern person stays so busy"" is unnatural; should be ""people today/modern people"".","use plural ""modern people"""
+N_PERSONROLE.CITIZEN-T5-08,1887,ALL,english,MINOR,"English ""the other person"" for 他人 should be ""others/other people"".","use ""other people"""
+N_PERSONROLE.CLIENT-T4-06,1804,ALL,chinese,FIX,The word is written with a traditional character (遊客) instead of Simplified 游客.,replace 遊客 with 游客 in the word list
+N_PERSONROLE.CLIENT-T4-08,1806,ALL,fit,FIX,"Bare 对象 (without 合作) means boyfriend/girlfriend, so ""你已经了解对象了吗？"" changes meaning.",exclude 1806
+N_PERSONROLE.CLIENT-T5-01,1600,ALL,english,FIX,"""The feedback from the client keeps growing"" is not natural English (singular).","The feedback from {Es} keeps growing lately, so we need to read it carefully."
+N_PERSONROLE.CLIENT-T5-01,2724,ALL,english,FIX,"""The feedback from the patient keeps growing"" is not natural English (singular).","The feedback from {Es} keeps growing lately, so we need to read it carefully."
+N_PERSONROLE.CLIENT-T5-09,1600,ALL,fit,FIX,"""决定怎么写"" (how to write it) makes no sense for clients; it fits readers/audience.",exclude 1600
+N_PERSONROLE.GENERAL-T1-05,192,ALL,fit,MINOR,A1 says the student comes tomorrow but A2 says the student will be here soon.,
+N_PERSONROLE.GENERAL-T2-01,302,ALL,english,MINOR,"English mixes ""our classmate"" (A1), ""your classmate"" (B) and ""my classmate"" (A2).","Use consistent ""your/my classmate"" or ""our classmate""."
+N_PERSONROLE.GENERAL-T2-08,781,B,english,MINOR,"English says ""was a bit unhappy"" but the Chinese is present tense.",I think the other person is a bit unhappy.
+N_PERSONROLE.GENERAL-T3-01,1106,ALL,fit,FIX,"""My university student"" / generic 大学生 as a specific person (invited to dinner, seen in the park, called me) makes no sense; works for friend/neighbour words only.",exclude 1106
+N_PERSONROLE.GENERAL-T3-03,1106,ALL,fit,FIX,"""My university student"" / generic 大学生 as a specific person (invited to dinner, seen in the park, called me) makes no sense; works for friend/neighbour words only.",exclude 1106
+N_PERSONROLE.GENERAL-T3-04,1106,ALL,fit,FIX,"""My university student"" / generic 大学生 as a specific person (invited to dinner, seen in the park, called me) makes no sense; works for friend/neighbour words only.",exclude 1106
+N_PERSONROLE.GENERAL-T5-01,1106,ALL,fit,FIX,"""My 大学生 has run into trouble / switched jobs"" makes no sense for a generic group word.",exclude 1106
+N_PERSONROLE.GENERAL-T5-06,2804,A1,english,MINOR,"""welcoming the guest"" should be plural since lots of people are coming.",Lots of people are coming today. Is anyone welcoming the {Es} at the entrance?
+N_PERSONROLE.JOB-T2-01,510,B,english,MINOR,"English adds ""has been really good to us"", not in the Chinese.","Yes, I do. This driver is very good."
+N_PERSONROLE.JOB-T2-03,510,B,chinese,FIX,"B answers ""有"" to a statement (""I want to call the driver""), so the reply does not answer the line.",好，司机的电话在我手机里。
+N_PERSONROLE.ARTS-T5-04,2699,B,chinese,FIX,B says 冠军今天 but A1 is about yesterday's game.,我也看了！{W}昨天特别厉害，谁都比不上。
+N_PERSONROLE.JOB-T4-04,1036,ALL,english,MINOR,"""call the police officer"" is not natural English for 叫警察 (""call the police"").","Something's happened over there! Quick, call the police!"
+N_PERSONROLE.JOB-T4-01,1692,ALL,chinese,MINOR,看医师 / 找医师 is written or Taiwan style; mainland friends say 看医生.,
+N_PERSONROLE.JOB-T4-02,1759,ALL,english,MINOR,"English ""the worker's job"" for generic 工人 sounds odd (""a worker's job"" / ""workers"").",Do you think a worker's job is hard?
+N_PERSONROLE.JOB-T4-05,1759,ALL,english,FIX,"""I could never do the worker's job"" and ""the worker really matters"" are unnatural English (singular generic).","use plural ""workers really matter"""
+N_PERSONROLE.JOB-T4-05,270,A2,english,MINOR,"""the doctor really matters"" is unnatural; should be ""doctors"".","Neither could I, but doctors really matter."
+N_PERSONROLE.JOB-T4-06,1540,ALL,fit,FIX,"Asking to be introduced to a good 小贩 and then calling the hawker to ""try him"" does not make sense; fits service providers, not street hawkers.",exclude 1540
+N_PERSONROLE.JOB-T5-02,2178,ALL,fit,FIX,"Taking a feverish mother to ""see the nurse"" for a checkup is wrong; you take her to a doctor.",exclude 2178
+N_PERSONROLE.JOB-T5-04,2888,ALL,english,FIX,"English singular ""the laborer's income"", ""care more about the laborer"" is unnatural (should be laborers).","use plural ""laborers"""
+N_PERSONROLE.JOB-T5-06,2888,ALL,fit,FIX,劳工 helping us all day / being a news hero to learn from is odd; 劳工 is a formal news/political term not used this way among friends.,exclude 2888
+N_PERSONROLE.JOB-T5-08,2888,ALL,fit,FIX,劳工 helping us all day / being a news hero to learn from is odd; 劳工 is a formal news/political term not used this way among friends.,exclude 2888
+N_PERSONROLE.NATION-T5-02,2170,ALL,fit,FIX,Meeting 汉人 when visiting Taiwan is odd and ethnically misplaced.,exclude 2170
+N_PERSONROLE.NATION-T5-02,743,ALL,fit,FIX,"""When you go to Taiwan you can get to know some Chinese people"" is politically/culturally off (Taiwanese people).",exclude 743
+N_PERSONROLE.NATION-T5-04,2170,ALL,fit,FIX,"汉人 is an ethnic/historical term; ""listen to 汉人 sing"", ""汉人 have their own language"", ""a 汉人 among my friends who cooks well"" is odd for casual talk.",exclude 2170
+N_PERSONROLE.NATION-T5-05,2170,ALL,fit,FIX,"汉人 is an ethnic/historical term; ""listen to 汉人 sing"", ""汉人 have their own language"", ""a 汉人 among my friends who cooks well"" is odd for casual talk.",exclude 2170
+N_PERSONROLE.NATION-T5-08,2170,ALL,fit,FIX,"汉人 is an ethnic/historical term; ""listen to 汉人 sing"", ""汉人 have their own language"", ""a 汉人 among my friends who cooks well"" is odd for casual talk.",exclude 2170
+N_PERSONROLE.OFFICIAL-T5-03,1746,ALL,english,MINOR,"""He has been the leader for ten years"" should be ""a leader"".",He has been a leader for ten years.
+N_PERSONROLE.OFFICIAL-T5-03,2940,ALL,english,MINOR,"""He has been the councillor for ten years"" should be ""a councillor"".",He has been a councillor for ten years.
+N_PERSONROLE.PEOPLE-T1-03,32,A2,english,MINOR,"""I'll go and find the person"" does not match 找人 / the two people mentioned.",I'll go and find someone.
+N_PERSONROLE.PEOPLE-T1-04,32,B,chinese,FIX,"""你问人吧"" is not natural Chinese (bare 人 as the one to ask).",不知道，你问问那个{W}吧。
+N_PERSONROLE.PEOPLE-T1-04,32,A2,chinese,FIX,"""人应该知道"" is not natural without a determiner.",好，那个{W}应该知道。
+N_PERSONROLE.PEOPLE-T1-06,32,A2,chinese,MINOR,"""我去问人"" is awkward and the English ""the person"" does not match ""there are people here"".",好，我去问问。
+N_PERSONROLE.PEOPLE-T2-04,597,ALL,english,MINOR,"""the old person"" is unnatural English for taking the elderly out; should be ""my elderly relatives/the elderly"".",
+N_PERSONROLE.PEOPLE-T3-04,1136,ALL,fit,MINOR,A man regularly bringing food to a girl who lives alone downstairs sounds odd for 女孩子; fits man/woman better.,
+N_PERSONROLE.PEOPLE-T3-05,1136,A2,english,MINOR,"""said there'd be another call in the evening"" is awkward; Chinese says she will call you again in the evening.","No, the {E} said she'd call you again in the evening."
+N_PERSONROLE.PEOPLE-T4-02,32,A2,chinese,MINOR,"""提醒人"" is awkward with bare 人 (would say 提醒大家).",
+N_PERSONROLE.PEOPLE-T5-02,32,A2,chinese,MINOR,"""提醒人"" is awkward with bare 人 (would say 提醒大家).",
+N_PERSONROLE.PEOPLE-T4-08,1816,ALL,fit,MINOR,Calling friends at a dinner 几位妇女 sounds stiff/odd; 妇女 is a formal news word.,
+N_PERSONROLE.PEOPLE-T4-09,1816,ALL,fit,FIX,"""The number of women is suddenly much higher this year; more and more women because life is convenient"" makes no sense for 妇女 (works for children/people).",exclude 1816
+N_PERSONROLE.PEOPLE-T5-03,2843,ALL,fit,MINOR,少女 is literary; schoolchildren with too much homework would be 孩子/女孩.,
+N_PERSONROLE.PEOPLE-T5-05,2843,ALL,fit,MINOR,"""So many 少女 are queuing"" is odd as a plain queue statement.",
+N_PERSONROLE.PEOPLE-T5-06,32,A2,chinese,FIX,"""人只是有点累"" uses bare 人 without 那个/她, which is not natural.",没事，那个{W}只是有点累，已经回家休息了。
+N_PERSONROLE.SCHOOL-T5-01,2957,A1,english,FIX,"Article missing: ""The news says researcher has found..."" (the {a} token produced nothing).",The news says a researcher has found a new way to solve the problem.
+N_PERSONROLE.SCHOOL-T5-02,2957,ALL,english,FIX,"Article missing: ""wants to be researcher"", ""Why does she want to be researcher"", ""says researcher can help"".",a researcher / researchers
+N_PERSONROLE.SCHOOL-T5-04,2957,A1,english,FIX,"Article missing: ""Next week researcher is coming to visit our school.""",Next week a researcher is coming to visit our school.
+N_PERSONROLE.SCHOOL-T5-05,2957,A1,english,FIX,"Article missing: ""I heard from researcher that kids today sleep far too little.""",I heard from a researcher that kids today sleep far too little.
+N_PERSONROLE.SCHOOL-T5-08,2957,A1,english,FIX,"Article missing: ""wants to interview researcher next week.""",Our school paper wants to interview a researcher next week.
+N_PERSONROLE.TITLE-T3-01,1019,ALL,english,MINOR,"""your little darling / our little darling"" is not natural English for a baby (would be ""your little one"").",
+N_PERSONROLE.TITLE-T5-04,2034,B,fit,FIX,"Saying that the word 女士 is ""not very polite"" is wrong; 女士 is a polite form of address in Mandarin.",exclude 2034
+N_PERSONROLE.WORK-T3-01,1098,ALL,english,MINOR,"English uses singular ""Our colleague"" for collective 我们同事; better ""our colleagues"".",
+N_PERSONROLE.WORK-T3-03,1098,ALL,english,FIX,"""What time does your colleague usually leave work? / Our colleague leaves at six"" is wrong English for the collective 同事 (should be colleagues).","use plural ""colleagues"""
+N_PERSONROLE.WORK-T4-04,1462,B,chinese,FIX,"""我们小组里面我一点也不知道"" is ungrammatical and does not react naturally to A's news.",真的吗？我一点也不知道。
+N_PERSONROLE.WORK-T5-01,2903,ALL,chinese,MINOR,同仁 is written/formal; friends say 同事 when chatting about a new coworker.,
+N_PERSONROLE.WORK-T5-09,2903,ALL,english,FIX,"English ""all colleague"", ""Do all the colleague have to go"" lacks the plural.","Attention, all colleagues / Do all the colleagues have to go this time?"
+N_PERSONROLE.WORK-T5-05,2986,ALL,english,FIX,"English ""The subordinate are probably all on the way"" has singular noun with plural verb.","use plural ""subordinates"""
+N_PERSONROLE.WORK-T5-06,2986,ALL,english,FIX,"""pay all its subordinate more"", ""the subordinate hope"" lacks plural.","use plural ""subordinates"""
+N_PERSONROLE.WORK-T5-10,2986,ALL,chinese,MINOR,"部属 is stiff; ""我的部属"" is not how someone talks about a late employee to a friend.",
+N_PERSONROLE.WORK-T5-07,1075,B,english,FIX,"English ""I can ask our teams"" does not match 我们队 (one team).",I can ask our {E}. Someone should be willing to go.
+N_PERSONROLE.WORK-T5-07,2418,ALL,fit,FIX,"""几位人员"", ""问问我们人员"" and ""有人员帮忙"" are unnatural spoken Chinese for a community event.",exclude 2418
+N_PLACE.ADDED-T4-01,3246,ALL,chinese,FIX,"""这里的周围真好 / 我最喜欢这里的周围"" is not natural; 周围 needs 环境 or a different frame.",exclude 3246
+N_PLACE.ADDED-T4-06,3076,ALL,fit,FIX,"""How long to get to the north by car? about an hour"" treats 北方 as a nearby place, which makes no sense.",exclude 3076
+N_PLACE.ADDED-T4-07,3066,ALL,fit,FIX,"Meeting ""near the street... I can already see the street"" is not a meeting point; fits entrance-type words only.",exclude 3066
+N_PLACE.ADDED-T4-08,3070,A2,english,MINOR,"English adds ""spending time there"", which is not in the Chinese (大家都喜欢).","Our bathroom is big and clean, and everyone likes it."
+N_PLACE.AREA-T5-03,1362,ALL,english,FIX,"English ""Beijing's area"" is unnatural; should be ""the Beijing area"".",the Beijing area
+N_PLACE.AREA-T5-04,1362,ALL,english,FIX,"English ""Beijing's area"" is unnatural; should be ""the Beijing area"".",the Beijing area
+N_PLACE.AREA-T5-05,1362,ALL,english,FIX,"English ""Beijing's area"" is unnatural; should be ""the Beijing area"".",the Beijing area
+N_PLACE.AREA-T5-03,2723,ALL,english,FIX,"English ""Beijing's area"" is unnatural; should be ""the Beijing area"".",the Beijing area
+N_PLACE.AREA-T5-04,2723,ALL,english,FIX,"English ""Beijing's area"" is unnatural; should be ""the Beijing area"".",the Beijing area
+N_PLACE.COMPASS-T2-02,693,ALL,english,FIX,"""Do I walk toward the front? / keep walking toward the front"" is unnatural; 往前走 means ""straight ahead"".","Where is the bank? Do I go straight ahead? / Yes, keep going straight ahead."
+N_PLACE.COMPASS-T2-08,693,ALL,fit,FIX,"""Did you come from the front side? It is a long way from the front side"" makes no sense for 前边.",exclude 693
+N_PLACE.COMPASS-T3-02,1090,ALL,fit,FIX,"A says the door is on the right, then B asks whether ""the right side"" is safe and the subway is on ""the right side""; the thread does not cohere for a door position.",exclude 1090
+N_PLACE.COMPASS-T3-02,451,ALL,fit,FIX,"Door on the west side, then ""is the west side safe, the subway is on the west side"" does not cohere.",exclude 451
+N_PLACE.COMPASS-T3-03,451,ALL,fit,FIX,"Seats ""on the west side"" of a venue with the best view is unnatural; people say left/right/front.",exclude 451
+N_PLACE.COMPASS-T3-04,451,ALL,fit,FIX,"""Check the west side for cars when you drive"" is nonsense; drivers check left/right.",exclude 451
+N_PLACE.COUNTRY-T3-02,952,A2,english,MINOR,"""ask friends who have been to a foreign country"" is odd; natural is ""who have been abroad"".",
+N_PLACE.COUNTRY-T5-08,952,B,english,FIX,"English ""I'm a bit worried about living alone in a foreign country"" says the speaker lives alone; the Chinese worries about the child living alone.",Your child is still young. I'm a bit worried about him living alone in a {E}.
+N_PLACE.COUNTRY-T4-08,1360,ALL,fit,FIX,"""The whole 大陆 was watching the match, no wonder the streets were quiet"" is odd for 大陆 (mainland) when friends are talking about a match.",exclude 1360
+N_PLACE.COUNTRY-T5-09,1360,ALL,fit,FIX,"""整个大陆都在讨论 / 都要注意这件事"" is odd; friends would say 全国.",exclude 1360
+N_PLACE.GENERAL-T2-06,752,ALL,fit,MINOR,"""This direction is better than before / I still like this direction"" reads as a figurative course of action, not the spatial direction used in the other modules.",
+N_PLACE.GENERAL-T4-03,1669,ALL,chinese,MINOR,"""我已经到地点了 / 马上到地点"" with bare 地点 sounds unnatural; people say 到了.",
+N_PLACE.GENERAL-T5-01,2645,A2,chinese,FIX,"""找到所在"" is incomplete without 问题的; 所在 cannot stand alone as an object.",那你再检查一下，找到问题的{W}就容易解决了。
+N_PLACE.GENERAL-T5-01,2645,ALL,english,MINOR,"""the location of the problem/difficulty/mistake"" is unnatural English; say ""where the problem is"".",
+N_PLACE.GENERAL-T5-02,2645,ALL,english,MINOR,"""the location of the problem/difficulty/mistake"" is unnatural English; say ""where the problem is"".",
+N_PLACE.GENERAL-T5-03,2645,ALL,english,MINOR,"""the location of the problem/difficulty/mistake"" is unnatural English; say ""where the problem is"".",
+N_PLACE.GENERAL-T5-08,1908,ALL,chinese,MINOR,"场所 is stiff/formal for casual talk (""这个场所你以前来过吗""); friends say 地方.",
+N_PLACE.HOME-T5-03,1864,A1,chinese,FIX,"""你们故乡的同学"" uses 你们 (plural) for one person's hometown; should be 你故乡的同学.",听说你故乡的同学要办聚会，你会去吗？
+N_PLACE.LOCATION-T2-08,360,ALL,fit,FIX,"B answers ""不是"" (no) but then says ""mine is the same one"", and A2 apologises for taking the same one; the exchange contradicts itself for every word.",rewrite the module or exclude 360
+N_PLACE.LOCATION-T2-08,512,ALL,fit,FIX,"B answers ""不是"" (no) but then says ""mine is the same one"", and A2 apologises for taking the same one; the exchange contradicts itself for every word.",rewrite the module or exclude 512
+N_PLACE.LOCATION-T3-08,1103,ALL,fit,FIX,"""桌子背后"" (behind the table) for flowers looking nicer is not natural; 背后 is not used for furniture.",exclude 1103
+N_PLACE.LOCATION-T3-08,430,ALL,fit,FIX,"Placing flowers ""opposite the table"" to look nicer makes no sense (对面 of a table is the other side where someone sits).",exclude 430
+N_PLACE.LOCATION-T3-09,1103,ALL,fit,FIX,"""手机放在桌子背后"" is not natural; 桌子后面 would be used.",exclude 1103
+N_PLACE.PUBLIC-T4-08,1544,B,fit,FIX,"""民宿门口很多"" (a homestay has lots of entrances) is not plausible; fits a train station.",exclude 1544
+N_PLACE.PUBLIC-T5-08,2712,ALL,fit,FIX,Wanting to look around a court and wondering about tickets makes no sense for 法院; fits parks/sights.,exclude 2712
+N_PLACE.ROAD-T4-02,1752,ALL,fit,MINOR,"Traffic lights ""on the highway"" are odd for 公路 glossed as highway.",
+N_PLACE.ROAD-T5-04,2117,A2,chinese,MINOR,"""带我去街头"" (take me to the street) is vague/odd for 街头.",
+N_PLACE.ROAD-T5-07,2117,ALL,fit,FIX,"Meeting ""at the 街头"" (no named street) as an easy-to-find spot makes no sense.",exclude 2117
+N_PLACE.ROAD-T5-08,487,ALL,chinese,FIX,"Bare 街 (""街附近"", ""街那边"", ""别去街那边"") is ungrammatical without 这条/那条.",exclude 487
+N_PLACE.SHOP-T2-02,97,ALL,chinese,MINOR,"Bare 店 as sentence subject (""店周末人很多"", ""店的东西很多"") is not natural; needs 那家/这家.",
+N_PLACE.SHOP-T2-05,97,ALL,chinese,MINOR,"Bare 店 as sentence subject (""店周末人很多"", ""店的东西很多"") is not natural; needs 那家/这家.",
+N_PLACE.SHOP-T3-02,97,A1,chinese,MINOR,"""今天店的人真多"" with bare 店 is not natural.",今天{W}里的人真多，还要排队。
+N_PLACE.SHOP-T4-06,97,ALL,chinese,FIX,"Bare 店 (""从这儿到店怎么走"", ""过了红绿灯就是店"") is ungrammatical; needs 那家店.",exclude 97
+N_PLACE.STUDY-T4-01,1660,ALL,chinese,MINOR,"Bare 高中 (""高中的地址"", ""高中就在地铁站旁边"") reads as the school level, not a specific school; needs 这所高中.",
+N_PLACE.STUDY-T4-03,1660,ALL,fit,FIX,"""高中不错，老师都很认真"" and ""进高中"" treat 高中 as a specific school, but it is the school level, so the exchange does not make sense.",exclude 1660
+N_PLACE.STUDY-T5-01,2968,ALL,fit,FIX,"Bare 大专 (junior college level) is used as a specific institution that you visit, graduate from and get lost in; unnatural.",exclude 2968
+N_PLACE.STUDY-T5-02,2968,ALL,fit,FIX,"Bare 大专 (junior college level) is used as a specific institution that you visit, graduate from and get lost in; unnatural.",exclude 2968
+N_PLACE.STUDY-T5-05,2968,ALL,fit,FIX,"Bare 大专 (junior college level) is used as a specific institution that you visit, graduate from and get lost in; unnatural.",exclude 2968
+N_PLACE.STUDY-T5-08,2968,ALL,fit,FIX,"Bare 大专 (junior college level) is used as a specific institution that you visit, graduate from and get lost in; unnatural.",exclude 2968
+N_PLACE.STUDY-T5-09,2968,ALL,fit,FIX,"Bare 大专 (junior college level) is used as a specific institution that you visit, graduate from and get lost in; unnatural.",exclude 2968
+N_PLACE.STUDY-T5-10,2968,ALL,fit,FIX,"Bare 大专 (junior college level) is used as a specific institution that you visit, graduate from and get lost in; unnatural.",exclude 2968
+N_PLACE.STUDY-T5-02,135,A1,chinese,MINOR,"""你是学校的吧？"" with bare 学校 is unnatural; needs 这个学校.",你是这个{W}的吧？
+N_PLACE.WORK-T1-02,193,B,chinese,FIX,"B does not answer ""does he work at your company?""; says he works at a big company with no yes/no.",不在，他在大{W}工作。
+N_PLACE.WORK-T5-01,2864,ALL,fit,FIX,"""Is the 厂商 keeping you busy / the 厂商 has a big event on and I am working overtime"" treats a manufacturer as the speaker's own employer, which is unnatural.",exclude 2864
+N_PLACE.WORK-T5-05,2864,ALL,fit,FIX,"Bare 厂商 as employer type, meeting host or a famous named entity is unnatural (""哪种厂商工作"", ""厂商是什么时候成立的"", ""你听说过厂商吗"").",exclude 2864
+N_PLACE.WORK-T5-06,2864,ALL,fit,FIX,"Bare 厂商 as employer type, meeting host or a famous named entity is unnatural (""哪种厂商工作"", ""厂商是什么时候成立的"", ""你听说过厂商吗"").",exclude 2864
+N_PLACE.WORK-T5-07,2864,ALL,fit,FIX,"Bare 厂商 as employer type, meeting host or a famous named entity is unnatural (""哪种厂商工作"", ""厂商是什么时候成立的"", ""你听说过厂商吗"").",exclude 2864
+N_PLACE.WORK-T5-08,2864,ALL,fit,FIX,"Bare 厂商 as employer type, meeting host or a famous named entity is unnatural (""哪种厂商工作"", ""厂商是什么时候成立的"", ""你听说过厂商吗"").",exclude 2864
+N_PLACE.WORK-T5-07,193,A1,chinese,FIX,"""你听说过公司吗？"" with bare 公司 is not natural; needs 这家/那家公司.",你听说过那家{W}吗？在我们这里很有名。
+N_PLACE.WORK-T5-02,1340,ALL,fit,FIX,"""I want to join the 中心 and do not know how to apply"" with bare 中心 is not natural (which centre?).",exclude 1340
+N_STUDYWORK.BOOK-T4-04,1803,ALL,english,MINOR,"""Your teaching material looks good. Where did you get yours?"" is unnatural English for course materials.",
+N_MONEY.MONEY-T4-03,1547,A1,prompt,FIX,"The shop owner A is talking to is B (a woman) but the prompt says ""if he has any small change"".",Ask the shop owner politely if she has any small change and say you would like to get some.
+N_PERSONROLE.CLIENT-T5-10,1806,B,prompt,FIX,"B is replying to a man but the prompt says ""Say she is right"".","Say he is right, because the last partner you worked with had a low price but lots of problems."
+N_STUDYWORK.BOOK-T2-03,307,B,prompt,FIX,"B is asking the male customer but the prompt says ""what kind of book she wants"".",Say yes and ask what kind of book he wants.
+N_STUDYWORK.BOOK-T5-03,2846,B,prompt,FIX,"B replies to a man but the prompt says ""if she will use this textbook every day, she should go for it"".","Say that if he will use this textbook every day, he should go for it."

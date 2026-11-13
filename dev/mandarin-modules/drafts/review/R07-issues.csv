@@ -1,0 +1,134 @@
+﻿module_id,word_id,line,kind,severity,problem,suggested_fix
+V_ROUTINE.WORK-T5-07,1981,B,prompt,FIX,"Prompt is ungrammatical (""they usually be open"").","Tell him they are usually open until eleven, but close earlier on Sundays."
+V_SOCIAL.CUSTOM-T3-02,880,A2,english,FIX,"English ""I'm always out of money before I get married"" is the wrong tense and illogical for 我结婚以前总是没有钱 (past habit).",
+V_SOCIAL.CUSTOM-T5-05,2286,B,english,FIX,"English and prompt say ""proud of it"" but the Chinese says 高兴 (happy).","Right, my son has already learned to {E}, and he's happy about it."
+V_SOCIAL.CUSTOM-T5-06,2263,A1,fit,FIX,昨天晚上 (past) with 又要 and present 我真不想 is incoherent in time; English mixes past and present.,今天晚上又要跟老板和客人吃饭，我真不想{W}。
+V_SOCIAL.JOIN-T2-03,570,A2,prompt,FIX,"A2 prompt says ""he can go"", but the listener B is a woman.",Say there is one next to the school and she can go and join tomorrow.
+V_SOCIAL.JOIN-T2-05,570,A2,prompt,FIX,"A2 prompt says ""if he will join ... his opinion"", but the listener B is a woman.","Say good, if she joins, everyone will hear her opinion."
+V_SOCIAL.JOIN-T4-04,1812,A2,prompt,FIX,"A2 prompt says ""once he can join you, he can practise"", but the listener B is a woman.","Say great, once she joins you, she can practise tomorrow."
+V_SOCIAL.JOIN-T4-06,1408,A2,prompt,FIX,"A2 prompt says ""if he will take part"", but the listener B is a woman.","Say great, if she takes part, you will all get more ideas."
+V_SOCIAL.LET-T3-02,854,A2,prompt,FIX,"A2 prompt says ""Ask if he is going to invite you"", but the listener B is a woman.","Ask if she is going to invite you, and say you will definitely come with a gift."
+V_SOCIAL.LET-T1-02,188,A2,chinese,FIX,"怎么做 is wrong for ""What can I do?""; the idiom is 怎么办.",她不{W}，怎么办？
+V_SOCIAL.PERSON-T2-03,540,ALL,fit,FIX,"Taking care of the teacher (""所有老师我都想照顾"", ""明天要好好照顾老师"") is a nonsensical collocation/situation for 照顾.",exclude 540
+V_SOCIAL.WITH-T3-06,1047,B,chinese,FIX,相处很开心 lacks the complement 得 (should be 相处得很开心).,是啊，我们{W}得很开心，有时候一起吃饭。
+V_SOCIAL.WITH-T3-06,1047,A2,fit,FIX,"""我和邻居几乎不相处"" means hardly any contact but the English ""I hardly ever get along with my neighbors"" says they are on bad terms; also an odd reply to ""get along very well"".",exclude 1047
+V_SOCIAL.WITH-T4-03,1704,ALL,english,FIX,"Slot gloss ""get in touch"" gives wrong English: ""a hard person to get in touch with"" / ""every time I get in touch with him"" do not match 接触 (deal with, come into contact with).",
+V_SOCIAL.WITH-T5-01,1865,A2,fit,FIX,"""今年我们也想跟你们团聚"" makes no sense: A wants to reunite with B's family, though the previous line is about B going home to her own family.",
+V_TRADE.BUSINESS-T5-02,2630,B,fit,FIX,"""先找到好的公司来采购这些产品"" means find a company to buy the products; the buyer is ""us"", so the line is illogical for 采购 (it fits 销售).",exclude 2630
+V_TRADE.BUY-T3-03,1160,ALL,fit,FIX,"Illogical: bad weather is the reason NOT to cancel the tickets, and cancelling ""when the weather is better"" makes no sense.",exclude 1160
+V_TRADE.BUY-T3-06,885,ALL,fit,FIX,"Borrowing a new computer and ""computers aren't cheap, think it over before you borrow one"" is illogical for 借 (it fits 买).",exclude 885
+V_TRADE.MONEY-T3-04,1139,A2,fit,FIX,"""希望他们还收费"" (I hope they still charge a fee) is illogical when the speaker wants to avoid the fee.",exclude 1139
+V_TRADE.PAY-T5-06,1948,ALL,fit,FIX,"消费 means consumer spending; ""公司每年在广告上消费一百多万 / 不值得消费"" is wrong for a company's ad budget (花/投入).",exclude 1948
+V_WANTLIKE.WANT-T4-05,1667,ALL,fit,FIX,"""我们真的争取更多的时间"" lacks a modal (真的要争取); English ""We really fight for more time"" is wrong; the module only works for need-type words.",exclude 1667
+X_ADVERB.ALL-T2-02,533,B,fit,FIX,"""我全做完了，就一个不会"" contradicts itself (finished all, yet one not done).",我做了很多，就一个不会。 (or exclude 533)
+X_ADVERB.DEGREE-T2-09,711,B,chinese,FIX,"""我十分能吃辣"" is ungrammatical/unnatural (十分 does not modify 能 + verb like this).",exclude 711
+X_ADVERB.GUESS-T4-07,458,ALL,fit,FIX,"A says ""I disagree"" with a claim that young people are NOT necessarily smarter, then A2 agrees with the same idea; the module only works with 一定 (affirmative claim).",exclude 458
+X_ADVERB.JUST-T1-03,103,ALL,fit,FIX,"The three lines do not cohere (""I'll go buy it right away"" / ""OK, I'll pay right away"" / ""No, I'll be back right away"").",
+X_ADVERB.JUST-T4-05,1690,ALL,chinese,FIX,"""考试立即要开始了"" and ""我们立即不说话了"" are ungrammatical; 立即 modifies an action to do now, not 要开始 or a negation.",exclude 1690
+X_ADVERB.JUST-T4-06,1690,ALL,chinese,FIX,"""搬家的车立即到楼下了"" and ""我们立即能出发了"" are unnatural; 立即 cannot be used for the near future like 马上.",exclude 1690
+X_ADVERB.MANNER-T1-03,106,A2,prompt,FIX,"A2 prompt says ""Say he did say it like this"", but the listener B is a woman.",Say you heard her say it like this.
+X_ADVERB.MANNER-T3-03,1096,ALL,chinese,FIX,"赶快 (hurry up) is used to describe someone's past speaking manner (""她赶快说了一次"", ""她赶快说的时候""), which is not a valid use.",exclude 1096
+X_ADVERB.MANNER-T5-03,1096,ALL,chinese,FIX,"赶快 describing a dog's walking (""那只狗赶快走过来"", ""它赶快走，好像在找东西"") is wrong and self-contradictory; 赶快 is for urgent actions.",exclude 1096
+X_ADVERB.NEVER-T3-03,988,B,chinese,FIX,"""我也从来没想到简单"" is garbled (should be 没想到这么简单) and the English ""never imagined it'd be this easy"" does not match.",别紧张，我第一次坐也很紧张，可是{W}没觉得难。 (or exclude 988)
+X_ADVERB.ORIGINAL-T4-03,1617,A2,english,FIX,"English adds content not in the Chinese (""in a few days"", ""but one is fine for now""), and the Chinese says nothing of the sort.",It might go on sale. I originally wanted to buy two.
+X_ADVERB.SEQUENCE-T3-03,924,B,chinese,FIX,"""好，逛街接着，我还要回公司"" is garbled word order (接着 cannot follow 逛街 like this).",好，逛街以后，我还要回公司。 (or 好，我{W}还要回公司。)
+X_ADVERB.SO-T3-01,1071,ALL,prompt,FIX,"Prompts leak the slot gloss ""how"" into ungrammatical English (""Say the sky is how blue"", ""it looks how comfortable"").",Say the sky is so blue and you want to go too.
+X_ADVERB.SO-T3-02,1071,ALL,prompt,FIX,"Prompts leak the slot gloss ""how"" into ungrammatical English (""her kid is how cute"", ""look how happy"").",Tell her what a cute kid she has.
+X_ADVERB.SO-T3-03,1071,ALL,prompt,FIX,"Prompts leak the slot gloss ""how"" into ungrammatical English (""the soup here is how fragrant"", ""it's how delicious"").",Say how fragrant the soup here is.
+X_ADVERB.STILL-T5-04,1965,ALL,fit,FIX,"Illogical: ""still that cheap? I remember it used to be expensive"" followed by ""prices are still the same as before"" and ""prices still low"".",exclude 1965
+X_FUNCTION.ABOUT-T3-03,1173,A2,prompt,FIX,"Prompt says ""according to what he said"" (and the line says 你说的 though B had said 按照他的话), so prompt and line disagree and ""he"" does not fit the listener.","好，按照他说的，我们明天去看看。 / Say according to what the seller said, you'll go and look tomorrow."
+V_ROUTINE.WORK-T3-04,836,B,prompt,FIX,"B prompt says ""Say she has to work overtime again"" but the listener A is a man.","Say he has to work overtime again, so you will go and eat by yourself."
+V_SOCIAL.LET-T2-06,666,B,prompt,FIX,"B prompt says ""she should go and ask"", but the listener A is a man.","Say OK, he should go and ask for one while you wait here."
+V_SOCIAL.LET-T4-03,1472,B,prompt,FIX,"B prompt says ""Say she is right"", but the listener A is a man.",Say he is right and you will go and encourage that guy right away.
+V_SOCIAL.LET-T4-04,1472,B,prompt,FIX,"B prompt says ""she can encourage the other half"", but the listener A is a man.","Say no problem, you will encourage half of them and he can encourage the other half."
+V_TRADE.ADDED-T4-02,3131,B,prompt,FIX,"B prompt says ""she can pay by scanning the QR code"", but the listener A is a man.","Say yes, he can pay by scanning the QR code."
+X_ADVERB.DEGREE-T3-10,1104,B,prompt,FIX,"B prompt says ""she should try them on"", but the listener A is a man.","Say no problem, this pair is quite big and he should try them on."
+X_ADVERB.DEGREE-T3-10,38,B,prompt,FIX,"B prompt says ""she should try them on"", but the listener A is a man.","Say no problem, this pair is really big and he should try them on."
+X_ADVERB.DEGREE-T5-01,1978,B,prompt,FIX,"B prompt says ""she shouldn't be too nervous"", but the listener A is a man.","Say you get it, the exam is extremely important, but he shouldn't be too nervous."
+X_ADVERB.DEGREE-T5-01,38,B,prompt,FIX,"B prompt says ""she shouldn't be too nervous"", but the listener A is a man.","Say you get it, the exam is really important, but he shouldn't be too nervous."
+X_ADVERB.MANNER-T3-01,1096,B,prompt,FIX,"B prompt says ""she can go first"", but the listener A is a man.","Say OK, he can go first and you'll follow quickly."
+X_ADVERB.MANNER-T3-06,1102,B,prompt,FIX,"B prompt says ""she should help if you get it wrong"", but the listener A is a man.","Say sure, you'll speak it as much as possible, and he should help if you get it wrong."
+X_ADVERB.MANNER-T5-02,1096,B,prompt,FIX,"B prompt says ""she should look through them quickly"", but the listener A is a man.","Say OK, you'll take the old ones out, and he should look through them quickly."
+V_ROUTINE.WORK-T3-05,836,A2,prompt,MINOR,"Prompt adds ""if she is willing"", which is not in the line.",Encourage her: she will surely be able to buy one if she works overtime all the time.
+V_ROUTINE.WORK-T5-03,2811,A1,prompt,MINOR,"Prompt says ""after she decides to start"", which differs from the line (after she starts).",Ask her what she thinks will be different about life after she starts a business.
+V_ROUTINE.WORK-T5-09,2485,ALL,fit,MINOR,"担任 directly followed by a bare relative clause (担任需要一直说话的 / 担任能跟人聊天的) is unnatural and the English ""serve as anything where I have to talk"" is stilted.",exclude 2485
+V_SOCIAL.CONFLICT-T5-01,2555,A1,prompt,MINOR,"Prompt adds ""wants to attack"", which is not in the line.",Ask her why she always attacks that guy when he hasn't done anything wrong.
+V_SOCIAL.CUSTOM-T2-03,215,A1,prompt,MINOR,"Prompt adds ""has to celebrate"", which is not in the line.",Ask her if she gives the kids red envelopes when she celebrates New Year.
+V_SOCIAL.CUSTOM-T4-02,1552,A1,english,MINOR,"English ""Did you visit graves?"" lacks the article and sounds unnatural.",
+V_SOCIAL.CUSTOM-T4-02,1552,A2,english,MINOR,"English ""once you visit graves"" should be ""once you've visited the graves"".",
+V_SOCIAL.CUSTOM-T5-02,9003,A1,prompt,MINOR,"Prompt adds ""likes to"", which is not in the line.","Ask whether her family goes to pay a New Year visit first on the first morning of the New Year, or eats first."
+V_SOCIAL.CUSTOM-T5-06,2263,A2,chinese,MINOR,敬酒完 is an unnatural split of a separable verb (should be 敬完酒).,
+V_SOCIAL.CUSTOM-T5-08,2262,B,english,MINOR,"English ""I've had to"" does not match 要 (future/obligation this week).",Same here. This week I have to {E} several times and I have no time to rest.
+V_SOCIAL.HELP-T2-05,350,A1,prompt,MINOR,Prompt turns the question plus statement into a conditional and drops the question.,Say you hear she wants to open a shop and tell her you will support her.
+V_SOCIAL.HELP-T5-02,2469,A2,chinese,MINOR,协助 used with no object (大家一起协助) is incomplete; it needs an object.,当然可以，大家一起协助他们，他们会好得快一点。
+V_SOCIAL.LET-T4-04,1472,ALL,fit,MINOR,"""I'll encourage half of them, you the other half; after we encourage them all, count how many people"" does not make sense for 鼓励 (needs invite/mobilise).",exclude 1472
+V_SOCIAL.LET-T5-03,2828,B,chinese,MINOR,"带领 with no object (一起带领) is incomplete, while the English supplies ""them"".",所以我们两个人一起{W}他们，应该没有问题。
+V_SOCIAL.LET-T5-06,1472,ALL,fit,MINOR,"Going to ""encourage"" an old man who lives alone once a week is odd (visiting/caring would fit); the word does not fit the situation.",exclude 1472
+V_SOCIAL.PERSON-T3-01,1066,ALL,english,MINOR,"""accompany Grandma / accompany you properly"" is stilted English for 陪 (natural: keep company / spend time with).",
+V_SOCIAL.PERSON-T3-04,1066,A1,english,MINOR,"""I didn't accompany you properly yesterday"" is stilted English for 陪.",
+V_SOCIAL.PERSON-T5-03,2553,ALL,chinese,MINOR,关怀 is stiff/formal for moving home to look after one's mother (照顾 would be natural); 说不用关怀她 is stilted.,exclude 2553
+V_SOCIAL.WITH-T3-01,1047,A1,chinese,MINOR,"""你想跟新同事相处吗？"" (do you want to get along with) is unnatural; people ask how it is going (相处得怎么样).",
+V_SOCIAL.WITH-T4-08,1672,ALL,english,MINOR,"""exchange ideas with clients for hours every day"" is stilted English for 交流 with clients.",
+V_SOCIAL.WITH-T5-05,2530,ALL,fit,MINOR,"互动 does not fit a big work project (""需要很多人一起互动"", ""如果大家不会互动，事情就很难做好""); that is 合作.",exclude 2530
+V_SOCIAL.WITH-T5-07,521,ALL,fit,MINOR,见面 with colleagues at a new company (whom you see every day) is odd; the module fits 互动 not 见面.,exclude 521
+V_TRADE.ADDED-T4-01,3131,ALL,chinese,MINOR,"付款 (我来付款, 我先去付款) is stiff for friends splitting a restaurant bill (买单/结账 would be natural).",exclude 3131
+V_TRADE.BUY-T2-01,260,ALL,english,MINOR,"Slot gloss ""change"" is ambiguous/wrong English for exchanging an item (""Where can I change this?""); should be ""exchange"".",
+V_TRADE.BUY-T2-03,260,ALL,fit,MINOR,"换衣服 (change clothes) is mixed with exchanging items (""which ones do you want to change?""), so the meaning is unclear.",
+V_TRADE.BUY-T4-01,1211,A1,english,MINOR,"Slot gloss ""reserve"" gives stilted English: ""reserve a plane ticket"" (natural: book a flight/ticket).",
+V_TRADE.MONEY-T3-01,1131,A2,fit,MINOR,"""那我现在就赚钱"" / ""I'll make money right now"" is not something people say.",exclude 1131
+V_TRADE.PAY-T2-01,247,B,chinese,MINOR,"""买东西容易花多啊"" is incomplete/unnatural (花多 without 钱 or 很多).",买东西很容易{W}很多。
+V_TRADE.PAY-T5-03,1949,A2,english,MINOR,"English ""as long as you're willing to pay"" loses the meaning (put in effort); the prompt repeats it.","Say: ""As long as you're willing to put in the effort, you'll get results."""
+V_TRADE.PAY-T5-04,2357,A2,english,MINOR,"English ""so we don't invest it"" has a stray ""it"" that is not in the Chinese.","Let's plan first, so we don't invest and then find out it's wrong."
+V_WANTLIKE.WANT-T3-01,878,B,chinese,MINOR,"B answers a ""this weekend"" question with 今天, which does not match A1 (the English drops ""today"").",我周末想要去公园，你呢？
+X_ADVERB.ADDED-T3-02,3201,B,fit,MINOR,"B asks how many there are altogether right after A already said ""我们一共四个人"", so the reply is redundant.",
+X_ADVERB.ADDED-T3-06,3201,A1,english,MINOR,"""How many clothes did you buy"" is not natural English (items of clothing / pieces of clothing).",How many pieces of clothing did you buy {E} last month?
+X_ADVERB.ADDED-T4-U01,3194,ALL,fit,MINOR,"Exam is the day after tomorrow but B says she will call ""tomorrow morning""; B has no exam yet A2 tells her 你也千万别忘了带笔.",
+X_ADVERB.ADDED-T4-U02,3194,A1,english,MINOR,"English adds ""alone"", which is not in the Chinese.",
+X_ADVERB.ADVISE-T2-02,784,B,prompt,MINOR,"Prompt is ungrammatical (""if he really have no choice"").","Ask him if he really has no choice but to walk, since it is so late."
+X_ADVERB.ALWAYS-T2-01,574,ALL,english,MINOR,"Chinese 一直是/一直记得 states a state that has always held, but the English says ""we'll always be good friends"" (future).","We've always been good friends, right?"
+X_ADVERB.ATALL-T2-03,778,ALL,chinese,MINOR,"根本 in questions (""你根本不喜欢这个吗？"", ""你根本不知道它是什么吧？"") is unnatural; it is used in statements.",exclude 778
+X_ADVERB.CERTAIN-T1-04,162,A2,fit,MINOR,"""好，一定请你吃饭"" does not follow from ""I know it, I've been there""; it comes out of nowhere.",
+X_ADVERB.CONTRAST-T4-01,1517,A1,prompt,MINOR,"Prompt repeats ""but ... but"" awkwardly, mirroring the slot.","Say it rained, yet it didn't get colder; it got hotter."
+X_ADVERB.DEGREE-T1-01,159,ALL,english,MINOR,"""Is this especially tasty?"" / ""especially"" is unnatural spoken English for 特别 here (really/particularly).",
+X_ADVERB.DEGREE-T1-02,159,ALL,english,MINOR,"""I'm especially tired"", ""It's especially hot"" is unnatural spoken English for 特别 (really).",
+X_ADVERB.DEGREE-T1-03,159,ALL,english,MINOR,"""That one is especially big / the small one is especially new"" is unnatural English for 特别 (really).",
+X_ADVERB.DEGREE-T1-04,159,ALL,english,MINOR,"""The school is especially big / the teachers are especially busy"" is unnatural English for 特别 (really).",
+X_ADVERB.DEGREE-T1-05,159,ALL,english,MINOR,"""I'm especially cold / It's especially cold here"" is unnatural spoken English for 特别 (really).",
+X_ADVERB.DEGREE-T1-06,159,ALL,english,MINOR,"""Is work especially important?"" is unnatural English for 特别重要 (really/so important).",
+X_ADVERB.DEGREE-T1-07,159,ALL,english,MINOR,"""Your friend is especially tall"" is unnatural English for 特别高 (really tall).",
+X_ADVERB.DEGREE-T1-08,159,ALL,english,MINOR,"""The tea is especially hot / mine is especially cold"" is unnatural English for 特别 (really).",
+X_ADVERB.DEGREE-T2-10,749,ALL,fit,MINOR,"真正 in ""我真正喜欢苹果，天天吃"" implies a contrast with false liking; unnatural here.",exclude 749
+X_ADVERB.EXTENT-T3-01,845,A2,chinese,MINOR,"""我现在至少有三百块"" is odd: you know exactly how much money you have, so 至少 does not fit.",exclude 845
+X_ADVERB.EXTENT-T5-03,1920,A2,chinese,MINOR,"""我带的钱最多有三千块"" is odd: you know exactly how much money you brought, so 最多 does not fit.",
+X_ADVERB.EXTENT-T5-04,1920,A2,fit,MINOR,"""学语言最多要坚持一年才会有变化，别着急"" is contradictory (at most a year does not justify ""don't rush""); 至少 would fit.",exclude 1920
+X_ADVERB.FREQ-T2-02,764,B,fit,MINOR,"B says ""that's not good"" about skipping breakfast but then says she only SOMETIMES has breakfast, which undermines the reply.",exclude 764
+X_ADVERB.FREQ-T2-03,341,ALL,english,MINOR,"English ""I go jogging often in the park"", ""I go at seven often"" has the adverb in unnatural positions.",
+X_ADVERB.FREQ-T2-04,341,ALL,english,MINOR,"English puts ""often"" at the end (""I eat often at that noodle shop"", ""I order the large bowl often""), which is not natural.",
+X_ADVERB.FREQ-T2-06,341,ALL,english,MINOR,"English ""I wash my clothes often at home"", ""I give them a wash often"" has the adverb in an unnatural position.",
+X_ADVERB.FREQ-T3-02,341,ALL,english,MINOR,"English ""I check what others say first often, then buy"" has the adverb in an unnatural position.",
+X_ADVERB.FREQ-T3-04,1121,ALL,fit,MINOR,"""我晚上很少看新闻，了解一下世界"" is self-contradictory, and A2 ""电影也不错，我周末很少去看电影"" praises movies while saying he seldom goes.",exclude 1121
+X_ADVERB.FREQ-T3-09,341,ALL,english,MINOR,"English ""I read for a while before bed often"", ""I read for half an hour often"" has the adverb in an unnatural position.",
+X_ADVERB.FREQ-T4-08,341,ALL,english,MINOR,"English ""I play with the kids often for a while first"", ""I take a shower first often"" has the adverb in an unnatural position.",
+X_ADVERB.FREQ-T4-08,1260,A2,fit,MINOR,"""这样很好，孩子偶尔等着我们回家"" praises the routine yet says the kids only occasionally wait; illogical.",exclude 1260
+X_ADVERB.FREQ-T4-09,311,ALL,fit,MINOR,"一般 with 想起 (""我一般想起小时候的事"", ""我一般想回到那个时候"") is odd; recalling the past is not a habitual routine, so it only fits 偶尔/常常.",exclude 311
+X_ADVERB.GRADUAL-T5-01,2009,B,chinese,MINOR,"""雨连续下"" and ""不要再连续下了"" are unnatural; 连续 needs the verb-object form (连续下雨).",exclude 2009
+X_ADVERB.GUESS-T1-02,85,ALL,english,MINOR,"English ""Then I'll maybe stay home"" / ""I'll maybe stay home too"" is not natural spoken English (I might stay home).",
+X_ADVERB.GUESS-T1-03,85,ALL,english,MINOR,"English ""I'll maybe get two / one"" is not natural spoken English (I might get).",
+X_ADVERB.GUESS-T4-02,1608,B,english,MINOR,"English ""I'll maybe make a soup"" is not natural spoken English (I might make a soup).",Let's buy some then. I might make a soup.
+X_ADVERB.GUESS-T5-02,1916,A2,chinese,MINOR,"""我们多半还可以叫几个同学"" is odd: 多半 expresses probability, not a possibility that is up to the speakers.",
+X_ADVERB.JUST-T3-02,856,B,chinese,MINOR,"""我们立刻能收完"" is unnatural (立刻 before 能).",
+X_ADVERB.MORE-T4-01,1777,A1,english,MINOR,"English ""more and more warm"" is not natural (warmer and warmer); same issue with ""more and more beautiful"".",
+X_ADVERB.MORE-T4-02,1777,B,english,MINOR,"English ""I can't live without my phone more and more"" is not natural English.","Yeah, I'm more and more unable to live without my phone."
+X_ADVERB.NEGATIVE-T5-01,1917,A1,chinese,MINOR,"""你真的绝不每天这么晚才睡觉吗？"" is an unnatural question (绝不 is a firm statement of intention, not used in a question like this).",exclude 1917
+X_ADVERB.ONLY-T2-02,689,A2,chinese,MINOR,"""那我们只是点两杯"" is unnatural (should be 只点); the roles of A and B are also unclear.",
+X_ADVERB.ONLY-T2-03,689,A2,chinese,MINOR,"""好，你只是说一句"" does not work as a ""just say one thing"" invitation.",
+X_ADVERB.ONLY-T2-06,689,A2,chinese,MINOR,"""那我只是做一个菜"" is unnatural (那我就做一个菜 / 只做一个菜).",
+X_ADVERB.PROGRESS-T2-01,390,ALL,english,MINOR,"""currently"" (""I'm currently cooking"", ""what are you currently doing"") is stilted spoken English for 正在 (use the plain progressive).",
+X_ADVERB.PROGRESS-T2-02,390,ALL,fit,MINOR,"The household is incoherent: Dad is on the phone, B is cooking and wants to call him to eat, and A is in the shower.",
+X_ADVERB.RHETORIC-T2-01,395,A2,chinese,MINOR,"""我就知道你到底会买的"" is awkward (到底 + 会 reads wrongly; 我就知道你到底还是会买的).",我就知道你到底还是会买的。
+X_ADVERB.SCOPE-T3-03,960,A2,english,MINOR,"English adds ""just not there"", which is not in the Chinese.",Found it! It was in the car. I looked everywhere.
+X_ADVERB.STILL-T1-03,92,A2,fit,MINOR,"""好，我还没吃饭"" does not follow from B's ""I still want to, but it's too cold"".",
+X_ADVERB.SUDDEN-T5-04,457,ALL,fit,MINOR,"A1 says the friend showed up after two hours; B asks whether he called, and A2 says he called and ""suddenly remembered to tell us"", which contradicts him arriving.",
+X_ADVERB.SURPRISE-T3-04,1165,ALL,english,MINOR,"""It's unexpectedly so cold"", ""You're unexpectedly only wearing one layer"" is not natural English for 没想到 (I didn't expect).",
+X_ADVERB.SURPRISE-T3-05,1165,A1,english,MINOR,"""this shop is unexpectedly so cheap"" / ""the food is unexpectedly this good"" is not natural English for 没想到.",
+X_FUNCTION.ABOUT-T3-01,1173,ALL,fit,MINOR,"A1 opens with ""好，按照你说的"" although B has said nothing yet, and ""按照我们的计划，也可以"" does not settle the conflict B raised.",

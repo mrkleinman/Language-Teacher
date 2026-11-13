@@ -1,0 +1,265 @@
+﻿module_id,word_id,line,kind,severity,problem,suggested_fix
+N_EVENT.FESTIVAL-T4-08,1567,A1,english,MINOR,"""the Qingming"" reads oddly; Qingming normally takes no article (""at Qingming"").",Do you eat anything special at Qingming?
+N_EVENT.FESTIVAL-T4-09,1567,A1,english,MINOR,"""the Qingming"" takes no article in natural English.",Where should we go for Qingming?
+N_EVENT.FESTIVAL-T5-05,2268,B,fit,MINOR,"Older relatives insisting on lots of rules does not fit the start of spring, which is not a family festival.",
+N_EVENT.FESTIVAL-T5-06,2268,ALL,fit,FIX,"Start of spring is not a day off, so asking if the company works and celebrating after work makes no sense.",exclude 2268
+N_EVENT.FESTIVAL-T5-07,2268,ALL,fit,FIX,Being homesick abroad and everyone at home on the start of spring makes no sense; it is not a family holiday.,exclude 2268
+N_EVENT.FESTIVAL-T5-08,2268,ALL,fit,MINOR,"Start of spring is a solar term, not an occasion to ""introduce"" with a story to foreign friends in this way; weak but acceptable.",
+N_EVENT.FESTIVAL-T5-09,214,ALL,fit,FIX,"Spring Festival always falls on the first day of the first lunar month, so asking which lunar date it is makes no sense.",exclude 214
+N_EVENT.FESTIVAL-T5-10,214,B,chinese,MINOR,"""{W}的东西"" for festival food is vague/unnatural; say what people eat.",每个地方不一样，{W}吃的东西有很多讲究。
+N_EVENT.FESTIVAL-T5-10,2268,B,chinese,MINOR,"""{W}的东西"" for festival food is vague/unnatural; say what people eat.",每个地方不一样，{W}吃的东西有很多讲究。
+N_EVENT.MEETING-T5-05,2840,A1,english,MINOR,"""last night's Olympics"" is odd; the Olympics is not a single evening event.",Did you watch the Olympics on TV last night?
+N_EVENT.MEETING-T5-08,738,B,fit,MINOR,"""a lot of new stuff at this match"" does not make sense for a match.",exclude 738
+N_EVENT.PARTY-T5-07,2259,A1,english,MINOR,"""yesterday's baby's first-month party"" has a clumsy double possessive.",Did you have fun at the baby's first-month party yesterday?
+N_EVENT.SPORT-T2-01,633,ALL,fit,MINOR,Asking if she likes mahjong then talking only about watching mahjong matches is a slightly odd fit.,
+N_EVENT.SPORT-T2-02,633,B,chinese,FIX,"""麻将不太好"" is not grammatical for skill; needs a verb complement.",我会一点，不过{W}打得不太好。
+N_EVENT.SPORT-T3-01,898,ALL,chinese,FIX,The word is written 遊戏 with the traditional character 遊; simplified is 游戏.,replace 遊戏 with 游戏 in the word form
+N_EVENT.SPORT-T3-02,407,ALL,english,MINOR,"""football competition"" is unnatural; say ""football match"".",
+N_EVENT.SPORT-T3-02,898,ALL,chinese,FIX,The word is written 遊戏 with the traditional character 遊; simplified is 游戏.,replace 遊戏 with 游戏 in the word form
+N_EVENT.SPORT-T3-02,898,ALL,english,MINOR,"""game competition"" is unnatural; say ""gaming tournament"".",
+N_EVENT.SPORT-T3-05,898,ALL,chinese,FIX,The word is written 遊戏 with the traditional character 遊; simplified is 游戏.,replace 遊戏 with 游戏 in the word form
+N_EVENT.SPORT-T3-06,898,ALL,english,FIX,"""Do you think game depends on luck"" / ""good at game"" / ""practising game"": bare singular slot ""game"" is ungrammatical.",Do you think games depend on luck or on practice?
+N_EVENT.SPORT-T3-06,898,ALL,chinese,FIX,The word is written 遊戏 with the traditional character 遊; simplified is 游戏.,replace 遊戏 with 游戏 in the word form
+N_EVENT.SPORT-T3-07,407,B,chinese,MINOR,"""教我足球"" is stilted; 教我踢足球 is natural.",
+N_EVENT.SPORT-T3-07,898,B,chinese,FIX,"""教我游戏"" is not a natural collocation; needs 玩.",小学的时候，我哥哥常常教我玩{W}。
+N_EVENT.SPORT-T3-07,898,ALL,chinese,FIX,The word is written 遊戏 with the traditional character 遊; simplified is 游戏.,replace 遊戏 with 游戏 in the word form
+N_EVENT.SPORT-T4-05,1295,ALL,chinese,FIX,"Go is ""下围棋"", not ""玩围棋"".",exclude 1295
+N_EVENT.SPORT-T4-08,407,ALL,english,MINOR,"""football competition"" is unnatural English for 足球比赛; say ""football match"".",
+N_EVENT.SPORT-T4-09,407,ALL,chinese,MINOR,"""教我足球 / 学足球"" is stilted; natural is 踢足球.",
+N_EVENT.SPORT-T5-01,2264,A1,chinese,MINOR,"""例如"" is written style; casual speech uses 比如.",退休以后我想学点新东西，比如{W}。
+N_EVENT.SPORT-T5-01,407,ALL,fit,MINOR,Taking up football as a new post-retirement hobby with football classes nearby is a poor fit.,exclude 407
+N_EVENT.SPORT-T5-01,407,A1,chinese,MINOR,"""例如"" is written style; casual speech uses 比如.",退休以后我想学点新东西，比如{W}。
+N_EVENT.SPORT-T5-03,2264,ALL,fit,MINOR,A single very young male contestant winning a square dancing (group dance) competition is an odd fit.,exclude 2264
+N_EVENT.SPORT-T5-03,407,ALL,english,MINOR,"""football competition"" is unnatural; say ""football match/tournament"".",
+N_FAMILY.EXTENDED-T2-02,629,B,chinese,MINOR,B refers to A's uncle with bare 叔叔; natural is 你叔叔.,很好看！你叔叔一定会喜欢的。
+N_FAMILY.EXTENDED-T2-03,629,B,chinese,MINOR,B says bare 叔叔 for A's uncle; natural is 你叔叔.,带你叔叔去那家火锅店吧。
+N_FAMILY.EXTENDED-T2-05,629,B,chinese,MINOR,B says bare 叔叔 for A's uncle; natural is 你叔叔.,快去吧，希望你叔叔好起来。
+N_FAMILY.EXTENDED-T4-01,1288,B,chinese,MINOR,B says bare 姑姑 for A's aunt; natural is 你姑姑.,带点好茶叶吧，你姑姑一定会喜欢的。
+N_FAMILY.EXTENDED-T4-03,1288,B,chinese,MINOR,B says bare 姑姑 for A's aunt; natural is 你姑姑.,真的吗？我最爱吃肉了，你姑姑还会做什么菜？
+N_FAMILY.EXTENDED-T4-05,1288,B,chinese,MINOR,B says bare 姑姑 for A's aunt; natural is 你姑姑.,那你也送你姑姑一件外套吧，天冷了。
+N_FAMILY.EXTENDED-T4-06,1288,B,chinese,MINOR,B says bare 姑姑 for A's aunt; natural is 你姑姑.,好啊，你姑姑喜欢什么，茶叶还是书？
+N_FAMILY.EXTENDED-T5-03,2857,ALL,fit,MINOR,A coworker's maternal uncle's wife visiting the office with food is an odd scenario for 舅妈.,
+N_FAMILY.EXTENDED-T5-06,2857,ALL,fit,MINOR,Naming a neighbor's 舅妈 (a specific kin term) is odd; fits 阿姨 but not 舅妈.,exclude 2857
+N_FAMILY.GROUP-T1-03,175,A2,prompt,FIX,"A2 prompt says ""his parents"" for B who is a woman; should be ""her parents"".",Say you'll go see her parents tomorrow.
+N_FAMILY.GROUP-T1-04,173,ALL,chinese,MINOR,"""你的家庭大吗 / 我家庭不大"" is stilted; 家庭 is not used like this in casual speech.",
+N_FAMILY.GROUP-T1-05,175,B,chinese,MINOR,"""父母喜欢什么"" lacks 你; reads as parents in general.",买什么？你父母喜欢什么？
+N_FAMILY.GROUP-T1-06,173,A1,chinese,FIX,"""你有好家庭"" is missing 个 and is unnatural.",你有个好{W}。
+N_FAMILY.GROUP-T1-06,173,B,chinese,MINOR,"""我家庭很好"" is stilted.",
+N_FAMILY.GROUP-T2-01,626,ALL,english,MINOR,"""elders"" is awkward English for 长辈; ""older relatives"" is natural.",
+N_FAMILY.GROUP-T2-05,626,A1,chinese,FIX,"""我想带你认识我长辈吧"" clashes 想 with 吧 and lacks 的/一下.",我带你认识一下我的{W}吧。
+N_FAMILY.GROUP-T2-08,548,ALL,english,FIX,"Singular ""my family member will be there too"" does not match 家人 (family); wrong number in English.","I'm having people over this weekend, and my family will be there too."
+N_FAMILY.GROUP-T3-02,626,A2,chinese,MINOR,"""我长辈"" lacks 的; sounds unnatural for 长辈.",对，我的长辈都在老家，我常回去。
+N_FAMILY.GROUP-T3-03,1195,ALL,fit,FIX,"""见到了我同事的家族"" is unnatural; you do not meet a colleague's clan.",exclude 1195
+N_FAMILY.GROUP-T3-03,173,ALL,fit,FIX,"Meeting and liking ""my coworker's 家庭"" is unnatural; people say 家人.",exclude 173
+N_FAMILY.GROUP-T3-05,1195,ALL,fit,MINOR,"""our families"" in English plural does not match the single 我们家族 and the exchange is confusing.",
+N_FAMILY.GROUP-T3-06,1189,A2,fit,MINOR,"""Take care of your children"" does not follow B's remark that the children are busy.",
+N_FAMILY.GROUP-T4-05,1553,ALL,english,MINOR,"Singular ""your ancestor"" is awkward for 祖先 (collective); use ""ancestors"".",Do you know where your ancestors used to live?
+N_FAMILY.GROUP-T4-07,1285,ALL,english,FIX,"Bare slot ""younger generation"" lacks an article (""It's tough for younger generation"", ""younger generation work a lot"").",It's tough for the younger generation these days.
+N_FAMILY.GROUP-T4-08,1194,ALL,fit,FIX,"""夫妻都来我家 / that many married couples"" makes no sense without context.",exclude 1194
+N_FAMILY.GROUP-T4-08,175,B,fit,FIX,"""那么多父母"" (that many parents) makes no sense.",exclude 175
+N_FAMILY.GROUP-T5-01,2305,ALL,fit,FIX,Extended families having much more freedom than before contradicts what an extended family is.,exclude 2305
+N_FAMILY.GROUP-T5-02,2305,A2,english,MINOR,"""the extended families from when I was a kid"" - plural is awkward.",I miss the extended family I had when I was a kid.
+N_FAMILY.GROUP-T5-03,2304,A2,chinese,MINOR,"""这样的独生子女好还是不好"" is not a natural question.",
+N_FAMILY.GROUP-T5-06,2305,ALL,fit,FIX,"""大家庭都会给孩子红包 / 大家庭真大方"" is wrong; an extended family as a whole does not give red envelopes and English plural ""extended families"" is odd.",exclude 2305
+N_FAMILY.OWN-T1-03,107,A2,chinese,MINOR,"Bare ""那女儿吃菜吧"" about B's daughter is ambiguous/unnatural; say 那你女儿.",那你女儿吃菜吧。
+N_FAMILY.OWN-T1-03,197,A2,chinese,MINOR,"Bare ""那儿子吃菜吧"" about B's son is ambiguous/unnatural; say 那你儿子.",那你儿子吃菜吧。
+N_FAMILY.OWN-T2-02,107,A2,prompt,MINOR,"English/prompt ""you'll see ... she'll see"" does not match 你会喜欢的 (you'll like her).","My daughter is a really nice person, you'll like her. / Say your daughter is a really nice person and she'll like her."
+N_FAMILY.OWN-T2-02,631,A2,prompt,MINOR,"English/prompt ""you'll see ... she'll see"" does not match 你会喜欢的 (you'll like her).","My wife is a really nice person, you'll like her. / Say your wife is a really nice person and she'll like her."
+N_FAMILY.OWN-T2-02,631,B,fit,MINOR,"Asking how old a friend's wife is is odd; the line fits a daughter, not a wife.",exclude 631
+N_FAMILY.OWN-T2-04,630,A2,chinese,FIX,"Bare ""老公做的菜"" in a man's mouth reads as his own husband; needs 你.",下次我想吃你老公做的菜。
+N_FAMILY.OWN-T2-06,552,A1,chinese,MINOR,"Bare ""兄弟最近学习很努力"" lacks 我; unnatural opener.",我兄弟最近学习很努力。
+N_FAMILY.OWN-T2-08,628,ALL,fit,FIX,"Complimenting a grandmother's looks and ""everyone says my grandmother looks just like me"" is odd.",exclude 628
+N_FAMILY.OWN-T2-09,630,ALL,fit,FIX,"""带你老公去公园"" treats a husband like a child; the module fits a daughter, not a husband.",exclude 630
+N_FAMILY.OWN-T3-02,630,A2,chinese,FIX,"Bare ""让老公多休息吧"" in a man's mouth reads as his own husband; needs 你.",太辛苦了，让你老公多休息吧。
+N_FAMILY.OWN-T5-06,2738,ALL,chinese,MINOR,"A man calling his own wife ""我夫人"" is stiff/formal for casual friends.",
+N_FAMILY.OWN-T5-07,630,A2,chinese,FIX,"Bare ""让老公多休息"" in a man's mouth reads as his own husband; needs 你.",让你老公多休息，别把身体累坏了。
+N_FOODSTUFF.FRUIT-T3-01,3007,B,english,MINOR,"Slot at sentence start after ""I do!"" is not capitalised (""I do! bananas are..."").",I do! Bananas are so sweet and tasty.
+N_FOODSTUFF.FRUIT-T3-04,3007,ALL,fit,MINOR,"""Cold bananas are the best on a hot day"" is an odd thing to say about bananas.",
+N_FOODSTUFF.FRUIT-T3-05,3007,B,chinese,MINOR,"Measure word: bananas count with 根 (三根香蕉), not 个.",我孩子也能吃三根香蕉。
+N_FOODSTUFF.FRUIT-T3-05,3007,A2,chinese,MINOR,"Measure word: bananas count with 根 (几根香蕉), not 个.",那这次多买几根香蕉回家吧。
+N_FOODSTUFF.FRUIT-T3-06,3007,ALL,fit,MINOR,Choosing bananas by how heavy they feel is not how bananas are picked (colour/ripeness).,exclude 3007
+N_FOODSTUFF.FRUIT-T4-03,3008,A1,fit,MINOR,An adult who has never tried grapes is implausible.,exclude 3008
+N_FOODSTUFF.FRUIT-T4-05,3008,ALL,fit,FIX,Buying and sharing a single grape (一颗葡萄) is not a sensible scene; grapes come in bunches.,exclude 3008
+N_FOODSTUFF.FRUIT-T5-01,3008,ALL,fit,FIX,Eating one grape every day when you get home and buying a few grapes at the supermarket is odd.,exclude 3008
+N_FOODSTUFF.FRUIT-T5-02,3008,ALL,fit,FIX,Never having tried grapes and buying one grape together is implausible.,exclude 3008
+N_FOODSTUFF.FRUIT-T5-04,3008,ALL,fit,FIX,"""买一颗大的"" / ""几颗大的葡萄"" as a gift for a friend is odd; grapes are bought by the bunch.",exclude 3008
+N_FOODSTUFF.FRUIT-T5-07,3008,A2,fit,FIX,"""我晚上去买一颗葡萄"" (buy one grape) for a picnic makes no sense.",exclude 3008
+N_FOODSTUFF.FRUIT-T5-08,3008,A2,fit,MINOR,"""One grape a day is enough"" is odd; grapes are eaten by the handful.",exclude 3008
+N_FOODSTUFF.MEAT-T2-08,550,ALL,fit,MINOR,Doctors rarely tell people to limit fish; fits meat much better.,exclude 550
+N_FOODSTUFF.MEAT-T3-03,805,ALL,fit,MINOR,Shrimp at thirty-odd yuan a kilo is unrealistically cheap.,exclude 805
+N_FOODSTUFF.MEAT-T5-03,1318,ALL,fit,FIX,Marinating crabs overnight and then cooking them is not how crab is prepared.,exclude 1318
+N_FOODSTUFF.MEAT-T5-06,167,A1,chinese,MINOR,"""当地的肉"" (the local meat) is vague; people name a dish or a specific meat.",exclude 167
+N_FOODSTUFF.SEASONING-T4-01,1528,ALL,fit,MINOR,Adding sesame to a soup to fix lack of flavour is odd.,exclude 1528
+N_FOODSTUFF.SEASONING-T4-02,638,B,fit,MINOR,"""你不吃酱油吗"" and never being used to the taste of soy sauce is implausible; people do not ""eat"" soy sauce.",exclude 638
+N_FOODSTUFF.SEASONING-T4-05,1528,ALL,fit,MINOR,A doctor telling you to eat less sesame for health is odd.,exclude 1528
+N_FOODSTUFF.SEASONING-T4-08,638,ALL,fit,MINOR,Asking whether someone can taste the soy sauce in a dish is odd; soy sauce is in nearly everything.,exclude 638
+N_FOODSTUFF.SEASONING-T5-03,2252,B,prompt,FIX,"B prompt ""Say let you see, it lists..."" is garbled.","Say you'll take a look, it lists rock sugar in the ingredients, but near the end."
+N_FOODSTUFF.SEASONING-T5-03,2252,ALL,fit,MINOR,Rock sugar is rarely written as an ingredient on a label (it would say sugar).,exclude 2252
+N_FOODSTUFF.SEASONING-T5-03,638,B,prompt,FIX,"B prompt ""Say let you see, it lists..."" is garbled.","Say you'll take a look, it lists soy sauce in the ingredients, but near the end."
+N_FOODSTUFF.SEASONING-T5-04,2252,B,fit,MINOR,A simple ten-minute recipe where you only add rock sugar does not fit; rock sugar dishes are slow-braised.,exclude 2252
+N_FOODSTUFF.SEASONING-T5-08,2252,A1,prompt,FIX,"Prompt ""ask if there are enough rock sugar"" is ungrammatical (uncountable).","Say friends are coming over this weekend, you want to cook a lot, and ask if there is enough rock sugar."
+N_FOODSTUFF.SEASONING-T5-08,638,A1,prompt,FIX,"Prompt ""ask if there are enough soy sauce"" is ungrammatical (uncountable).","Say friends are coming over this weekend, you want to cook a lot, and ask if there is enough soy sauce."
+N_FOODSTUFF.STAPLE-T1-01,74,A2,english,MINOR,"做饭 means cook/make a meal; ""make some rice"" narrows the meaning.","Okay, I'll go cook."
+N_FOODSTUFF.STAPLE-T1-03,74,ALL,english,FIX,"吃饭 means ""eat (a meal)""; ""Where do you eat rice? / I eat rice at home"" does not match the Chinese.",Where do you eat?
+N_FOODSTUFF.STAPLE-T1-04,74,ALL,english,FIX,"买饭 means buy a meal/takeout; ""buy rice"" does not match the Chinese.",Are you going to buy food?
+N_FOODSTUFF.STAPLE-T1-06,74,B,english,FIX,"做饭 means cooking; ""I like making rice"" does not match the Chinese.","Thanks, I like cooking."
+N_FOODSTUFF.STAPLE-T2-01,576,ALL,chinese,FIX,"""注意食品"" is incomplete/unnatural and English ""pay attention to your food products"" is not spoken English.",exclude 576
+N_FOODSTUFF.STAPLE-T2-02,576,ALL,english,MINOR,"""kids' food products"" is stiff English.",
+N_FOODSTUFF.STAPLE-T2-03,576,ALL,chinese,MINOR,"For travel food, 食品 is the wrong register (commercial products); people say 吃的/美食.",exclude 576
+N_FOODSTUFF.STAPLE-T2-06,576,ALL,english,FIX,"""prepare plenty of food products"" / ""tasty food products"" is not natural spoken English (食品 here means food/snacks).",
+N_FOODSTUFF.STAPLE-T5-01,2997,ALL,english,FIX,"Slot ""dumpling wrapper"" is singular but 这些饺子皮 / wrappers is plural and countable; English reads ""nobody's touching the dumpling wrapper"".","Look, nobody's touching these dumpling wrappers, what a waste."
+N_FOODSTUFF.STAPLE-T5-02,2997,ALL,fit,MINOR,"Imported dumpling wrappers and big price swings are an odd topic; English ""dumpling wrapper"" lacks plural.",
+N_FOODSTUFF.STAPLE-T5-03,2997,ALL,fit,FIX,"""Eat dumpling wrappers every day"" makes no sense; nobody eats the wrappers alone.",exclude 2997
+N_FOODSTUFF.STAPLE-T5-03,74,ALL,fit,FIX,"""朋友给了饭，我又买了一些饭"" and ""每天都吃饭"" make no sense for 饭.",exclude 74
+N_FOODSTUFF.STAPLE-T5-04,2119,ALL,chinese,FIX,"粮食 means raw grain/food supply; ""the local grain"" is not what you get used to when travelling.",exclude 2119
+N_FOODSTUFF.STAPLE-T5-07,2830,ALL,chinese,FIX,Here 成分 is used for a recipe ingredient (should be 材料/食材); 成分 means a component listed on a label.,exclude 2830
+N_FOODSTUFF.STAPLE-T5-08,2997,A2,fit,FIX,"A1 says the wrappers are already bought, but A2 says ""I'll start making the dumpling wrappers now"".",行，我现在就开始准备馅儿，你来包饺子。
+N_FOODSTUFF.VEG-T2-05,532,B,english,MINOR,"Slot at sentence start after ""Really?"" is not capitalised (""Really? tofu made with chili..."").",Really? Tofu made with chili is delicious.
+N_FOODSTUFF.VEG-T3-04,803,ALL,fit,MINOR,"Recommending ""the tomatoes"" at a restaurant and ordering a portion of tomatoes is odd; the dish would be named (e.g. tomato and egg).",exclude 803
+N_FOODSTUFF.VEG-T4-02,1529,ALL,fit,MINOR,Red beans are not eaten as a dinner dish on their own; they are a dessert/porridge ingredient.,exclude 1529
+N_FOODSTUFF.VEG-T4-04,1529,A2,chinese,MINOR,"""不太敢吃红豆"" (don't dare eat) is odd for red beans.",真的吗？我现在还是不太想吃红豆。
+N_FOODSTUFF.VEG-T4-04,532,A2,chinese,MINOR,"""不太敢吃豆腐"" (don't dare eat) is odd for tofu.",真的吗？我现在还是不太想吃豆腐。
+N_FOODSTUFF.VEG-T4-07,1529,B,fit,MINOR,Red bean prices rising after rain is an odd claim.,exclude 1529
+N_FOODSTUFF.VEG-T4-07,532,B,fit,FIX,Tofu does not get more expensive after rain; that fits vegetables.,exclude 532
+N_FOODSTUFF.VEG-T4-08,1529,ALL,fit,MINOR,"""Out of all the dishes I love red beans the most / any way you cook red beans"" does not fit red beans (a dessert ingredient).",exclude 1529
+N_FOODSTUFF.VEG-T5-02,2998,B,fit,MINOR,"""吃莲子又便宜又健康"" - lotus seeds are not cheap.",exclude 2998
+N_FOODSTUFF.VEG-T5-05,532,ALL,fit,MINOR,An adult who has never tried tofu is implausible in this setting.,exclude 532
+N_FOODSTUFF.VEG-T5-06,532,A2,fit,MINOR,"""我来洗豆腐"" (wash the tofu) is odd; wood ear is washed, tofu is not.",exclude 532
+N_FOODSTUFF.VEG-T5-07,2998,ALL,fit,MINOR,A grandmother growing lots of lotus seeds herself is an odd scenario.,exclude 2998
+N_FOODSTUFF.VEG-T5-08,532,B,prompt,FIX,"Prompt ""the tofu there are fresh and cheap"" is ungrammatical (tofu is uncountable).","Say you'll come too, the tofu there is fresh and cheap."
+N_HEALTH.CARE-T2-01,634,A2,chinese,MINOR,"""去找按摩"" is unnatural; say 去按摩 / 找个按摩的地方.",好，我明天跟你去按摩。
+N_HEALTH.CARE-T2-05,634,ALL,chinese,FIX,"""用过按摩"" is the wrong verb; massage is 做过按摩.",你以前做过按摩吗？
+N_HEALTH.CARE-T3-02,1024,ALL,fit,MINOR,"""回家用电脑看看卫生的事"" is a vague, odd response to not knowing about hygiene.",
+N_HEALTH.CARE-T3-03,1024,A2,fit,MINOR,Spending money on hygiene every month is vague/odd.,
+N_HEALTH.CARE-T3-06,634,ALL,chinese,FIX,"""用过按摩"" is the wrong verb; massage is 做过按摩.",你以前做过按摩吗？有用吗？
+N_HEALTH.CARE-T4-01,1748,ALL,fit,MINOR,"Bare ""治疗"" (treatment) as a topic to learn about is vague; fits 药 better.",exclude 1748
+N_HEALTH.CARE-T4-02,1748,ALL,fit,MINOR,"Bare ""治疗真的有用吗"" (does treatment really help) is vague; no treatment is specified.",exclude 1748
+N_HEALTH.CARE-T4-04,1748,A1,chinese,MINOR,"Going for ""treatment"" because you are tired and unwell is odd; people see a doctor.",
+N_HEALTH.CARE-T4-05,1024,ALL,fit,MINOR,"Parents asking about ""hygiene"" is vague and odd.",
+N_HEALTH.CARE-T4-06,1300,ALL,english,MINOR,"""health preservation"" is not natural spoken English; ""wellness""/""looking after your health"" is.",
+N_HEALTH.CARE-T4-07,1748,ALL,chinese,MINOR,"""这里的治疗不太好"" means quality of medical care (医疗), not treatment.",exclude 1748
+N_HEALTH.CARE-T5-01,501,A1,chinese,MINOR,"""药这个问题"" (the medicine issue) is odd.",
+N_HEALTH.CARE-T5-03,2626,ALL,chinese,MINOR,药物 is written register; friends would say 药.,
+N_HEALTH.CARE-T5-05,1748,ALL,chinese,MINOR,"Local ""treatment"" improving over ten years means medical care (医疗), not 治疗.",exclude 1748
+N_HEALTH.CARE-T5-07,2626,ALL,chinese,MINOR,药物 is written register; friends would say 药.,
+N_HEALTH.CARE-T5-08,2626,ALL,fit,FIX,"""Have you tried medicine? I tried medicine last year"" makes no sense.",exclude 2626
+N_HEALTH.CARE-T5-08,501,ALL,fit,FIX,"""Have you tried medicine? I tried medicine last year"" makes no sense.",exclude 501
+N_HEALTH.ILLNESS-T2-03,462,A2,chinese,FIX,"""看看爸爸的病"" is unnatural; you check on dad, not on his illness.",谢谢，我下班回家看看爸爸。
+N_HEALTH.ILLNESS-T2-06,462,A2,chinese,FIX,"""很少有病"" means ""rarely have illness"" but 有病 colloquially means ""crazy""; should be 生病.",对啊，运动以后我很少生病了。
+N_HEALTH.ILLNESS-T4-01,1218,A2,chinese,FIX,"""有感冒就别来公司了"" is not idiomatic; say 感冒了/有感冒的话 is unnatural.",那你快回家休息，感冒了就别来公司了。
+N_HEALTH.ILLNESS-T5-01,1218,ALL,fit,FIX,"""The news is talking about cold again / learn about cold"" does not work for the common cold, and the English is ungrammatical.",exclude 1218
+N_HEALTH.ILLNESS-T5-02,1218,ALL,fit,FIX,"""Are you afraid of cold? / the word cold makes me uncomfortable"" does not work for the common cold.",exclude 1218
+N_HEALTH.ILLNESS-T5-03,1218,ALL,fit,FIX,"""Thought about the issue of cold / books about cold"" does not work for the common cold.",exclude 1218
+N_HEALTH.ILLNESS-T5-07,2821,A2,fit,MINOR,Hurrying to buy medicine for hepatitis is not a sensible response; it needs a doctor.,exclude 2821
+N_HEALTH.ILLNESS-T5-08,2821,ALL,fit,MINOR,"Hepatitis starting three days ago with a fever and ""not serious at first"" fits a cold, not hepatitis.",exclude 2821
+N_HOME.FIXTURE-T3-02,1155,B,fit,MINOR,"""All the front doors"" in one house makes no sense; a house has one 大门.",exclude 1155
+N_HOME.FIXTURE-T3-03,1155,ALL,fit,FIX,A big front door making the house comfortable and expensive makes no sense; the module is about a big room.,exclude 1155
+N_HOME.FIXTURE-T5-01,821,ALL,fit,FIX,The landlord checking the elevator and someone needing to be home to watch makes no sense.,exclude 821
+N_HOME.FIXTURE-T5-02,1860,A2,fit,FIX,"A2 says ""we won't move in yet"" but it is B's new house; speaker mismatch.",那你们先别住进去了，等暖气装好再说。
+N_HOME.FIXTURE-T5-02,821,A2,fit,FIX,"A2 says ""we won't move in yet"" but it is B's new house; speaker mismatch.",那你们先别住进去了，等电梯装好再说。
+N_HOME.FURNITURE-T2-01,3010,A2,fit,FIX,"""My chair is too small, I can't sleep well"" - you do not sleep on a chair (module written for beds).",exclude 3010
+N_HOME.FURNITURE-T2-02,3010,A2,fit,FIX,"""A bigger chair, nicer to sleep on"" - chairs are not for sleeping.",exclude 3010
+N_HOME.FURNITURE-T2-04,3010,A2,fit,FIX,"""A small chair can be comfortable to sleep on"" - chairs are not for sleeping.",exclude 3010
+N_HOME.FURNITURE-T2-05,3010,ALL,fit,FIX,"""Are you still sleeping on the chair? Get up!"" - the scene is about a bed.",exclude 3010
+N_HOME.FURNITURE-T3-01,3010,A2,fit,FIX,"""A bigger chair, nicer to sleep on"" - chairs are not for sleeping.",exclude 3010
+N_HOME.FURNITURE-T3-02,3010,A1,fit,FIX,"""This chair is too small, I can't sleep well"" - chairs are not for sleeping.",exclude 3010
+N_HOME.FURNITURE-T3-03,3010,A2,fit,FIX,"Washed chair makes ""sleeping especially comfortable"" - chairs are not for sleeping.",exclude 3010
+N_HOME.FURNITURE-T3-05,3010,ALL,fit,FIX,Judging a hotel and telling her to stay there because of the chair makes no sense.,exclude 3010
+N_HOME.FURNITURE-T5-01,500,A2,chinese,MINOR,"""整理床"" is unnatural; say 整理床铺.",
+N_HOME.FURNITURE-T5-03,3011,ALL,fit,FIX,"""把菜放到沙发上，大家一起吃"" - putting dishes on a sofa to eat makes no sense (a table).",exclude 3011
+N_HOME.FURNITURE-T5-05,3011,ALL,fit,FIX,Sleeping badly and wanting to change the sofa as bad for sleep does not fit a sofa.,exclude 3011
+N_HOME.FURNITURE-T5-08,3011,ALL,fit,MINOR,Preparing another sofa for friends staying over is odd; a bed fits.,exclude 3011
+N_HOME.HOUSE-T2-05,477,B,fit,MINOR,"""Wait a bit before you use the room"" is a vague scene for 房间.",
+N_HOME.HOUSE-T3-01,875,ALL,chinese,FIX,"""请问去房子怎么走"" is not natural Chinese (""how do I get to the house"" needs a specific building).",exclude 875
+N_HOME.HOUSE-T3-02,402,A2,fit,FIX,"""那我在厕所里等你"" (I'll wait for you in the toilet) makes no sense.",exclude 402
+N_HOME.HOUSE-T3-02,875,ALL,chinese,MINOR,"Coming out of / waiting in ""the house"" as a place is odd.",
+N_HOME.HOUSE-T3-06,875,ALL,chinese,MINOR,"""我去房子看一下"" (go and check the house) is odd; 去房子 is not natural.",
+N_HOME.HOUSE-T3-07,875,ALL,chinese,FIX,"""来我的房子玩 / 走路十分钟就到房子了"" is stiff and unnatural; people say 来我家.",exclude 875
+N_HOME.HOUSE-T5-01,2644,ALL,chinese,MINOR,房屋 is written register; casual speech would say 房子/楼.,
+N_HOME.HOUSE-T5-03,402,ALL,fit,FIX,"""我就在厕所里等你"" (I'll wait for you in the toilet) after a landlord call makes no sense.",exclude 402
+N_HOME.HOUSE-T5-07,402,ALL,fit,MINOR,Forgetting the key to the toilet at home and calling the landlord is odd.,exclude 402
+N_ITEM.ADDED-T2-04,3215,A2,chinese,MINOR,"""想看别的票"" (look at other tickets) is unnatural; say 看看别的车次/别的票价.",太贵了，我想看看别的。
+N_ITEM.ADDED-T3-02,3218,A2,fit,MINOR,"""I used my bottle at the station yesterday"" is an odd thing to place a bottle by.",
+N_ITEM.ADDED-T3-04,3218,ALL,fit,FIX,"""Find someone to look at your bottle / hope it can still be used"" is a repair scene for a device, not a bottle.",exclude 3218
+N_ITEM.ADDED-T3-07,3217,B,chinese,FIX,"""再让我用一分钟游戏，就不用了"" - games are played (玩), not used (用).",再让我玩一分钟{W}，就不玩了。
+N_ITEM.ADDED-T4-01,3049,ALL,english,MINOR,"""light"" is ambiguous English for 灯 here (a lamp/light fixture).",
+N_ITEM.ADDED-T4-02,3050,ALL,fit,MINOR,"Losing ""my box"" and being in trouble without it is vague/odd.",exclude 3050
+N_ITEM.ADDED-T4-03,3253,A1,fit,MINOR,"An official check of the boarding pass (""你好，请把…给我看一下"") is a staff-to-passenger line, not friends.",
+N_ITEM.ADDED-T4-06,3049,ALL,english,MINOR,"""give him a light"" reads as a lighter; ""a lamp"" is clearer.",
+N_ITEM.ADDED-T4-06,3218,ALL,fit,MINOR,A bottle as a birthday present is odd without any detail.,exclude 3218
+N_ITEM.ADDED-T4-07,3050,ALL,fit,FIX,"""Don't forget to bring your box"" for tomorrow's trip is meaningless; module written for a boarding pass.",exclude 3050
+N_ITEM.CARRY-T3-01,812,A2,chinese,MINOR,"""路上要小心车票"" is unnatural; say 小心别丢了车票.",那就好，我们走吧，路上别丢了车票。
+N_ITEM.CARRY-T4-08,1230,ALL,fit,FIX,Lending someone your wallet to use for a few days is not a natural thing to do.,exclude 1230
+N_ITEM.CULTURE-T4-01,1276,B,chinese,MINOR,"Spring couplets are for Spring Festival only; ""每年节日"" (every festival) is wrong.",看过，每年过年，老家都有{W}。
+N_ITEM.CULTURE-T4-02,1276,B,chinese,MINOR,"Spring couplets are for Spring Festival only; ""节日的时候"" (at festivals) is vague.",
+N_ITEM.CULTURE-T4-07,1276,A1,chinese,FIX,"Couplets are pasted (贴), not hung (挂); ""挂了春联"" is a wrong collocation.",我们家今年又在门口贴了春联。
+N_ITEM.CULTURE-T4-07,1276,B,chinese,FIX,"Couplets are pasted (贴), not hung (挂); ""挂得真漂亮"" is a wrong collocation.",贴得真漂亮，你在哪里买的春联？
+N_ITEM.CULTURE-T5-01,1271,ALL,english,MINOR,"""the dragon boat"" is awkward English for 龙舟 as an interest; ""dragon boat racing"" fits.",
+N_ITEM.CULTURE-T5-01,2298,ALL,english,MINOR,"""the seal stamp"" is awkward; Chinese 印章 as a topic is plural/generic (""seal stamps"").",
+N_ITEM.CULTURE-T5-02,1272,ALL,english,MINOR,"""the lantern"" / ""the Chinese lantern"" singular is awkward for a general gift question (""lanterns"").",
+N_ITEM.CULTURE-T5-06,2296,ALL,chinese,FIX,"""公园里有木偶 / 看木偶"" is wrong - you see a puppet show (木偶戏), and English ""the puppet will be at the park"" is nonsense.",exclude 2296
+N_ITEM.CULTURE-T5-07,2257,ALL,english,MINOR,"Singular ""the couplet"" does not match 对联 (a pair of couplets); use ""couplets"".",
+N_ITEM.CULTURE-T5-10,1271,A1,chinese,MINOR,"""老师在课上给我们看了龙舟"" is odd; one would show a video/photos of dragon boats.",
+N_ITEM.MATERIAL-T4-01,1761,ALL,chinese,MINOR,"""材料品质"" and ""buy material at this shop"" are vague/stiff; the scene needs a specific kind of material.",
+N_ITEM.MATERIAL-T4-02,1761,A1,fit,MINOR,Materials are not usually bought at the mall (商场).,
+N_ITEM.MATERIAL-T5-06,2161,ALL,fit,MINOR,"""看你想做什么，不同的瓷器用途不一样"" fits paper/craft materials, not porcelain.",exclude 2161
+N_ITEM.TABLEWARE-T2-02,409,A2,english,MINOR,"""eat my noodles with a bowl"" - should be ""in a bowl"".","Okay, I want to eat my noodles in a bowl."
+N_ITEM.TABLEWARE-T2-05,3003,A2,fit,FIX,"""现在可以用新杯子吃饭了"" (eat with the new cup) makes no sense; module written for a bowl.",exclude 3003
+N_ITEM.TABLEWARE-T3-03,3003,ALL,english,MINOR,"Singular ""the cup from this shop / would the cup here cost a lot"" is awkward; generic plural ""cups"" is natural.",
+N_ITEM.TABLEWARE-T3-04,101,B,fit,MINOR,"""Do you want the big or the small chopsticks"" is odd; chopsticks do not come in big/small like cups.",exclude 101
+N_ITEM.TABLEWARE-T3-08,3003,B,fit,MINOR,"""她喜欢做饭，你要买好的杯子"" - liking cooking does not lead to a cup gift; non sequitur.",exclude 3003
+N_ITEM.TABLEWARE-T5-02,3003,ALL,english,MINOR,"Singular ""the cup at this shop"" is awkward for the generic Chinese; use ""cups"".",
+N_ITEM.TABLEWARE-T5-04,101,A2,english,FIX,"""look at that chopsticks"" is ungrammatical (chopsticks are plural).",Great. Let's go and have a look at that pair of chopsticks together this weekend.
+N_ITEM.TABLEWARE-T5-06,101,A1,english,FIX,"""gave me this chopsticks"" is ungrammatical (chopsticks are plural).","My mom gave me this pair of chopsticks, which she picked up in her hometown."
+N_ITEM.TABLEWARE-T5-06,101,B,english,MINOR,"""the look of the chopsticks"" - Chinese says this pair (这双); English should match.",
+N_ITEM.TABLEWARE-T5-08,3003,ALL,english,MINOR,"English alternates ""cups"" and ""pricier cup""; singular/plural not consistent.",
+N_ITEM.THING-T1-01,33,ALL,english,FIX,"买东西 means ""go shopping""; ""buy any things / buy the things together"" is not natural English.",Do you want to go shopping?
+N_ITEM.THING-T1-05,33,A2,english,FIX,"""maybe a friend will want the things"" is not natural; Chinese 朋友可能要东西 is vague too.",
+N_ITEM.THING-T1-06,33,ALL,english,FIX,"""I'll give you some things / I'll use the things myself"" is not natural spoken English.",
+N_ITEM.THING-T3-01,1171,ALL,english,MINOR,"""the goods"" is stiff English for 货 in a casual chat about things taken outside.",
+N_ITEM.THING-T3-02,1171,ALL,fit,FIX,"""别忘了带上这些货"" (don't forget to take the goods when you go out) makes no sense; 货 is shop/trade stock.",exclude 1171
+N_ITEM.THING-T3-05,1171,ALL,fit,FIX,"Lots of 货 in a house to sort out is odd, and prompt ""there is a lot of goods"" is ungrammatical.",exclude 1171
+N_ITEM.THING-T4-02,1514,A1,chinese,MINOR,"""我在等一个工具"" is vague; a specific tool would be named.",
+N_ITEM.THING-T4-03,1781,ALL,chinese,MINOR,商品 is formal/commercial; friends talking about something they bought would say 东西.,
+N_ITEM.THING-T4-08,1781,A1,chinese,MINOR,"""免费送商品"" is ambiguous (give a free gift vs deliver) and English says ""delivers"".",
+N_ITEM.THING-T4-08,33,A1,chinese,MINOR,"""免费送东西"" is ambiguous (give a free gift vs deliver) and English says ""delivers"".",
+N_ITEM.THING-T5-01,2760,ALL,fit,MINOR,A weapon hanging on the wall of a rented flat is a strange scene.,
+N_ITEM.THING-T5-07,1946,B,english,MINOR,"""Kids all love a toy"" is not natural English; say ""toys"".",Kids all love toys. Just get a cheaper one.
+N_ITEM.THING-T5-07,33,ALL,fit,FIX,"""小孩子都喜欢东西"" (kids all love things) makes no sense.",exclude 33
+N_ITEM.THING-T5-09,1946,ALL,fit,FIX,A toy as a wedding gift for an adult friend makes no sense.,exclude 1946
+N_MEDIA.ART-T2-01,461,A2,fit,MINOR,"""Nice, I'd love to see your photos"" does not follow B's remark about an old photo of her dad.",
+N_MEDIA.ART-T4-04,1401,B,chinese,MINOR,"""我对作品很有兴趣"" (interested in works) is vague; reads oddly.",
+N_MEDIA.ART-T5-04,2525,ALL,fit,FIX,"""墙上挂的摄影"" / ""那些摄影他自己做的"": 摄影 is the art/activity, not the photographs; should be 摄影作品.",exclude 2525
+N_MEDIA.ART-T5-05,2525,A2,chinese,MINOR,"""慢慢看摄影"" (look at photography) is odd; say 看照片/摄影作品.",
+N_MEDIA.ART-T5-09,2525,A2,chinese,MINOR,"""带着我的摄影去参加比赛"" (enter a contest with my photography) is odd.",
+N_MEDIA.ART-T5-10,2502,ALL,chinese,FIX,"画面 is a screen image/scene, not photos from a trip; ""留着去年旅行时候的画面"" should be 照片.",exclude 2502
+N_MEDIA.MUSIC-T2-02,367,A2,chinese,FIX,"""我去外面看一下这个声音"" (go and look at the sound) is not natural Chinese.",我去外面看看是什么声音。
+N_MEDIA.MUSIC-T2-03,367,ALL,fit,MINOR,"Liking ""this sound"" and listening to it every day is vague; reads oddly.",
+N_MEDIA.MUSIC-T2-05,367,A1,chinese,MINOR,"""这家店的声音很好"" is unnatural for a shop; one says the music or atmosphere.",
+N_MEDIA.MUSIC-T3-01,941,ALL,chinese,MINOR,"Measure word: songs count with 首 (这首歌), not 个.",你听，这首歌真不错，你觉得怎么样？
+N_MEDIA.MUSIC-T3-03,941,A2,chinese,MINOR,"""有歌工作会轻松一点"" is unnatural.",
+N_MEDIA.MUSIC-T3-04,941,ALL,chinese,MINOR,"Measure word: songs count with 首 (这首歌), not 个.",
+N_MEDIA.MUSIC-T3-05,941,A1,chinese,MINOR,"""把歌开小一点"" is awkward; say 把音乐/声音开小一点.",
+N_MEDIA.MUSIC-T3-06,941,ALL,fit,FIX,"""这家店的歌太大了 / 那里的歌小"" - a song is not loud or quiet; should be 声音/音乐.",exclude 941
+N_MEDIA.MUSIC-T5-02,2618,ALL,fit,FIX,"""睡觉以前听乐团 / 有乐团的晚上"" - listening to an orchestra before bed (and ""orchestras"" in English) makes no sense.",exclude 2618
+N_MEDIA.MUSIC-T5-03,2618,ALL,chinese,MINOR,"""听现场的乐团"" is a little odd; one hears a concert/performance, not the orchestra.",
+N_MEDIA.MUSIC-T5-06,2937,ALL,chinese,MINOR,"Measure word: CDs count with 张 (这张光碟), not 个.",
+N_MEDIA.MUSIC-T5-06,941,ALL,chinese,MINOR,"Measure word: songs count with 首 (这首歌), not 个.",
+N_MEDIA.MUSIC-T5-07,2937,ALL,chinese,FIX,"""听到这个光碟，我就想起小时候"" - you do not hear a CD; this fits music/a song.",exclude 2937
+N_MEDIA.NEWS-T2-02,691,A2,chinese,MINOR,"""天气新闻"" is not natural; say 天气预报.",
+N_MEDIA.NEWS-T2-05,691,A1,fit,MINOR,Your own company's day off being announced on the news is implausible.,exclude 691
+N_MEDIA.NEWS-T3-05,874,ALL,chinese,FIX,"""每天都看消息 / 关心消息"" - one watches 新闻; 消息 is a single piece of news.",exclude 874
+N_MEDIA.NEWS-T3-06,874,ALL,chinese,FIX,"""听消息说周末会下雨 / 消息还说下雨"" - a weather forecast is not 消息; 听消息说 is unnatural.",exclude 874
+N_MEDIA.NEWS-T4-01,1715,ALL,chinese,MINOR,讯息 is Taiwan/HK or formal register; mainland friends would say 消息/信息.,
+N_MEDIA.NEWS-T4-04,1715,ALL,chinese,MINOR,讯息 is Taiwan/HK or formal register; mainland friends would say 消息/信息.,
+N_MEDIA.NEWS-T5-02,2419,ALL,chinese,MINOR,资讯 is formal/written register for sharing information with a friend.,
+N_MEDIA.NEWS-T5-04,2385,ALL,chinese,MINOR,通讯 is formal; friends would say 保持联系.,
+N_MEDIA.NEWS-T5-08,2481,ALL,chinese,FIX,"""手机上的媒体 / 看几个地方的媒体"" - media is not read in different places; this is 新闻.",exclude 2481
+N_MEDIA.READ-T4-01,719,A1,chinese,FIX,"""在看哪个故事"" (reading which story) is unnatural; 故事 is told or heard, books are read.",exclude 719
+N_MEDIA.READ-T4-03,719,ALL,chinese,FIX,"""这个故事我昨天一口气看完了"" (finished reading in one go) is odd for a story.",exclude 719
+N_MEDIA.READ-T5-01,1918,ALL,chinese,MINOR,"Bare 报 (""今天的报"") is clipped; casual speech says 报纸.",
+N_MEDIA.READ-T5-03,719,B,chinese,MINOR,"""去图书馆找这个故事"" (look for this story at the library) is odd.",
+N_MEDIA.SHOW-T5-01,2295,ALL,english,MINOR,"""the shadow puppetry"" with article is awkward.",
+N_MEDIA.SHOW-T5-02,2040,ALL,chinese,MINOR,影片 is written register; friends say 电影.,
+N_MEDIA.SHOW-T5-07,2237,A1,chinese,MINOR,"""做什么娱乐"" is an unnatural collocation.",周末你一般有什么娱乐？
+N_MEDIA.SHOW-T5-08,2040,ALL,chinese,MINOR,影片 is written register; friends say 电影.,

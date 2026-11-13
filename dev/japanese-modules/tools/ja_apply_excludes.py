@@ -1,7 +1,7 @@
 """Apply the reviewers' 'exclude <word_id>' findings (severity FIX) to the module source files (drafts/W*-modules.csv, drafts/TOPUP-*-modules.csv)."""
 import csv, glob, re, collections, os, io
 iss = []
-for f in sorted(glob.glob('drafts/review/R0*-issues.csv')): iss += list(csv.DictReader(open(f, encoding='utf-8-sig')))
+for f in sorted(glob.glob('drafts/review/[RS]0*-issues.csv')): iss += list(csv.DictReader(open(f, encoding='utf-8-sig')))
 add = collections.defaultdict(set)
 for r in iss:
     s = (r['suggested_fix'] or '').strip().lower()

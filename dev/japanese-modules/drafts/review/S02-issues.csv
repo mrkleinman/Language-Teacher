@@ -1,0 +1,243 @@
+﻿module_id,word_id,line,kind,severity,problem,suggested_fix
+N_PERSONROLE.WORK-T2-02,733,A2,english,MINOR,"""ask the senior for a name"" is odd English for asking their name.",English: Oh. Next time I'll ask the {E} their name. (prompt: ...ask the {E} their name)
+N_PERSONROLE.WORK-T5-05,1543,A1,english,MINOR,"Japanese 同僚って is generic but English says ""the coworker"" (a specific person); A2 then treats it as generic.",
+N_PLACE.AREA-T3-01,359,ALL,fit,FIX,"国の祭り / 国の人 has no antecedent country; unnatural (""a festival in a country"", ""that country"").",exclude 359
+N_PLACE.AREA-T4-06,1438,ALL,fit,FIX,地域の友達 is not natural (would be 地元の友達); 地域 is a formal word for community/region.,exclude 1438
+N_PLACE.AREA-T5-04,1564,ALL,fit,FIX,"区の家族 / 区のお正月 is nonsense (family ""in my ward"", New Year ""of the ward"").",exclude 1564
+N_PLACE.AREA-T5-06,765,A1,japanese,MINOR,"English says ""this prefecture"" but Japanese has bare 県の; reads vague.",親が言ってたけど、この{W}の家賃が高くなって、生活が大変になってきたんだって。
+N_PLACE.DIR-T2-06,117,A2,japanese,FIX,"道の店 is not natural Japanese for ""the shops on the road"".",そうしよう。{W}沿いの店は、安くておいしいよ。
+N_PLACE.DIR-T4-02,117,ALL,english,FIX,"Slot ""road"" is wrong for 道 here (means ""the way""); ""didn't know the road"", ""look up the road"" are not English.","use english_slot ""way"" for this module / exclude 117"
+N_PLACE.EAT-T3-05,814,ALL,english,FIX,"Slot ""all-you-can-eat"" as a bare noun gives broken English (""crowded at all-you-can-eat"", ""near all-you-can-eat""); needs ""all-you-can-eat place"".","set english_slot to ""all-you-can-eat place"" (or ""buffet"")"
+N_PLACE.EAT-T3-06,814,ALL,english,FIX,"""went to all-you-can-eat"" / ""I've never been"" broken English; slot needs to be a place noun.","set english_slot to ""all-you-can-eat place"""
+N_PLACE.EAT-T4-05,814,ALL,english,MINOR,"""go to all-you-can-eat only on weekends"" reads awkwardly; slot needs to be a place noun.","set english_slot to ""all-you-can-eat place"""
+N_PLACE.GO-T1-08,167,A1,japanese,FIX,帰る is wrong for going back to a workplace/hospital (should be 戻る).,もう{W}に戻る？
+N_PLACE.GO-T1-08,167,B,japanese,FIX,帰る is wrong for going back to a workplace/hospital (should be 戻る).,うん、午後も仕事があるから、{W}に戻るよ。
+N_PLACE.GO-T1-08,167,A2,english,MINOR,"English says ""walk"" but Japanese just says go together.","Change English/prompt to ""Let's go to the hospital together."""
+N_PLACE.GO-T4-09,124,A1,japanese,MINOR,A (a man) uses 私 in casual speech with a friend; 僕/俺 expected.,今どこ？もう{W}に着いた？僕は先に着いて待ってるよ。
+N_PLACE.POS-T2-03,364,ALL,fit,FIX,"""put luggage 後ろ"" has no reference point; English ""left my bag behind""/""Where behind?""/""go behind"" is broken.",exclude 364
+N_PLACE.POS-T2-04,283,ALL,fit,FIX,"Restroom is 下 in A1 and ""there is one 下 too"" in A2 is contradictory; bare ""below"" has no reference; B line ""if it's below I'll walk"" odd.",exclude 283
+N_PLACE.POS-T2-05,566,ALL,fit,FIX,"""Is there a good place 中"" has no reference (""inside"" what?); A2 ""if it's inside we just walk"" is meaningless.",exclude 566
+N_PLACE.POS-T4-01,283,ALL,english,FIX,"Bare ""below"" is broken English here (""left it below"", ""All that's below is...""); 下 means under something. A2 prompt says ""not below"" but line says ""below is fine"".",exclude 283
+N_PLACE.POS-T4-02,276,ALL,fit,FIX,"""come in front"", ""get in front"", ""the vending machine in front"" are broken; slot has no reference point.",exclude 276
+N_PLACE.POS-T4-03,279,ALL,fit,FIX,"""I parked the car above / You parked above?"" is broken; 上 has no reference point.",exclude 279
+N_PLACE.POS-T4-06,1587,ALL,english,MINOR,"""at the outside of the building"", ""at the outside"" is awkward English (should be ""on the outside"").",
+N_PLACE.POS-T4-08,598,A1,japanese,FIX,"部屋の横 means next to the room, not the side of the room inside it.",ソファーの{W}に大きいテーブルを置いたら、歩きにくくなったんだ。
+N_PLACE.POS-T5-03,283,ALL,english,FIX,"Bare ""below"" (""take a look below"", ""look carefully below"") is broken; 下 means under something.",exclude 283
+N_PLACE.POS-T5-04,364,ALL,fit,FIX,"""dropped my wallet behind at the station"", ""search behind"" is broken; 後ろ has no reference point.",exclude 364
+N_PLACE.POS-T5-06,276,ALL,fit,FIX,"""a bakery opened in front"", ""look in front"" is broken; 前 has no reference point.",exclude 276
+N_PLACE.POS-T5-10,2067,A1,japanese,FIX,部屋のそば is odd (near the room) and later lines have no clear reference; sofa near the door makes sense.,新しい部屋のドアの{W}に、大きいソファーを置きたいんだけど、どう思う？
+N_PLACE.ROAD-T3-03,1075,A1,english,MINOR,"""go through the bridge"" should be ""cross the bridge"".",
+N_PLACE.SHOP-T3-02,200,ALL,fit,FIX,"""コンビニは十時からやってる"" is wrong (convenience stores are open 24h) and crowded-at-weekend premise is odd.",exclude 200
+N_PLACE.SHOP-T5-08,410,B,english,MINOR,"Generic statement but English uses ""the department store"".",
+N_PLACE.SIGHT-T2-05,413,B,english,MINOR,"""Foreigners like the inn"" generic; better ""inns"".",
+N_PLACE.SIGHT-T5-05,1018,ALL,fit,FIX,"Learning how people used to live is a history museum, not an art museum.",exclude 1018
+N_PLACE.SIGHT-T5-06,418,ALL,fit,FIX,"Obon visit with flowers is to a grave/temple, not a shrine.",exclude 418
+N_PLACE.SPOT-T4-04,199,ALL,fit,FIX,"A photo of ""the exit"" being beautiful, and ""a different feel around the exit at night"", does not make sense for 出口 (exit of what?).",exclude 199
+N_PLACE.SPOT-T5-03,875,ALL,japanese,FIX,"駅前の近く / 駅前の前 are redundant nonsense; English ""station front"" is not English.",exclude 875
+N_PLACE.SPOT-T5-08,198,ALL,fit,MINOR,"""the entrance"" of what is never established (A1, B and A2 all rely on it).",
+N_PLACE.WORK-T5-05,2410,ALL,japanese,MINOR,企業 is stiff for calling someone about work in casual talk; 会社 would be the natural word.,
+N_STUDYWORK.CLASS-T4-03,1599,A1,japanese,MINOR,"発表を休む is not a real collocation (skip the presentation); prompt ""Ask her why you don't"" is odd for a suggestion.",今度の週末は{W}の準備を休んで、映画でも見に行かない？
+N_STUDYWORK.CLASS-T4-04,1084,ALL,fit,FIX,"Being nervous about / worried about a 復習 (review study) and ""once the review is over"" does not fit; the module is for a test or presentation.",exclude 1084
+N_STUDYWORK.CLASS-T5-07,2123,A1,english,MINOR,"""finish all of my assignment"" is awkward; 課題 is plural here.",English: I need to finish all of my assignments by Friday (english_plural)
+N_STUDYWORK.CLASS-T5-08,2160,ALL,english,MINOR,"""my grade"" / ""your grade"" singular is odd for 成績 in a job interview; should be ""grades"".","set english to ""grades"" in this module"
+N_STUDYWORK.CLASS-T5-U02,2706,A2,japanese,MINOR,聞いて置く should be written 聞いておく.,本当？ じゃあ、{W}の試験の日も、先生に聞いておくよ。
+N_STUDYWORK.FIELD-T5-03,2946,ALL,fit,FIX,"産業の会社 / 産業の仕事 is meaningless; English ""a company in industry"" is broken.",exclude 2946
+N_STUDYWORK.LANG-T3-06,992,B,english,MINOR,"""English as well as words"" is odd; the Japanese means Japanese words.","English: If the map had English alongside the Japanese, it would be easier to understand."
+N_STUDYWORK.LANG-T4-08,1289,ALL,english,FIX,"""learning conversations / teaches conversations"" is wrong English; should be uncountable ""conversation"" (conversation classes).","set english to ""conversation"" (uncountable) in this module"
+N_STUDYWORK.LANG-T5-01,1165,ALL,english,MINOR,"Singular ""the character"" for a set of kanji studied in class (""read the character before bed"") is odd; should be plural.","set english_plural ""characters"""
+N_STUDYWORK.LANG-T5-07,1334,ALL,english,FIX,"English ""letters"" is wrong here; 文字 on a station sign means written characters (Japanese writing), ""only had letters"" and ""can't understand letters"" are misleading.","set english_slot to ""characters"" (or ""writing"")"
+N_STUDYWORK.SUBJECT-T5-02,2899,A1,japanese,MINOR,学校の時 is unnatural; 学生の時 / 学校の頃 expected.,学生の時、{W}の授業が一番好きだったな。先生が面白かったんだ。
+N_STUDYWORK.SUBJECT-T5-05,2531,B,japanese,MINOR,"学校の歴史 reads as ""the history of the school""; ambiguous.",弟さんは、昔から{W}が得意なの？それとも、やっぱり苦手なの？
+N_STUDYWORK.SUBJECT-T5-U01,2918,ALL,fit,FIX,"An adult having ""no idea"" about multiplication and being told to practise a little every day is implausible.",exclude 2918
+N_STUDYWORK.WORK-T3-01,1019,A2,prompt,MINOR,"Prompt says ""Say your commute is tough"" but the line is about her commute.","Say that commuting every day is tough, but she should not push herself and should get some rest."
+N_STUDYWORK.WORK-T3-06,338,ALL,english,FIX,"""help me with my study"", ""what part of your study"", ""go over my study"" is not natural English; 勉強 needs ""studying/studies/homework"".","set english_slot to ""studies"" (or ""studying"")"
+N_STUDYWORK.WORK-T3-09,1151,A1,english,FIX,"English says ""my test"" but B answers about her own test and A2 says ""your test""; the three lines do not agree on whose test.","English/prompt: When your test is done today, how about getting something to eat near the station? (prompt: ...when her test is done...)"
+N_TIMEUNIT.SEASON-T5-06,994,ALL,english,MINOR,"""photos of the spring"" with article is wrong; should be ""photos of spring"".",
+N_TIMEUNIT.UNIT-T2-02,349,ALL,japanese,FIX,長い週 / 忙しい週 is not natural Japanese (should be 一週間).,exclude 349
+N_TRANSPORT.RIDE-T2-06,332,A2,fit,MINOR,Looking forward to taking a taxi is an odd thing to say.,
+N_TRANSPORT.RIDE-T4-03,340,A2,fit,FIX,Resting along the way on an airplane trip makes no sense (module reads as a car trip).,exclude 340
+N_TRANSPORT.RIDE-T5-08,1636,ALL,english,MINOR,"""going out on ships"" on days off as a kid is odd; ""boats"" would be natural.",
+N_TRANSPORT.TRIP-T2-06,404,ALL,fit,FIX,"""tell me about the round trip"" / ""ask the station attendant about the round trip"" makes no sense for 往復.",exclude 404
+N_TRANSPORT.TRIP-T3-01,425,ALL,fit,FIX,"""one-way trip schedule"" of a group trip is nonsense for 片道.",exclude 425
+N_TRANSPORT.TRIP-T3-06,404,ALL,fit,FIX,"""the day of the round trip"" is nonsense for 往復.",exclude 404
+N_TRANSPORT.TRIP-T5-05,404,ALL,fit,FIX,"Being seen off at the airport on ""the day of the round trip"" is nonsense for 往復.",exclude 404
+N_TRANSPORT.TRIP-T5-06,2038,ALL,english,MINOR,"""during a departure"" is stilted English; ""when the train departs"".",
+N_WEATHER.SKY-T3-05,1157,ALL,english,MINOR,"""turned into cloudy weather"" / ""If it's cloudy weather"" is stilted; slot should read ""turned cloudy"".",
+N_WEATHER.SKY-T4-04,1290,A2,japanese,MINOR,暑さの準備 is odd; 暑さ対策 expected.,へえ、そうなんだ。じゃあ早く、{W}対策を始めようかな。
+N_WEATHER.SKY-T5-07,1290,ALL,japanese,MINOR,"朝と夜の暑さ / 暑さが変わっても is odd (it is a temperature difference, not heat).",
+T_TIME.OCCASION-T3-05,318,ALL,english,FIX,"Japanese 今度 means ""this time"" in A1/A2 but English says ""next time"" (""I can't make the party next time"", ""sorry I can't go next time""); only B means next time.",exclude 318
+T_TIME.OCCASION-T4-05,1246,ALL,japanese,FIX,"未来は for ""in the future"" is unnatural for friends (将来は expected).",exclude 1246
+T_TIME.PART-T1-01,112,ALL,english,MINOR,"""during the daytime"" is stilted; ""during the day"".",
+T_TIME.PART-T1-02,111,ALL,english,FIX,"""Shall we eat during the morning?"", ""meet at the station during the morning"" is not natural English (should be ""in the morning"").","English: use ""in the morning"""
+T_TIME.PART-T1-04,111,ALL,english,FIX,"""meeting your friend during the morning"" is unnatural English; also A2 Japanese 一緒に行く？ is an invitation but English/prompt say ""can I come too"".","English: ""in the morning""; A2: Nice. If it's in the morning, shall we go together?"
+T_TIME.PART-T1-06,112,A2,english,MINOR,"Japanese 昼は家にいる？ means ""will you be home at noon?"" but English says ""Shall we stay home during the daytime?"".",
+T_TIME.PART-T4-05,1495,B,fit,FIX,Going to work an hour earlier does not avoid evening trains; only works for morning trains.,exclude 1495
+T_TIME.PART-T4-06,1394,ALL,fit,FIX,"Arriving at the office / leaving home ""before lunchtime"" for an important meeting is silly; module is meant for morning words.",exclude 1394
+T_TIME.PART-T5-09,112,A1,japanese,MINOR,昼の空気 is unusual (朝の空気 is the usual phrase).,
+T_TIME.PAST-T5-04,2209,B,english,MINOR,"""Tell me about year before last"" is odd; the Japanese asks to hear more about it.",
+T_TIME.PLAN-T3-07,380,A2,japanese,MINOR,"今週までに is unnatural; 今週中に expected (English ""by this week"" also odd).",少し難しいよ。{W}中に、漢字を全部覚えたいな。 (English: by the end of this week)
+T_TIME.PLAN-T5-07,380,ALL,fit,MINOR,"Talking about what a child is ""probably doing this week"" is vague and oddly phrased.",
+V_CHANGE.AMOUNT-T4-04,1039,ALL,japanese,FIX,値段が減る is wrong (prices 下がる); 減る does not collocate with 値段.,exclude 1039
+V_CHANGE.AMOUNT-T4-09,1040,ALL,fit,FIX,"""Will my savings disappear?"" / ""check whether it will disappear"" is nonsense.",exclude 1040
+V_CHANGE.BODY-T3-06,946,A1,japanese,MINOR,木が死ぬ: 枯れる is the natural verb for a tree.,
+V_CHANGE.BODY-T5-01,2213,ALL,fit,FIX,"""Will my son grow up?"" / ""check whether he'll grow up"" is odd; the whether-V frame does not fit 育つ.",exclude 2213
+V_CHANGE.BODY-T5-06,1242,ALL,fit,FIX,Everyone discussing daily whether a baby will lose weight is nonsense.,exclude 1242
+V_CHANGE.BODY-T5-08,1294,ALL,fit,FIX,"""He might tremble sooner or later"" / ""whether he'll tremble"" from lack of sleep is nonsense.",exclude 1294
+V_CHANGE.BREAK-T3-02,517,B,fit,FIX,"Asking the shop ""whether it will break"" is odd (should be whether it can be fixed).",
+V_CHANGE.BREAK-T3-04,663,ALL,english,FIX,"""Do you think the button will stick"" is wrong English for 付く (button stay attached); nonsense frame.",exclude 663
+V_CHANGE.BREAK-T4-02,1308,B,fit,MINOR,Telling an adult friend to have his mother look at a loose button is odd.,
+V_CHANGE.BREAK-T4-04,517,ALL,fit,FIX,"""talk to the shop staff about whether it will break"" is nonsense; the whether-V frame does not fit 壊れる (ask about repair instead).",exclude 517
+V_CHANGE.BREAK-T5-03,2166,ALL,fit,MINOR,"Things in the fridge ""falling over"" while away and asking a neighbor to check whether they fall over is odd.",
+V_CHANGE.BREAK-T5-08,2289,ALL,fit,FIX,Glued parts of a paper craft do not 折れる (they come unstuck); wrong verb for the situation.,exclude 2289
+V_CHANGE.BREAK-T5-U01,2286,ALL,english,MINOR,"""milk will rot"" is odd; ""go bad"" is the natural English for 腐る of food.","set english_slot to ""go bad"""
+V_CHANGE.EVENT-T2-08,146,ALL,fit,FIX,"""tell you whether the trip will finish"" is nonsense; a trip always ends, the whether-V frame does not fit 終わる.",exclude 146
+V_CHANGE.EVENT-T3-05,146,ALL,fit,FIX,"""school hours will finish from next week"" is nonsense.",exclude 146
+V_CHANGE.MODIFY-T3-03,980,ALL,japanese,FIX,時計を変える is not the way to say adjusting a clock (直す/合わせる); B and A2 follow the odd premise.,exclude 980
+V_CHANGE.MODIFY-T3-04,902,ALL,english,MINOR,"""match our schedules"" is not natural English (coordinate/line up).",
+V_CHANGE.NATURE-T5-07,2312,ALL,fit,FIX,"The subject that cries is never given (""hear it cry""); Japanese 鳴くのが聞こえて without subject and English ""it"" are meaningless.",exclude 2312
+V_CHANGE.OPEN-T3-02,955,ALL,english,MINOR,"""shut my umbrella"" is unusual; ""close"".",
+V_CHANGE.OPEN-T5-04,135,A2,japanese,MINOR,"""また変えればいい"" is odd for a window (close it again).",分かった。じゃあ、窓を{V}ね。後で、また閉めればいいよ。
+V_CHANGE.START-T4-02,1730,ALL,japanese,MINOR,テストを取り消す is not natural (cancel the registration/applying).,
+V_CHANGE.STATE-T2-04,529,ALL,english,FIX,"Slot ""hit"" gives ""will it hit the mark?"" for a weather forecast; English should be ""be right/come true"".","set english_slot to ""be right"""
+V_CHANGE.STATE-T2-05,529,ALL,english,FIX,"Slot ""hit"" gives ""worried it won't hit the mark""; should be ""come true / be right"".","set english_slot to ""be right"""
+V_CHANGE.STATE-T5-06,1356,ALL,fit,MINOR,"""Good colour and design so it'll be useful"" is a non sequitur; ""useful among friends"" is odd.",
+V_COMMUNICATE.ASK-T4-05,443,ALL,fit,FIX,"Answering a waiter before he has asked anything, and ""hard to answer him right now because he is busy"", does not make sense (this is ordering).",exclude 443
+V_COMMUNICATE.ASK-T4-08,1228,ALL,fit,FIX,"尋ねる has no object here (""ask someone you meet for the first time""); formal word and incomplete phrase at a party.",exclude 1228
+V_COMMUNICATE.ASK-T5-04,2652,ALL,fit,FIX,"問い合わせる is for inquiring to an office/company, not for asking a question to a teacher in class.",exclude 2652
+V_COMMUNICATE.GIVE-T1-03,128,A2,japanese,MINOR,教えたら、教えてね repeats the verb clumsily.,分かった。{Vta}ら、連絡してね。
+V_COMMUNICATE.GIVE-T2-01,391,ALL,fit,FIX,"鍵をあげる (give the key as a gift, no recipient) is wrong; handing over a key is 渡す.",exclude 391
+V_COMMUNICATE.GIVE-T2-02,142,ALL,fit,FIX,"""send me the umbrella"" / ""send the umbrella in front of the station"" is nonsense for 送る (bring it).",exclude 142
+V_COMMUNICATE.GIVE-T2-07,142,A2,fit,MINOR,"""電話で送る"" and ""電話は忙しいから"" are odd (a phone line is not busy when sending).",
+V_COMMUNICATE.GIVE-T2-08,128,ALL,fit,FIX,"お礼を教える / ""tell my thanks"" is wrong; the module needs 伝える.",exclude 128
+V_COMMUNICATE.GIVE-T4-01,391,ALL,fit,FIX,会社の鍵をあげる (give the office key as a gift) is wrong; 返す/渡す expected.,exclude 391
+V_COMMUNICATE.GIVE-T5-05,128,A1,japanese,MINOR,"A and B use あなた with a close friend; stiff, drop it.",荷物が着く日が分かったら、旅行の前に、君にも必ず{V}よ。
+V_CONSUME.EAT-T5-04,7,B,fit,MINOR,B's reply about rushing in the morning does not answer A1 about sore teeth.,
+V_CONSUME.EAT-T5-07,1302,ALL,fit,FIX,"噛む for snacking at night is wrong (食べる); ""chew anything at night"" is nonsense.",exclude 1302
+V_CONSUME.MEDIA-T5-06,1635,ALL,fit,FIX,"Moving to a quiet library to play an instrument and ""without bothering other people"" is absurd.",exclude 1635
+V_CONSUME.MEDIA-T5-08,921,ALL,fit,FIX,"""someday I'll show you how I enjoy it"" and being embarrassed to 楽しむ in front of someone is nonsense (module meant for a performed hobby).",exclude 921
+V_HANDLE.ADD-T3-02,1041,ALL,fit,FIX,"""compare all the books we have at home by tomorrow"" has no sense (compare to what?).",exclude 1041
+V_HANDLE.ADD-T3-06,1041,ALL,fit,FIX,"Worrying about dropping photos while ""comparing"" them, then boxing them up, does not fit 比べる.",exclude 1041
+V_HANDLE.ADD-T4-01,1041,ALL,fit,FIX,"""compare all my luggage tonight"" before a trip is nonsense (means packing).",exclude 1041
+V_HANDLE.ADD-T4-02,1504,ALL,fit,FIX,"Sorting books into big and small and lining them up does not ""increase"" them.",exclude 1504
+V_HANDLE.ADD-T4-03,1510,A2,english,FIX,"English produces ""gather together them together"" (slot ""gather together"" + ""together""); ungrammatical.","set english_slot to ""put together"" / ""sort out""; A2 English: how about we put them together this weekend?"
+V_HANDLE.ADD-T4-07,1372,ALL,fit,FIX,"""add the souvenirs"" / ""decide how many souvenirs to add"" is not what 足す means in a shopping context (buy more).",exclude 1372
+V_HANDLE.ADD-T5-05,1934,ALL,fit,MINOR,"Nothing says what the documents are to be included in; B's ""where to start to include"" is vague.",
+V_HANDLE.ADD-T5-08,2508,ALL,fit,FIX,"""remove all your bags on the morning of the exam"" is nonsense (and the check ""notes"" at the end).",exclude 2508
+V_HANDLE.BREAK-T5-05,2261,ALL,fit,FIX,"""it"" that is torn is never given; ""I know how to tear it, I did it with friends"" is absurd.",exclude 2261
+V_HANDLE.BREAK-T5-06,2173,A1,japanese,MINOR,物を打つ for a child hitting things is unnatural (叩く).,
+V_HANDLE.BREAK-T5-U02,2912,ALL,english,MINOR,"""damage my leg / damage your body"" is unnatural; ""hurt/injure"".","set english_slot to ""hurt"""
+V_HANDLE.HOME-T4-03,1594,ALL,fit,MINOR,"Why sweeping ""that"" must wait until later is unexplained; object of 掃く never given.",
+V_HANDLE.HOME-T4-06,1409,ALL,fit,FIX,Asking a woman friend to dry his back after the shower is inappropriate; 背中を乾かす is not natural (拭く).,exclude 1409
+V_HANDLE.HOME-T4-10,1594,ALL,fit,FIX,"""sweep the things bothering you first"" and ""sweep everything / one thing"" is nonsense (you sweep a floor).",exclude 1594
+V_HANDLE.HOME-T4-U01,1382,ALL,english,FIX,"English slot ""hang out to dry"" followed by object gives ""hang out to dry them"" (should be ""hang them out to dry"").","set english_slot to ""hang up""/""hang out""; word order"
+V_HANDLE.HOME-T5-03,1754,ALL,fit,FIX,"""before your friend comes I'll make a mess of that"" and ""fun to make a mess of it"" is nonsense.",exclude 1754
+V_HANDLE.HOME-T5-04,2225,ALL,fit,MINOR,What is laid is never said (それを敷く); lines read vague.,
+V_HANDLE.HOME-T5-05,1409,ALL,fit,FIX,"A dirty table needs wiping (拭く), not 乾かす.",exclude 1409
+V_HANDLE.HOME-T5-08,1409,ALL,fit,FIX,"""don't forget to dry your face before the interview"" is nonsense.",exclude 1409
+V_HANDLE.HOME-T5-10,1755,ALL,fit,FIX,"""wet that early after you move in"" is nonsense.",exclude 1755
+V_HANDLE.KITCHEN-T4-02,1589,A2,fit,MINOR,"""count on you to warm up for dinner"" lacks an object.",
+V_HANDLE.KITCHEN-T4-04,1589,ALL,fit,FIX,"Warming food up is not a cooking skill you practise daily to get good at; ""I always rush when I warm up"" is nonsense.",exclude 1589
+V_HANDLE.KITCHEN-T5-05,713,ALL,fit,FIX,Boiling water today to stop food going bad does not connect (water vs food).,exclude 713
+V_HANDLE.LOSE-T2-02,577,ALL,japanese,MINOR,A (man) says あなた to a friend; stiff.,ごめん。君の大切な物を{V}るつもりは無かったんだ。
+V_HANDLE.LOSE-T2-03,577,ALL,english,MINOR,"""throw away this/that"" with a pronoun object is awkward English (""throw this away"").",
+V_HANDLE.LOSE-T3-02,568,ALL,fit,FIX,"""tell me before you lose anything"" and ""check before I lose anything"" are illogical.",exclude 568
+V_HANDLE.LOSE-T3-03,709,ALL,fit,FIX,"""spill all the food because I'm full"" is nonsense (means leave food).",exclude 709
+V_HANDLE.LOSE-T3-05,591,A2,fit,MINOR,"""check my bag before I drop anything"" is illogical.",
+V_HANDLE.LOSE-T5-05,591,B,prompt,MINOR,"Prompt omits the second half of B's line (it worked for me, I haven't lost anything).","Say that if he always keeps them in one place he will worry less that he will drop them, and that it worked for you."
+V_HANDLE.MAKE-T5-02,2088,ALL,fit,FIX,"Object of 建てる is never given (""build one myself"") so the exchange has no referent.",exclude 2088
+V_HANDLE.MAKE-T5-05,2165,A2,japanese,MINOR,早く育てる (raise it early) is odd; 植える is natural for a tree in spring.,
+V_HANDLE.MAKE-T5-07,45,ALL,japanese,MINOR,家を作る is less natural than 家を建てる.,
+V_HANDLE.MAKE-T5-08,2088,ALL,fit,FIX,"Object of 建てる is never given (""build one"", ""someone who can build one well"").",exclude 2088
+V_HANDLE.PUT-T2-01,397,ALL,fit,FIX,"""put in this here"" has no destination and English ""put in this"" is broken.",exclude 397
+V_HANDLE.PUT-T2-02,397,ALL,fit,FIX,"""look behind you before you put in that"" makes no sense for 入れる.",exclude 397
+V_HANDLE.PUT-T2-04,252,B,english,FIX,"B is the receiver but English says ""I'd rather bring in the afternoon""; and A2 ""I'll bring at three"" lacks an object.",English B: I'd rather you bring it in the afternoon.
+V_HANDLE.PUT-T3-01,790,ALL,fit,FIX,"""it was hard to take along when I started work; it's my specialty"" is nonsense (no object).",exclude 790
+V_HANDLE.PUT-T3-02,798,ALL,fit,FIX,"""looking for someone who is good at pushing"" is nonsense.",exclude 798
+V_HANDLE.PUT-T4-01,965,ALL,fit,FIX,"""it's hard to hang for real; I got used to hanging"" is nonsense (no object).",exclude 965
+V_HANDLE.PUT-T4-05,1498,ALL,english,MINOR,"""line up some / line up the goods"" is odd; ""arrange"".",
+V_HANDLE.PUT-T5-01,2058,ALL,fit,FIX,"""I couldn't put on well at work; teaching juniors how to put on"" is nonsense (no object).",exclude 2058
+V_HANDLE.PUT-T5-02,252,ALL,fit,FIX,"Helping with moving is carrying (運ぶ), not 持ってくる; English ""help me bring"" has no object.",exclude 252
+V_HANDLE.PUT-T5-03,397,ALL,fit,FIX,"""could you put in in my place"", ""put in all the rest"" has no object and is meaningless for 入れる.",exclude 397
+V_HANDLE.PUT-T5-05,1630,A1,english,MINOR,"""it's my pleasure to stick the pictures"" mistranslates 楽しみなんだ (I look forward to putting them up).",English: Every spring I look forward to putting up the pictures my kid drew on the wall.
+V_HANDLE.PUT-T5-U01,2766,B,prompt,FIX,"Prompt reads ""if he stick on the photos"" (missing -s); slot ""stick on"" also awkward in the English lines.","Prompt: Tell him that if he sticks them on one by one carefully with glue, they look neat."
+V_HANDLE.PUT-T5-U02,2766,A2,prompt,FIX,"Prompt reads ""if she stick on a piece of paper"" (missing -s).",Prompt: ...if she sticks up a piece of paper where she can see it...
+V_HANDLE.PUT-T5-U03,2766,A1,prompt,FIX,"Prompt reads ""before she stick on family photos"" (missing -s after she).",Prompt: ...before she sticks up family photos on the wall.
+V_HANDLE.TAKE-T2-02,344,ALL,fit,FIX,"""What time are you going to find this?"" / ""I'll find that at nine"" is nonsense for 見つける (not schedulable).",exclude 344
+V_HANDLE.TAKE-T2-07,44,ALL,english,MINOR,"""I'll hold them"" for carrying bags is odd; ""carry"".","set english_slot to ""carry"""
+V_HANDLE.TAKE-T3-01,344,ALL,fit,FIX,"""it is especially hard to find in the first week of your first job; someone who can find well"" is nonsense (no object).",exclude 344
+V_HANDLE.TAKE-T5-U04,2878,B,prompt,MINOR,"Prompt says ""take up it first"" (pronoun after particle verb).","Tell him it's an important issue, so you think he should take it up first."
+V_MIND.FEEL-T2-05,260,ALL,fit,FIX,"A2 ""if we walk to the station I'll be relieved"" is nonsense; slot ""be relieved"" is also not what 助かる means (a big help).",exclude 260
+V_MIND.FEEL-T2-06,260,ALL,english,FIX,"""If I could borrow money I'd be relieved"" / ""will you be relieved?"" mistranslates 助かる (that would be a big help).","set english_slot to ""be a big help"" or similar"
+V_MIND.FEEL-T3-06,260,ALL,english,FIX,"""you'll be relieved, right?"", ""Thanks, I'll be relieved"" mistranslates 助かる.","set english_slot to ""be a big help"" or similar"
+V_MIND.FEEL-T4-04,260,ALL,english,FIX,"""I really will be relieved"" mistranslates 助かる (it really helps).","set english_slot to ""be a big help"" or similar"
+V_MIND.FEEL-T4-U01,1822,A1,prompt,FIX,"Prompt reads ""if she panic"" (missing -s); same in A2 (""even if she panic"").",Prompt: ...if she panics...
+V_MIND.FEEL-T5-06,525,A1,japanese,MINOR,全部下に置いてある: 下 should be 床 for things lying on the floor.,彼の部屋を見たら、きっと{V}よ。服も本も、全部床に置いてあるんだ。
+V_MIND.KNOW-T2-04,130,A2,japanese,MINOR,僕がまた忘れる事なんだよね is awkward.,でも、地図を見ても、僕はまた{V}んだよね。
+V_MIND.KNOW-T4-02,313,ALL,english,MINOR,"""decide a good present / decide one"" is unnatural; ""choose"".","set english_slot to ""choose"""
+V_MIND.KNOW-T5-03,436,ALL,fit,FIX,"""Do you think about anything?"" / ""if you think about anything later, tell me"" is meaningless (it means come up with / notice something).",exclude 436
+V_MIND.KNOW-T5-06,1663,A2,japanese,MINOR,確かめなかったなら (past) does not follow B's 確かめていない.,Replace {Vnakatta}なら with the 〜ていない form (確かめていないなら大丈夫だよ).
+V_MOVE.BODY-T1-01,134,ALL,fit,MINOR,"""Shall we stand for a bit? Where shall we stand?"" is odd with no purpose.",
+V_MOVE.BODY-T5-02,137,ALL,japanese,MINOR,静かに止まって for hiding at a surprise party is odd (隠れて).,
+V_MOVE.ENTER-T1-05,74,ALL,japanese,MINOR,学校に入る for going to school is unnatural.,
+V_MOVE.ENTER-T1-06,74,ALL,fit,FIX,"空港に入った / ""enter the airport"" is wrong; you arrive at (着く) an airport.",exclude 74
+V_MOVE.ENTER-T5-05,325,ALL,fit,FIX,"""transfer to that"" for a sightseeing place is nonsense (乗り換える is for lines).",exclude 325
+V_MOVE.ENTER-T5-U01,2543,B,prompt,FIX,"Prompt reads ""if he suddenly jump into the sea"" (missing -s).",Prompt: ...if he suddenly jumps into the sea...
+V_MOVE.GOAL-T2-03,39,ALL,fit,FIX,"A1 says the weather is nice, B answers ""it's raining today""; the three lines contradict each other for any word.",exclude 39 (module needs rewriting)
+V_MOVE.GOAL-T4-03,1381,ALL,english,FIX,"Slot ""get close"" without ""to"" gives ""get close our friend"" (ungrammatical in A1, B, A2 and prompts).","set english_slot to ""get close to"""
+V_MOVE.GOAL-T4-04,1381,ALL,english,FIX,"""about to get close the car ahead"", ""before we get close it"" is ungrammatical.","set english_slot to ""get close to"""
+V_MOVE.GOAL-T4-05,1381,ALL,english,FIX,"""get close my senior"" ungrammatical (also the meaning is catch up with).","set english_slot to ""catch up with"""
+V_MOVE.GOAL-T5-10,1381,ALL,english,FIX,"""get close a wall"" ungrammatical.","set english_slot to ""get close to"""
+V_ROUTINE.STAY-T1-04,78,ALL,japanese,FIX,ホテルで住む is wrong (particle) and living in a hotel for a distant house is really 泊まる.,exclude 78
+V_ROUTINE.STAY-T3-06,150,ALL,fit,FIX,"""stay near my family next year / near home"" is nonsense for 泊まる (overnight stays).",exclude 150
+V_SOCIAL.CONTACT-T4-06,1244,ALL,japanese,MINOR,先生に向く is unnatural; 先生の方を向く expected.,
+V_SOCIAL.CONTACT-T5-U02,1963,B,english,MINOR,"""I've started to resemble my mother's voice"" is wrong English (my voice resembles my mother's).",
+V_SOCIAL.PERSON-T3-01,143,ALL,english,MINOR,"""call my sister"" is ambiguous (phone vs. wake up/call out); context suggests waking her.",
+V_SOCIAL.PERSON-T4-01,139,A2,japanese,MINOR,A (man) uses 私 with a friend.,そうだね。夜は後輩も疲れてるし、僕も眠いから、{V}のは朝だけにするよ。
+V_SOCIAL.PERSON-T5-01,143,ALL,english,MINOR,"Slot ""call"" for 呼ぶ (invite) reads as phoning; ""who to invite"".","set english_slot to ""invite"""
+V_TRADE.PAY-T4-07,583,ALL,fit,FIX,"""decide who is going to order"" and ""loser orders"" do not mean ""who pays""; the no-split-the-bill context needs 払う.",exclude 583
+V_WANTLIKE.LIKE-T5-02,374,ALL,japanese,MINOR,"安定した仕事は要る (particle は) is odd; English ""it's hard to need both"".",
+V_WANTLIKE.LIKE-T5-07,1647,ALL,japanese,FIX,願う is not used for stating wishes to an estate agent; 静かな所は願う is unnatural/wrong particle.,exclude 1647
+X_ADVERB.CHANGE-T2-03,711,ALL,fit,FIX,"電車が段々止まった / ""where did it gradually stop?"" is unnatural (段々 needs a progressive change).",exclude 711
+X_ADVERB.CHANGE-T3-01,836,ALL,english,MINOR,"Adverb after the verb (""stopped finally"", ""it stopped finally"") is stilted English; ""finally stopped"".",
+X_ADVERB.CHANGE-T3-07,776,ALL,fit,FIX,"やっと for a place getting crowded is wrong (it is not a hoped-for result) and ""since it finally got crowded, let's go elsewhere"" is illogical.",exclude 776
+X_ADVERB.CHANGE-T4-08,776,ALL,english,MINOR,"""started falling finally"" is stilted word order; also やっと (long awaited) clashes with A2's worry about trains stopping.",
+X_ADVERB.CHANGE-T5-04,776,ALL,fit,FIX,"やっと for the number of people dropping, and ""it has finally gotten lonely"", is wrong (not a wanted result).",exclude 776
+X_ADVERB.CHANGE-T5-05,916,A1,japanese,MINOR,突然増えてる (keeps increasing suddenly) is contradictory.,
+X_ADVERB.CHANGE-T5-07,897,B,japanese,MINOR,誰でも、結局忘れる時がある: 結局 makes no sense in this generalisation.,
+X_ADVERB.CONNECT-T2-02,523,B,japanese,FIX,"つまり is used as a filler: ""In short, I'm free next week"" is not a restatement (same in A2 つまり、夜なら会って).",exclude 523
+X_ADVERB.CONNECT-T2-03,523,B,japanese,FIX,"B's ""つまり、私は今日、服を見たいな"" is not a restatement; つまり misused.",exclude 523
+X_ADVERB.CONNECT-T2-04,523,B,japanese,FIX,"B's ""つまり、私は書くのが一番大変だよ"" is not a restatement; つまり misused.",exclude 523
+X_ADVERB.CONNECT-T2-06,523,B,japanese,FIX,"B's ""つまり、私は簡単な物が好きだよ"" is not a restatement; つまり misused.",exclude 523
+X_ADVERB.DEGREE-T3-04,898,ALL,japanese,MINOR,最も is stiff/written style for casual talk between friends (一番).,
+X_ADVERB.DEGREE-T3-06,898,ALL,english,FIX,"""is most spicy"", ""something most spicy"" is not English (the spiciest); 最も also stiff for friends.","set english to ""the spiciest"" (superlative) for this module"
+X_ADVERB.DEGREE-T4-03,898,ALL,japanese,MINOR,最も混む is stiff in casual speech (一番).,
+X_ADVERB.DURATION-T2-03,329,ALL,english,MINOR,"""I didn't eat the ramen ... all along"" is unnatural English (""all this time"").",
+X_ADVERB.EXPECT-T3-06,323,A1,japanese,MINOR,もちろんおいしいね presents an opinion as obvious; reads oddly.,
+X_ADVERB.INTENT-T3-01,853,ALL,english,FIX,"Slot ""on purpose"" is the wrong meaning for わざわざ (go out of one's way); B says he ""walked past and bought it on purpose"", contradiction.","set english_slot to ""go out of one's way to""; B: 通ったら contradicts わざわざ, rewrite B"
+X_ADVERB.INTENT-T4-07,870,A1,english,MINOR,"""told a friend ... unintentionally"" at the end of the sentence is awkward; ""accidentally told"".",
+X_ADVERB.KINOU-T2-02,489,A2,fit,MINOR,"A2 asks ""you were busy this morning"" right after B said she stayed home tired.",
+X_ADVERB.KINOU-T4-U01,1642,A1,japanese,MINOR,"過去に is stiff for ""a long time ago"" in casual speech (昔).",
+X_ADVERB.KINOU-T4-U02,1642,A1,japanese,MINOR,過去に is stiff for casual speech about the speaker's past work (昔).,
+X_ADVERB.MANNER-T4-02,703,ALL,english,FIX,"Slot ""if possible"" gives wrong English (""I study at home if possible every night"", ""cannot get in the mood to study if possible""); なるべく means ""as much as I can"".","set english_slot to ""as much as I can""/""whenever I can"""
+X_ADVERB.MANNER-T4-03,703,ALL,english,MINOR,"""let's do it if possible as a team"", ""prepare if possible"" is awkward; なるべく = as much as we can.","set english_slot to ""as much as we can"""
+X_ADVERB.MARUDE-T5-01,2015,A2,japanese,MINOR,"""the real view was like a painting, more than the photos"" is a muddled comparison.",
+X_ADVERB.MIMETIC-T5-02,2750,ALL,japanese,MINOR,げらげら話す is unusual; げらげら笑いながら話す.,
+X_ADVERB.NEG-T4-07,734,ALL,english,FIX,"Slot ""not that much"" is tacked on to the end of English sentences (""could not hear what they said, not that much"") and is broken English.","set english_slot to ""very well""/""much""; move into the clause"
+X_ADVERB.NEG-T4-08,734,ALL,english,FIX,"""I don't think about my friends lately ..., not that much"" and ""there are days I don't think of them, not that much, though"" are broken English.","set english_slot to ""much""/""really"""
+X_ADVERB.SEKKAKU-T3-02,838,ALL,fit,MINOR,ついで does not fit inviting friends / eating together; せっかく would be natural.,
+X_ADVERB.SEKKAKU-T3-05,838,B,japanese,MINOR,B (woman) says あなたの分 to a friend; stiff.,いいよ。{W}だし、そっちの分のおにぎりも買ってくるね。
+X_ADVERB.SOON-T4-06,887,A2,japanese,MINOR,A (man) says あなた to a friend; stiff.,ありがとう。そのうち開く時は、一番に呼ぶね。
+X_ADVERB.TEXTURE-T5-01,2664,ALL,fit,FIX,"だぶだぶ describes loose clothing, not shoes (ぶかぶか/がばがば); ""baggy shoes"" is wrong.",exclude 2664
+X_COUNTER.AMPM-T1-03,191,ALL,japanese,MINOR,"""ご飯は午前に食べる？"" (meal in 午前) is odd; 朝 would be natural.",
+X_COUNTER.AMPM-T1-06,191,ALL,fit,MINOR,"""Does the train come in the morning too?"" is silly (trains run all day).",
+X_PHRASE.OTSUKARE-T5-05,9009,B,japanese,MINOR,"B says あなた to a friend and repeats ""お先にどうぞ、先に入ってね""; the logic (carrying bags so he should go first) is also reversed.",
+X_PRONOUN.ME-T2-01,321,ALL,japanese,MINOR,"A (man) uses 私 in casual talk with a friend; English also adds ""Honestly"" not in the Japanese.",
+X_PRONOUN.ME-T2-02,321,ALL,japanese,MINOR,A (man) uses 私 in casual talk with a friend.,
+X_PRONOUN.ME-T2-03,321,ALL,japanese,MINOR,A (man) uses 私 in casual talk with a friend.,
+X_PRONOUN.PLACE-T1-04,21,A1,japanese,MINOR,"駅からここに行く is odd (speaker is at ここ, 来る expected), and A2 uses 来る.",駅から{W}に来るのは、遠い？
+X_QUANTITY.ADV-T3-02,295,ALL,english,MINOR,"""remember almost all"", ""I wish I could remember almost all"" is awkward English.",
+X_QUANTITY.ADV-T3-03,477,ALL,english,MINOR,"""read enough"", ""Thanks for reading enough"" is awkward English (thoroughly).",
+X_QUANTITY.ADV-T3-07,278,ALL,english,MINOR,"""worked lots"", ""rest lots"", ""sleep lots"" is unnatural; ""a lot"".","set english_slot to ""a lot"""
+X_QUANTITY.ADV-T4-06,320,ALL,fit,FIX,"""did you manage to get more ready"" / ""I got more ready"" is nonsense for もっと.",exclude 320
+X_QUANTITY.ADV-T4-08,915,ALL,english,FIX,"Slot ""most of it"" produces ungrammatical English (""I've most of it forgotten"", ""If I most of it forget them"").","set english_slot to ""mostly""/""most of them"""
+X_QUANTITY.ALL-T4-02,891,A2,english,MINOR,"""have each one between the two of us"" is garbled; Japanese means each eats their own.",

@@ -63,7 +63,9 @@ def segment(chunk, tier_i):
             if kind == 'w': tokens.append(chunk[i:j])
         j = i
     if cur: spans.append(''.join(reversed(cur)))
-    return best[n] < 1, list(reversed(spans)), list(reversed(tokens))
+    # ok = nothing uncovered. (It used to be `best[n] < 1`: the -0.01 bonus of the free word 一下 let ONE uncovered character through in a line that contained 一下.)
+    spans = list(reversed(spans))
+    return not spans, spans, list(reversed(tokens))
 
 def units(tokens, slots):
     """content units: segmented words (not free particles), slot sentinels counted by the caller"""

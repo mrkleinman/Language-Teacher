@@ -14,6 +14,7 @@ vocabulary), so the app writes a sentence's pinyin without a segmenter: chunk pi
 """
 import base64, csv, gzip, hashlib, json, os, re, subprocess, sys
 
+FLAGS = set(sys.argv[1:])        # zh_check resets sys.argv when imported, so the flags are read first
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, '..')
 SRC = os.path.join(ROOT, 'mandarin-modules')
@@ -148,9 +149,9 @@ def main():
     gz = gzip.compress(raw, 9, mtime=0)
     b64 = base64.b64encode(gz).decode('ascii')
     print('words', len(d['t']), 'modules', len(d['m']), 'chunks', len(d['c']), 'json', len(raw), 'gzip', len(gz), 'base64', len(b64))
-    if '--fixture' in sys.argv:
+    if '--fixture' in FLAGS:
         fixture()
-    if '--check' in sys.argv:
+    if '--check' in FLAGS:
         return
     s = open(JSX, encoding='utf-8').read()
     block = BEGIN + '\nconst ZH_MODULES_GZ = "' + b64 + '"\n' + END

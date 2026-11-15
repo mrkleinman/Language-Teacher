@@ -113,32 +113,65 @@ def build_ja():
     return out, phr, stats
 
 
+# 20 Taiwan-only / Traditional duplicates of a word the list already has in the form both countries use (mandarin-modules/WORDLIST-CHANGES-2026-11-13.md,
+# "Collisions"). None is among the 100 words the app already carried, so no saved progress is keyed to them; they are left out of the app's list.
+ZH_DROP = {863, 892, 686, 2008, 1143, 1339, 1380, 1800, 1656, 2001, 2076, 2431, 2902, 2491, 2865, 2899, 2930, 2901, 2960, 2582}
+
+
+def zh_order(base):
+    """Curriculum order of the Mandarin words. A word with an `after_id` (the 268 added words and the 9 retiered ones,
+    mandarin-modules/WORDLIST-CHANGES-2026-11-12.md) belongs to the belt its CSV row names (the belt of its anchor word); every other word keeps its
+    place. Belt sizes are fixed (100, 100, 200 ...), so each belt's new words are put at the END of the belt, which then still holds exactly its
+    size: the old words they displace move to the start of the next belt, and the last old words fall out of the 2,500 curriculum into
+    'Beyond curriculum'. Position = rank (1, 2, 3 ...). Ids never change."""
+    words = [r for r in base if r['entry_type'] != 'phrase' and int(r['id']) not in ZH_DROP]
+    old = sorted((r for r in words if not r['after_id']), key=lambda r: int(r['id']))
+    new = {}
+    for r in sorted((r for r in words if r['after_id']), key=lambda r: (int(r['after_id']), int(r['id']))):
+        new.setdefault(r['belt'], []).append(r)
+    names = [n for n, _ in STAGES]
+    assert set(new) <= set(names), set(new) - set(names)
+    out, oi, cum, end = [], 0, 0, 0
+    for name, size in STAGES:
+        end += size
+        news = new.get(name, [])
+        cum += len(news)
+        out += old[oi:end - cum] + news
+        oi = end - cum
+    return out + old[oi:]
+
+
 def build_zh():
     base = rd('mandarin-modules/mandarin-word-base.csv')
     tags = {int(r['id']): r for r in rd('mandarin-modules/mandarin-word-tags.csv')}
     legacy = {int(r['csv_id']): r for r in rd('mandarin-modules/mandarin-legacy-bank.csv')}
     sched = {int(r['id']): r for r in rd('mandarin-modules/mandarin-phrase-schedule.csv')}
+    assert not (ZH_DROP & set(legacy)), 'a dropped word has saved progress'
+    pos = {int(r['id']): i + 1 for i, r in enumerate(zh_order(base))}
     out = []
     for r in base:
         cid = int(r['id'])
+        if cid in ZH_DROP:
+            continue
         t = tags[cid]
         assert t['word'] == r['word'], ('tag/base mismatch', cid)
         lg = legacy.get(cid)
         if lg:
             assert int(lg['app_id']) == cid and lg['word'] == r['word'] and lg['pinyin'] == r['pinyin'], ('legacy differs', cid)
-        e = {'id': cid, 'unlockOrder': cid, 'chinese': r['word'], 'pinyin': r['pinyin'], 'english': r['meaning'],
+        phrase = r['entry_type'] == 'phrase'
+        e = {'id': cid, 'unlockOrder': cid if phrase else pos[cid], 'chinese': r['word'], 'pinyin': r['pinyin'], 'english': r['meaning'],
              'partOfSpeech': (lg['partOfSpeech'] if lg else ZH_POS[t['pos']]) or None}
         if lg and lg['note']:
             e['note'] = lg['note']
         e['tier'] = r['tier']
-        if r['entry_type'] == 'phrase':
+        if phrase:
             e['entryType'] = 'phrase'
             e['curriculumIndex'] = 0
             assert cid in sched and sched[cid]['word'] == r['word'], ('phrase without a schedule row', cid)
         else:
             assert r['entry_type'] == 'word'
-            assert belt_for(cid) == r['belt'] or (cid > 2500 and r['belt'] == 'Beyond curriculum'), ('belt mismatch', cid, r['belt'], belt_for(cid))
         out.append(e)
+    out.sort(key=lambda e: (e['entryType'] == 'phrase' if 'entryType' in e else False, e['unlockOrder']))
     assert len(legacy) == 100
     phr = {'ids': [], 'home': {}, 'kind': {}}
     for cid, s in sorted(sched.items()):

@@ -323,8 +323,13 @@ function scriptedAdapter(plan) {
     // 12 Nov: the new Mandarin bank contains almost every compound of the segmenter's built-in list (下午 周末 公园 ... are taught words now); only 苹果 is left that is
     // absent from the bank AND starts with a character that is not itself a bank word, which is the case the list exists for (a bank character is matched first, so
     // an untaught compound made of known characters is split and is not "unknown" at all). The probe is therefore 苹果; 时候 stays the taught-compound check.
-    T('4F', 'segmentation keeps compounds whole (时候 taught; 苹果 kept as ONE untaught word, never 苹 / 果)',
-      seg('什么时候去？').includes('时候') && seg('我有苹果。').includes('苹果') && JSON.stringify(c.mandarinCheckLine('我有苹果。', inv).unknown) === '["苹果"]')
+    // 15 Nov: 苹果 is now a taught word too (id 3004, added with the 268 Mandarin words), so NO built-in common compound is both absent from the bank and made of
+    // characters the bank does not teach. The mechanism (an untaught compound stays ONE word) is therefore probed with a small lexicon that does not contain the
+    // characters of 车站, which is the situation the list exists for; the real bank is checked for the taught case (时候, 苹果 whole and not unknown).
+    const small = [{ w: '我', p: 'wǒ', e: 'I', type: 'vocab' }, { w: '有', p: 'yǒu', e: 'have', type: 'vocab' }]
+    T('4F', 'segmentation keeps compounds whole (时候 and 苹果 taught words; an untaught compound 车站 kept as ONE unknown word, never 车 / 站)',
+      seg('什么时候去？').includes('时候') && seg('我有苹果。').includes('苹果') && JSON.stringify(c.mandarinCheckLine('我有苹果。', inv).unknown) === '[]' &&
+      JSON.stringify(c.segmentMandarin('我有车站。', small).map(s => s.surface)) === '["我","有","车站","。"]')
     T('4G', 'cue accuracy (objective): 我… cued as "you" and 你… cued as "I" are rejected; a question rendered as a statement is rejected',
       c.zhCueFormProblems({ chinese: '我想吃。', english: 'Do you want to eat?' }).length > 0 && c.zhCueFormProblems({ chinese: '你去吗？', english: 'I am going.' }).length > 0 && !c.zhCueFormProblems({ chinese: '你去吗？', english: 'Are you going?' }).length)
     const stats = c.createMandarinGenerationStats('unknown', 0)

@@ -52,15 +52,17 @@ function survival(tag, lang, legacy, mergeFn, textKey) {
   T(tag + '2', 'every saved status / interval / repetition / streak / lapse / date / manual-known / queued flag is carried over unchanged', lost.length === 0, lost.slice(0, 6))
   const moved = snap.filter(s => byId.get(s.id)[textKey] !== s[textKey])
   T(tag + '3', 'each saved id still points at the SAME word (headword unchanged) — no progress can land on another word', moved.length === 0, moved.slice(0, 5).map(s => s.id))
-  const pos = snap.filter(s => byId.get(s.id).unlockOrder !== +legacy.find(r => +r.app_id === s.id).csv_id)
-  T(tag + '4', 'each of those words takes its curriculum position from the new list (unlockOrder = its row)', pos.length === 0, pos.slice(0, 5).map(s => s.id))
+  // 15 Nov: the Mandarin list gained 268 words (9 in White ...) that are placed at the END of their belt, so a saved Mandarin word can now sit later than its row
+  // (by at most the number of words added before it); the id and headword (checked above) are what protect the progress. Japanese is unchanged: position = its row.
+  const pos = snap.filter(s => { const row = +legacy.find(r => +r.app_id === s.id).csv_id, u = byId.get(s.id).unlockOrder; return lang === 'zh' ? !(u >= row && u <= row + 270) : u !== row })
+  T(tag + '4', lang === 'zh' ? 'each of those words takes its curriculum position from the new list (never earlier than its row, later only by the added words)' : 'each of those words takes its curriculum position from the new list (unlockOrder = its row)', pos.length === 0, pos.slice(0, 5).map(s => s.id))
   T(tag + '5', 'the bank text now comes from the new list (the stale saved text is replaced), not from the saved copy', snap.every(s => byId.get(s.id).english !== 'old text'))
   const again = c.ev(mergeFn)(JSON.parse(JSON.stringify(merged)))
   T(tag + '6', 'round trip: merging the merged profile again changes nothing (idempotent, 0 differences)', JSON.stringify(again) === JSON.stringify(merged))
   const fresh = merged.filter(w => !byId.has(-1) && !snap.some(s => s.id === w.id))
   T(tag + '7', 'the new words arrive untouched: status new, no history, not queued', fresh.length > 2800 && fresh.every(w => w.status === 'new' && !w.lastSeen && !w.dueDate && !w.queuedNext && (w.repCount || 0) === 0), fresh.length)
   const noRun = c.ev(mergeFn)([])
-  T(tag + '8', 'a first-time learner (nothing saved) gets the full bank: ' + noRun.length + ' entries', noRun.length === (lang === 'ja' ? 3085 : 3023))
+  T(tag + '8', 'a first-time learner (nothing saved) gets the full bank: ' + noRun.length + ' entries', noRun.length === (lang === 'ja' ? 3085 : 3271))   // 15 Nov: Mandarin 3,248 words + 23 phrases
   return { saved, snap, merged, byId }
 }
 const J = survival('A', 'ja', legacyJa, 'mergeJapaneseVocab', 'japanese')
@@ -73,7 +75,8 @@ const w4 = J.byId.get(4), r4 = J.byId.get(6)
 T('A10', 'saved id 4 is still 食べる (not 何, the new list\'s row 4) and keeps its history; 何 keeps its own id 6', w4.japanese === '食べる' && w4.unlockOrder === 6 && r4.japanese === '何' && r4.unlockOrder === 4 && J.snap[3].status === w4.status)
 const ids = new Set(J.merged.map(w => w.id))
 T('A11', 'no new Japanese word reuses a saved id: the 2,885 new words sit on ids ≥ 201', J.merged.filter(w => !J.snap.some(s => s.id === w.id)).every(w => w.id > 200), null)
-T('A12', 'Mandarin ids are the list rows: ids 1–100 unchanged and in the same position', Z.snap.every(s => Z.byId.get(s.id).unlockOrder === s.id))
+// 15 Nov: ids 1–100 keep their id and word; the nine White words added to the list sit at the end of White, so words 92–100 move 9 places later (never earlier)
+T('A12', 'Mandarin saved ids 1–100 unchanged: same id, same word, and the same position except the last White words, which move later by the nine added White words', Z.snap.every(s => { const w = Z.byId.get(s.id); return w.unlockOrder >= s.id && w.unlockOrder <= s.id + 9 && (s.id <= 91 ? w.unlockOrder === s.id : true) }))
 
 // ── slots saved before the swap ("today's new words") and the queued words still resolve to the same words ────────────────────────────────────────────────────────
 {
@@ -97,7 +100,7 @@ T('A12', 'Mandarin ids are the list rows: ids 1–100 unchanged and in the same 
 {
   const jb = c.ev('initJapaneseVocab()'), zb = c.ev('initMandarinVocab()')
   const jw = jb.filter(w => w.entryType !== 'phrase' && w.entryType !== 'spare'), zw = zb.filter(w => w.entryType !== 'phrase')
-  T('A17', 'Japanese: 3,050 syllabus words, 18 phrases, 17 spare words; Mandarin: 3,000 words, 23 phrases', jw.length === 3050 && jb.filter(w => w.entryType === 'phrase').length === 18 && jb.filter(w => w.entryType === 'spare').length === 17 && zw.length === 3000 && zb.filter(w => w.entryType === 'phrase').length === 23)
+  T('A17', 'Japanese: 3,050 syllabus words, 18 phrases, 17 spare words; Mandarin: 3,248 words (3,000 − 20 Taiwan duplicates + 268 added), 23 phrases', jw.length === 3050 && jb.filter(w => w.entryType === 'phrase').length === 18 && jb.filter(w => w.entryType === 'spare').length === 17 && zw.length === 3248 && zb.filter(w => w.entryType === 'phrase').length === 23)
   const belts = lst => { const o = {}; lst.forEach(w => { o[w.belt] = (o[w.belt] || 0) + 1 }); return o }
   const want = { 'White': 100, 'Orange': 100, 'Orange + Stripe': 200, 'Blue': 200, 'Blue + Stripe': 200, 'Yellow': 200, 'Yellow + Stripe': 200, 'Green': 325, 'Green + Stripe': 325, 'Brown': 325, 'Brown + Stripe': 325 }
   const ok = b => Object.keys(want).every(k => b[k] === want[k])

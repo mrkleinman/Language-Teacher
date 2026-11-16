@@ -59,6 +59,11 @@ def main():
     order = inter + skipped
     # slot English that cannot stand in 'this {E}' / '{Es}': (word, english_slot, english_plural)
     SLOT_FIX = {'衫': ('top', 'tops'), '牛仔褲': ('jeans', 'jeans'), '物理': ('physics', 'physics')}
+    # from the W01 writer's report: slots that read badly in 'I am so {E}' / 'is it {E}'
+    SLOT_FIX2 = {'辛苦': ('worn out', ''), '久': ('long', ''), '痛': ('sore', '')}
+    for r in order:
+        if r['word'] in SLOT_FIX2 and r['english_slot'] in ('exhausting', 'long (time)', 'painful'): r['english_slot'], r['english_plural'] = SLOT_FIX2[r['word']]
+        if r['word'] == '好吃' and not r['skip']: r['skip'] = 'Mandarin form (Cantonese says 好食)'
     for r in order:
         if r['word'] in SLOT_FIX and r['english_slot'] in ('clothes', 'jeans', 'physics'): r['english_slot'], r['english_plural'] = SLOT_FIX[r['word']]
     # cells of one or two words (outside the one-off X_ groups) are folded into the nearest cell of their group so a module can serve at least three words

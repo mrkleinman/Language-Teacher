@@ -13,3 +13,6 @@ All writer batches and fixes are merged in `drafts/ALL-modules.csv`. Some words 
 
 ## Report
 Per line: modules written, exclusions used, final coverage of each thin word, words you could not support naturally, tag/slot problems noticed, new checker quirks.
+
+## Special: TU05 (core words)
+`drafts/topup/TU05.csv` lists only CORE words (tag keys starting with C: 想 會 未 呢度 ... the most important words of the list). They are NOT exempt from the "core words are not yours" rule for this file: for TU05 you DO write modules for them, because they have only 1-2 fitting modules. Each line gives the extra modules needed to reach 3 (T1/T2). Write the most natural exchanges you can; these are the words every learner meets first. A new module may fit one core word or a compatible group; list every other word of the cell (up to the tier) in `exclude_ids`.

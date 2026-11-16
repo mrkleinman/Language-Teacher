@@ -13115,6 +13115,182 @@ async function stSet(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)) } catch {}
 }
 
+// ══ SEVERAL TABS AT ONCE (v750) ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// Each tab reads the saved words / tracks ONCE and then works from its own copy; it used to save that whole copy back, so a second tab never saw the first one's
+// track and the later save wiped the earlier one (and a word rated in one tab was undone by the other). Now:
+//  · SAVING merges: the stored list is re-read (under a Web Lock, so two tabs cannot interleave), and only the items THIS tab changed, added or removed since it last
+//    synced are applied on top of it (a three-way merge by id; the tab's base is what it last saw in storage). Nothing another tab did is overwritten.
+//  · LISTENING: the browser's "storage" event tells a tab that another tab saved; the items this tab has not touched are replaced by the new stored ones (pure update,
+//    so it is safe to run twice). A track or a word rated in one tab appears in the others without a reload.
+//  · a generation's recovery save (checkpoint) and the Thai draft belong to ONE tab (TAB_ID is kept in sessionStorage, so a reload of the tab finds its own); a draft left by
+//    a tab that stopped writing 2 minutes ago is still offered in any tab, as before.
+//  · the Gemini spend counter adds to the stored total instead of overwriting it.
+//  · while a tab is generating it holds a Web Lock (Chrome does not freeze a page that holds one) as well as the screen wake lock.
+const TAB_ID = (() => {
+  try { let id = sessionStorage.getItem('tt-tab-id'); if (!id) { id = Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4); sessionStorage.setItem('tt-tab-id', id) } return id } catch (e) {}
+  return 'x' + Math.random().toString(36).slice(2, 8)
+})()
+const ST_SYNC = { base: new Map(), listeners: new Map(), installed: false }
+const stJson = x => { try { return JSON.stringify(x) } catch (e) { return '' } }
+function stSyncSnapshot(list, idOf) { const m = new Map(); (Array.isArray(list) ? list : []).forEach(x => { if (x != null) m.set(String(idOf(x)), stJson(x)) }); return m }
+// the tab's base for a stored list = what it has just loaded or written
+function stSyncMark(key, list, idOf) { ST_SYNC.base.set(key, stSyncSnapshot(list, idOf)) }
+// three-way merge: base (id → json of what this tab last saw in storage), mine (this tab's list), theirs (storage now). Mine wins only for what I changed, added or removed.
+function stMerge3(base, mine, theirs, idOf, o) {
+  const opt = o || {}, b = base || new Map()
+  const mm = new Map(), tm = new Map()
+  ;(mine || []).forEach(x => { if (x != null) mm.set(String(idOf(x)), x) })
+  ;(theirs || []).forEach(x => { if (x != null) tm.set(String(idOf(x)), x) })
+  const out = new Map()
+  tm.forEach((tv, id) => {
+    const mv = mm.get(id)
+    if (mv === undefined) { if (!b.has(id)) out.set(id, tv) }                             // I do not have it: another tab added it (kept) — unless I deleted it (dropped)
+    else out.set(id, stJson(mv) !== b.get(id) ? mv : tv)                                  // I changed it ⇒ mine; I did not ⇒ the stored one
+  })
+  mm.forEach((mv, id) => { if (!tm.has(id) && (!b.has(id) || stJson(mv) !== b.get(id))) out.set(id, mv) })   // new in this tab, or changed here after another tab deleted it
+  let list = [...out.values()]
+  if (opt.order) list = list.sort(opt.order)
+  else { const rank = new Map((mine || []).map((x, i) => [String(idOf(x)), i])); list = list.map((x, i) => [x, i]).sort((p, q) => (rank.has(String(idOf(p[0]))) ? rank.get(String(idOf(p[0]))) : 1e9 + p[1]) - (rank.has(String(idOf(q[0]))) ? rank.get(String(idOf(q[0]))) : 1e9 + q[1])).map(p => p[0]) }
+  if (opt.cap && list.length > opt.cap) list = list.slice(list.length - opt.cap)
+  return list
+}
+// bring a tab's current list up to storage: an item the tab still has exactly as it was when `expect` was taken is replaced by the stored one; anything the tab has changed
+// since stays; items only the other tab has appear; items the other tab removed go (unless changed here). Pure: same inputs, same answer.
+function stAdoptPure(cur, expect, target, idOf, o) {
+  const opt = o || {}, e = expect || new Map()
+  const tm = new Map(); (target || []).forEach(x => { if (x != null) tm.set(String(idOf(x)), x) })
+  const cm = new Map(); (cur || []).forEach(x => { if (x != null) cm.set(String(idOf(x)), x) })
+  const out = new Map(); let changed = false
+  cm.forEach((cv, id) => {
+    const same = e.has(id) && stJson(cv) === e.get(id)
+    if (tm.has(id)) { if (same) { const nv = tm.get(id); if (nv !== cv && stJson(nv) !== e.get(id)) { out.set(id, nv); changed = true } else out.set(id, cv) } else out.set(id, cv) }
+    else if (same) changed = true                                                          // the other tab removed it and I had not touched it
+    else out.set(id, cv)
+  })
+  tm.forEach((tv, id) => { if (!cm.has(id) && !e.has(id)) { out.set(id, tv); changed = true } })   // added elsewhere
+  if (!changed) return { next: cur, changed: false }
+  let list = [...out.values()]
+  if (opt.order) list = list.sort(opt.order)
+  else { const rank = new Map((cur || []).map((x, i) => [String(idOf(x)), i])); list = list.map((x, i) => [x, i]).sort((p, q) => (rank.has(String(idOf(p[0]))) ? rank.get(String(idOf(p[0]))) : 1e9 + p[1]) - (rank.has(String(idOf(q[0]))) ? rank.get(String(idOf(q[0]))) : 1e9 + q[1])).map(p => p[0]) }
+  if (opt.cap && list.length > opt.cap) list = list.slice(list.length - opt.cap)
+  return { next: list, changed: true }
+}
+async function stWithLock(name, fn) {
+  const L = typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function' ? navigator.locks : null
+  if (L) return L.request(name, fn)           // an error inside fn reaches the caller; the lock is released either way
+  return fn()
+}
+// save a list the merged way; returns { merged, mine } — merged is what is now stored
+async function stSyncSave(key, mine, idOf, o) {
+  return stWithLock('tt-store:' + key, async () => {
+    const stored = await stGet(key)
+    const base = ST_SYNC.base.get(key) || new Map()
+    const theirs = Array.isArray(stored) ? stored : []
+    // nothing stored by anyone else since this tab last saw it (the common case): the plain write, as before
+    const sameAsBase = theirs.length === base.size && theirs.every(x => base.get(String(idOf(x))) === stJson(x))
+    let merged = sameAsBase ? mine : stMerge3(base, mine, theirs, idOf, o)
+    if (sameAsBase && o && o.cap && merged.length > o.cap) merged = merged.slice(merged.length - o.cap)
+    await stSet(key, merged)
+    ST_SYNC.base.set(key, stSyncSnapshot(merged, idOf))
+    return { merged, other: !sameAsBase }
+  })
+}
+// save and fold what other tabs did into this tab's state (setList is the React setter; the update is pure)
+async function stSyncCommit(key, mine, setList, idOf, o) {
+  const snapMine = stSyncSnapshot(mine, idOf)
+  const r = await stSyncSave(key, mine, idOf, o)
+  if (r.other && setList) setList(cur => stAdoptPure(cur, snapMine, r.merged, idOf, o).next)
+  return r.merged
+}
+function stSyncOnChange(key, fn) {
+  if (!ST_SYNC.installed && typeof window !== 'undefined' && window.addEventListener) {
+    ST_SYNC.installed = true
+    window.addEventListener('storage', e => {
+      try {
+        if (!e.key || (typeof localStorage !== 'undefined' && e.storageArea && e.storageArea !== localStorage)) return
+        const fns = ST_SYNC.listeners.get(e.key); if (!fns || !fns.size) return
+        let v = null; if (e.newValue != null) { try { v = JSON.parse(e.newValue) } catch (x) { return } }
+        fns.forEach(f => { try { f(v) } catch (x) {} })
+      } catch (x) {}
+    })
+  }
+  if (!ST_SYNC.listeners.has(key)) ST_SYNC.listeners.set(key, new Set())
+  ST_SYNC.listeners.get(key).add(fn)
+  return () => { const s = ST_SYNC.listeners.get(key); if (s) s.delete(fn) }
+}
+// React: keep a synced list in step with the other tabs (call once per list, after it has loaded)
+function useTabSyncedList(key, setList, idOf, o, ready) {
+  useEffect(() => {
+    if (!ready) return undefined
+    return stSyncOnChange(key, stored => {
+      const target = Array.isArray(stored) ? stored : []
+      const expect = ST_SYNC.base.get(key) || new Map()
+      ST_SYNC.base.set(key, stSyncSnapshot(target, idOf))
+      setList(cur => stAdoptPure(cur, expect, target, idOf, o).next)
+    })
+  }, [key, ready])
+}
+const stTrackId = t => (t && (t.id != null ? t.id : (t.createdAt || ((t.date || '') + ':' + ((t.pairs && t.pairs.length) || 0)))))
+const stTrackOrder = (a, b) => String(a.createdAt || a.date || '').localeCompare(String(b.createdAt || b.date || ''))
+const ST_TRACK_OPTS = Object.freeze({ order: stTrackOrder, cap: 20 })
+const stWordId = w => w.id
+// tab-owned keys (a generation's recovery save, the Thai draft): written under this tab's id; read from this tab's key first, then the key used before v750, then — only if
+// it has not been written for 2 minutes — another tab's, which is then taken over (copied to this tab's key and removed)
+const ST_TAB_SEP = '@'
+function stTabKey(key) { return key + ST_TAB_SEP + TAB_ID }
+function stStamp(v) { try { const a = [v && v.updatedAt, v && v.savedAt, v && v.createdAt].filter(Boolean).map(x => Date.parse(x)).filter(x => x > 0); return a.length ? Math.max(...a) : 0 } catch (e) { return 0 } }
+async function stTabGet(key, o) {
+  const own = await stGet(stTabKey(key)); if (own) return own
+  const legacy = await stGet(key); if (legacy) return legacy
+  try {
+    let best = null, bestKey = null, now = Date.now()
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i); if (!k || k.indexOf(key + ST_TAB_SEP) !== 0 || k === stTabKey(key)) continue
+      let v = null; try { v = JSON.parse(localStorage.getItem(k)) } catch (e) { continue }
+      if (!v || (o && o.accept && !o.accept(v))) continue
+      const at = stStamp(v)
+      if (now - at < 2 * 60 * 1000) continue                                              // written in the last two minutes: a running generation of another tab — not offered
+      if (!best || at > stStamp(best)) { best = v; bestKey = k }
+    }
+    if (best) { await stSet(stTabKey(key), best); try { localStorage.removeItem(bestKey) } catch (e) {} return best }
+  } catch (e) {}
+  return null
+}
+async function stTabSet(key, val) {
+  if (val == null) { try { localStorage.removeItem(stTabKey(key)); localStorage.removeItem(key) } catch (e) {}; try { if (window.storage && window.storage.delete) { await window.storage.delete(stTabKey(key)) } } catch (e) {}; return }
+  await stSet(stTabKey(key), val)
+}
+// old tab-owned saves nobody has touched for 3 days are removed at start
+function stTabSweep(prefixes) {
+  try {
+    const dead = [], now = Date.now()
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k || k.indexOf(ST_TAB_SEP) < 0 || !prefixes.some(p => k.indexOf(p + ST_TAB_SEP) === 0)) continue
+      let v = null; try { v = JSON.parse(localStorage.getItem(k)) } catch (e) {}
+      if (!v || now - stStamp(v) > 3 * 24 * 3600 * 1000) dead.push(k) }
+    dead.forEach(k => localStorage.removeItem(k))
+  } catch (e) {}
+}
+// a number that only grows (the Gemini spend): add to what is stored, never overwrite it
+function stAddToNumber(key, current, add) {
+  let stored = 0; try { stored = parseFloat(JSON.parse(localStorage.getItem(key))) || 0 } catch (e) {}
+  const next = Math.round((Math.max(current || 0, stored) + add) * 1e8) / 1e8
+  stSet(key, next)
+  return next
+}
+// every tab keeps the screen on AND holds a Web Lock while it is generating: Chrome does not freeze a page that holds a Web Lock, so a tab in the background keeps working
+let AI_TAB_LOCK = null, AI_TAB_LOCK_REQ = false, AI_TAB_LOCK_IDLE = null
+function aiHoldTab() {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.locks || typeof navigator.locks.request !== 'function') return
+    if (!AI_TAB_LOCK_REQ) {
+      AI_TAB_LOCK_REQ = true
+      navigator.locks.request('tt-generating:' + TAB_ID, () => AI_TAB_LOCK_REQ ? new Promise(res => { AI_TAB_LOCK = res }) : undefined).catch(() => { AI_TAB_LOCK_REQ = false })
+    }
+    clearTimeout(AI_TAB_LOCK_IDLE)
+    AI_TAB_LOCK_IDLE = setTimeout(() => { const r = AI_TAB_LOCK; AI_TAB_LOCK = null; AI_TAB_LOCK_REQ = false; try { r && r() } catch (e) {} }, 4 * 60 * 1000)   // released 4 minutes after the last request
+  } catch (e) {}
+}
+
 // ── Vocab Helpers ─────────────────────────────────────────────────────────────
 // ── Near-duplicate detection for generated Thai sentences ────────────────────
 // Exact-string matching let near-identical pairs through (same sentence differing
@@ -15429,7 +15605,7 @@ function aiWaitForPage(signal, runCtl) {
   })
 }
 function aiRecordStart(o) {
-  aiKeepScreenOn()
+  aiKeepScreenOn(); aiHoldTab()
   const tag = AI_CTX.nextTag; AI_CTX.nextTag = null
   const row = { id: ++_aiSeq, runId: AI_CTX.runId, runKind: AI_CTX.runKind, trackId: AI_CTX.trackId, at: new Date().toISOString(),
     provider: o.provider, model: o.model, fn: (o.chain || [])[0] || '?', chain: o.chain || [], stage: o.stage || aiStageOf(o.prompt, o.chain),
@@ -25248,6 +25424,10 @@ const CUE_JUDGE_CLASS_RULE = 'CUE CLASSES — for every item also return "cls": 
   '"C" = the sentence leaves out a referent the dialogue makes clear and the cue names it: score 5 · ' +
   '"A" = the cue or the English says something the sentence does not (another thing, a negation, a comparison, a number, a time, question vs statement): score 1–3.'
 
+// Japanese / Mandarin cues follow the Thai habit: the track has one man (A) and one woman (B), so the other person is always "her" (when A speaks) or "him" (when B speaks)
+const JA_ZH_CUE_ADDRESSEE_RULE = 'CUE WORDING: the other speaker is ALWAYS "him" or "her" (A is a man and speaks to a woman: "Ask her …", "Tell her …"; B is a woman and speaks to a man: "Ask him …", "Tell him …"). ' +
+  'Never use the characters\' names and never "they" / "them" for the other person. One speech act per cue (Ask / Tell / Say / Suggest / Thank / Check), at most two short parts. ' +
+  'Do not start with "Ask Name:" and do not copy the English sentence into the cue.'
 const CC_STOP = new Set(('a an the this that these those it its it\'s is are am was were be been being do does did done to of in on at for with from by as and or ' +
   'but if whether so then too also just only really very much more most less some any no not never there here now what where when who whom whose why how which ' +
   'you your yours yourself he him his himself she her hers herself they them their theirs themselves we us our ours i me my mine myself one ones please can could ' +
@@ -25519,6 +25699,9 @@ function cueFromEnglish(lang, en, sentence, ctx) {
       // following sentence is its own "say …" clause
       const sp = rest.match(/^([^.!?]*[.!?])\s+(\S[\s\S]*)$/)
       if (sp) return ccEnd('Thank ' + who + ccShiftPersons(sp[1].replace(/^\s*,\s*/, ' ').replace(/[.!?]+$/, ''), { addr: ctx.addr }).replace(/\s+$/, '') + ', and say ' + ccShiftPersons(ccLowerFirst(sp[2], ctx.names), { addr: ctx.addr }).replace(/[.!?]+$/, ''))
+      // 15 Nov (owner's Japanese export, pairs 17 and 27: "Thank him let's eat."): "Thanks, <a sentence of its own>" is a thanks AND a second thing to say
+      const cl = rest.match(/^\s*,\s*((?:let'?s|let us|i|i'm|i'll|we|you|you're|it|it's|that|that's|this|see|sorry|please|now|then|good|great|well|oh|okay|ok)\b[\s\S]*)$/i)
+      if (cl && cl[1].length > 3) { const r2 = cueFromEnglish(lang, ccCap(cl[1].replace(/[.!]+$/, '')), sentence, ctx); if (r2) return ccEnd('Thank ' + who + ', and ' + r2.charAt(0).toLowerCase() + r2.slice(1).replace(/[.!]+$/, '')) }
       return ccEnd('Thank ' + who + ccShiftPersons(rest.replace(/^\s*,\s*/, ' '), { addr: ctx.addr }).replace(/\s+$/, '')) } }
   if (/^(don't|do not|never)\s+[a-z]/i.test(e)) return ccEnd(TT + ' not to ' + ccShiftPersons(e.replace(/^(don't|do not|never)\s+/i, ''), SA))
   const first = (e.match(/^(?:just\s+|please\s+)?([a-z]+)/i) || [])[1]
@@ -25727,7 +25910,7 @@ function cueClarityCtx(lang, track) {
     return { name: /^[A-Za-z][A-Za-z'-]+$/.test(name || '') ? name : '', gender } }
   const A = ch('A'), B = ch('B'), G = { A: A.gender, B: B.gender }
   const thG = p => { const t = String(p && p.thai || ''); return /ครับ|คับ/.test(t) ? 'm' : /ค่ะ|คะ/.test(t) ? 'f' : null }
-  return { ...base, names: [A.name, B.name].filter(Boolean), genderOf: p => (lang === 'th' ? thG(p) : null) || G[p && p.speaker] || (lang === 'th' ? (p && p.speaker === 'B' ? 'f' : 'm') : null),
+  return { ...base, names: [A.name, B.name].filter(Boolean), nameOf: { A: A.name, B: B.name }, genders: { A: A.gender, B: B.gender }, genderOf: p => (lang === 'th' ? thG(p) : null) || G[p && p.speaker] || (lang === 'th' ? (p && p.speaker === 'B' ? 'f' : 'm') : null),
     addrOf: p => { const o = p && p.speaker === 'A' ? 'B' : 'A'; return G[o] || (lang === 'th' ? (o === 'B' ? 'f' : 'm') : null) } }
 }
 function cueClarityLog(log, lang, label, st) {
@@ -25757,7 +25940,41 @@ function cueClarityPass(lang, pairs, ctx) {
     if (r.changed) { stats.changed++; if (stats.examples.length < 120) stats.examples.push({ from: p.prompt, to: r.cue, cls: r.cls, why: r.reasons.join(' · '), sentence: p.thai || p.japanese || p.chinese, english: p.english }) }
     return { ...p, prompt: r.cue, ...(r.changed ? { _cueClarifiedFrom: p._cueClarifiedFrom || p.prompt, _cueClass: r.cls } : { _cueClass: r.cls }), ...(r.flags.length ? { _cueFlags: r.flags } : {}) }
   })
+  // Japanese / Mandarin: the other person is "him" or "her" (as in every Thai cue), never a name or "they"
+  if (lang !== 'th') { let k = 0; const o2 = out.map(p => { if (!p || !p.prompt) return p; const q = cueAddresseeForm(p.prompt, p, ctx); if (q === p.prompt) return p; k++; return { ...p, prompt: q, _cueClarifiedFrom: p._cueClarifiedFrom || p.prompt, _cueAddressee: true } }); stats.addressee = k; return { pairs: o2, stats } }
   return { pairs: out, stats }
+}
+// 15 Nov (owner's Japanese export): "Ask Mio what time the bus comes." / "Ask Kenji: …" / "Ask if they're okay today" — the Thai cues always say him / her (the track has ONE man and ONE woman, so
+// the listener is always known). The other speaker's name becomes him / her; "they / them / their" for that person becomes he / she / him / her; nothing else is touched. The speaker
+// is A (a man by default, like Thai) talking to B, or B talking to A; the scene's genders win when it states them.
+const CC_THEY_PRESENT = new Set('say like want know think go have do need prefer mean see get eat drink live work come take speak use wait ask tell feel hear remember forget love hate buy sell find give show leave stay play study sleep start finish try mind order'.split(' '))
+const CC_THEY_KEEP = new Set('will would can could should might must may shall still already also just only really never always often usually probably not all both ate came went got saw said did had made took gave found knew thought left'.split(' '))
+function cueAddresseeForm(cue, p, ctx) {
+  const c0 = String(cue || ''); if (!c0) return c0
+  const speaker = p && p.speaker === 'B' ? 'B' : 'A'
+  const other = speaker === 'A' ? 'B' : 'A'
+  const sceneG = ctx && ctx.genders ? ctx.genders[other] : null
+  const g = sceneG || (other === 'B' ? 'f' : 'm')
+  const names = (ctx && ctx.nameOf) || {}, nm = names[other]
+  let c = c0
+  const him = g === 'm' ? 'him' : 'her', he = g === 'm' ? 'he' : 'she', his = g === 'm' ? 'his' : 'her'
+  // the other speaker's name → him / her; the speaker's own name (rare) is left alone
+  if (nm) c = c.replace(new RegExp('\\b(Ask|Tell|Thank|Remind|Invite|Warn|Answer|Reply to|Say to|Suggest to|Offer|Show|Greet|Wish)\\s+' + nm + '\\b', 'g'), (m0, v) => v + ' ' + him)
+  if (nm) c = c.replace(new RegExp('\\b' + nm + '(?=\\s+(?:is|are|was|will|wants|likes|has|can|goes|comes|thinks)\\b)', 'g'), he)
+  // they / them / their for the one other person (not when a group is named)
+  if (!/\b(friends|people|everyone|everybody|group|others|students|children|kids|parents|family|colleagues|classmates|team|all of)\b/i.test(c)) {
+    c = c.replace(/\b(Ask|Tell|Check with|Thank|Remind|Invite|Warn) them\b/g, (m0, v) => v + ' ' + him)
+      .replace(/\b(if|whether|that|and say|and ask|so) they(?:'re| are)\b/gi, (m0, w) => w + ' ' + he + (/'re/.test(m0) ? "'s" : ' is'))
+      .replace(/\bthey(?:'ve| have)\b/gi, he + "'s").replace(/\bthey haven't\b/gi, he + " hasn't").replace(/\bthey (do|did|can|will|would|were|had|want|like|know|came|go|went|ate|got)\b/gi, (m0, v) => he + ' ' + ({ were: 'was', do: 'does', have: 'has', want: 'wants', like: 'likes', know: 'knows', go: 'goes' }[v.toLowerCase()] || v))
+      .replace(/\bthey\s+(\w+)/gi, (m0, w) => {
+        const lw = w.toLowerCase()
+        if (CC_THEY_PRESENT.has(lw)) return he + ' ' + (lw === 'have' ? 'has' : lw === 'do' ? 'does' : lw === 'go' ? 'goes' : /(s|sh|ch|x|z)$/.test(lw) ? lw + 'es' : /[^aeiou]y$/.test(lw) ? lw.slice(0, -1) + 'ies' : lw + 's')
+        if (CC_THEY_KEEP.has(lw) || /ed$/.test(lw)) return he + ' ' + w
+        return m0                                                                               // an unknown verb: left as it is rather than risk a wrong -s
+      })
+      .replace(/\bthey\b(?=\s*[,.?!]|$)/gi, he).replace(/\btheir\b/gi, his).replace(/\bthem\b/gi, him)
+  }
+  return c
 }
 
 
@@ -50467,7 +50684,10 @@ function auditJapaneseReading(pair) {
       const wantP = segs.length && segs.every(x => x.reading || x.surface) &&
         segs.map(x => x.reading || x.surface).join('').replace(/[。、，．？！：；「」『』?!.,:;\s]/g, '') === rd.replace(/[。、，．？！：；「」『』?!.,:;\s]/g, '')   // v669: full-width ，． too
         ? segs.map(x => PART[x.surface] && (x.reading || x.surface) === x.surface ? PART[x.surface] : kanaToRomaji(x.reading || x.surface)).join('').replace(/[^a-z]/gi, '').toLowerCase() : null
-      if (norm(want) !== norm(got) && !(wantP && norm(wantP) === norm(got)))
+      // 15 Nov (owner's export, pair 06: NOT_READY for one line "toire o kiku ne" vs "toirewokikune"): the particle を is written o in Hepburn; when the segments could not
+      // be matched to the reading it was compared as "wo". を is a particle in every sentence of the course, so the reading is also tried with を as お.
+      const wantO = /を/.test(rd) ? kanaToRomaji(rd.replace(/を/g, 'お')).replace(/[^a-z]/gi, '').toLowerCase() : null
+      if (norm(want) !== norm(got) && !(wantP && norm(wantP) === norm(got)) && !(wantO && norm(wantO) === norm(got)))
         problems.push('romaji does not transcribe the reading: "' + ro + '" vs expected "' + kanaToRomaji(rd) + '"')
     }
   }
@@ -56044,7 +56264,7 @@ function buildJapaneseRecallPrompt(target, recallIndex, inv, vocab, registerId, 
   let blocks = ''
   try { const av = jaBlocksAvailable(vocab, c.grammarProgress || {}); blocks = av.map(b => b.id + '=' + jaBlockRealisation(b, registerId)).join(' · ') } catch (e) {}
   const role = (() => { try { return targetRoleLine(targetLinguisticRole(target, 'ja'), target, 'ja').trim() } catch (e) { return '' } })()
-  const system = 'You are a Japanese teacher writing natural spoken Japanese for a learner.\n' + JA_RECALL_POLICY + (cueClarityOn() ? '\nenglishCue: ' + DAILY_CUE_CONTRACT.replace(/^prompt = /, '') : '') + '\n' + japaneseRegisterContract(registerId)
+  const system = 'You are a Japanese teacher writing natural spoken Japanese for a learner.\n' + JA_RECALL_POLICY + (cueClarityOn() ? '\nenglishCue: ' + DAILY_CUE_CONTRACT.replace(/^prompt = /, '') : '') + (cueClarityOn() ? '\n' + JA_ZH_CUE_ADDRESSEE_RULE : '') + '\n' + japaneseRegisterContract(registerId)
   const user =
     'JAPANESE TARGET: ★ ' + target.japanese + (target.reading ? ' [' + target.reading + ']' : '') + ' = ' + (target.english || '') +
       (target.note ? ' — use when ' + target.note : '') + (role && !teachingPlanOn() ? '\n  ' + role : '') + '\n' +

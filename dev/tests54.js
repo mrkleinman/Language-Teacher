@@ -55,7 +55,8 @@ const NARR = /^(He|She|A|B)\s+(tells|says|asks|suggests|offers|answers|agrees|ap
     T('B2-' + lang, lang + ': questions stay questions and statements stay statements (no changed cue flips the form the sentence has)', !qFlip.length, qFlip.map(([a, b]) => a.prompt + ' → ' + b.prompt))
     // no new meaning: every content word of a changed cue comes from the original cue or the verified English
     // 12 Nov: the auxiliary forms of "be" (were / been / being) carry no meaning, so a cue re-tensed from "had been worried" to "were thinking" is not new meaning; this failure is older than the word-list work (it also fails on the build of 11 Nov, 6e6d6d6)
-    const extra = ch.map(([a, b]) => ({ a, b, add: W(b.prompt).filter(w => w.length > 3 && !W(a.prompt).includes(w) && !W(b.english).includes(w) && !/^(say|tell|ask|suggest|them|they|their|then|whether|your|yours|yourself|that|this|there|have|will|would|should|could|okay|sure|you'll|you're|you've|they'll|they're|they've|he's|she's|he'll|she'll|his|hers|were|been|being)$/.test(w) && !W(a.prompt).some(x => x.slice(0, 4) === w.slice(0, 4))) })).filter(x => x.add.length)
+    // 15 Nov: the Japanese / Mandarin addressee pass (they → she / he, with the verb agreeing: do → does) re-words a cue without adding meaning, so cues it touched are not counted here
+    const extra = ch.filter(([a, b]) => !b._cueAddressee).map(([a, b]) => ({ a, b, add: W(b.prompt).filter(w => w.length > 3 && !W(a.prompt).includes(w) && !W(b.english).includes(w) && !/^(say|tell|ask|suggest|them|they|their|then|whether|your|yours|yourself|that|this|there|have|will|would|should|could|okay|sure|you'll|you're|you've|they'll|they're|they've|he's|she's|he'll|she'll|his|hers|were|been|being)$/.test(w) && !W(a.prompt).some(x => x.slice(0, 4) === w.slice(0, 4))) })).filter(x => x.add.length)
     T('B3-' + lang, lang + ': no changed cue introduces a word that is neither in the original cue nor in the verified meaning (no new meaning)', !extra.length, extra.map(x => x.a.prompt + ' → ' + x.b.prompt + ' [' + x.add.join(',') + ']'))
     const narr = R.r.pairs.filter(p => NARR.test(p.prompt))
     T('B4-' + lang, lang + ': no final cue narrates in the third person or copies the English after a template ("He tells her…", "She asks…", "Tell the other person: …", "As Ken, …")', !narr.length, narr.map(p => p.prompt))
@@ -82,7 +83,8 @@ const NARR = /^(He|She|A|B)\s+(tells|says|asks|suggests|offers|answers|agrees|ap
     T('C4', 'ellipsis: "Ask how much the shrimp costs" for เท่าไหร่คะ ("How much is it?") keeps "the shrimp" — "Ask how much it costs" would not tell the learner what to ask about', r.cue === 'Ask how much the shrimp costs.', r)
     const keep = [[th, 19], [th, 66], [th, 76], [ja, 9], [ja, 24], [zh, 3]].map(([R, k]) => [R.orig(k).prompt, R.by(k).prompt])
     T('C5', 'already-correct concise cues are not touched ("Ask him whether the chilli is very spicy." · "Tell Nida you might arrive late tomorrow." · "Ask what they will drink" …)',
-      keep.slice(0, 2).every(([a, b]) => a === b) && keep[4][0] === keep[4][1], keep)
+      // 15 Nov: "Ask what they will drink" (Japanese) is no longer "already correct": the other person is always he / she, as in the Thai cues — it becomes "Ask what he will drink"
+      keep.slice(0, 2).every(([a, b]) => a === b) && keep[4][1] === keep[4][0].replace(/\bthey\b/, 'he'), keep)
     const zf = zh.by(29)
     T('C6', 'zh 29 昨天人很少。: the cue "…very few people, not today" ADDED a contrast the sentence does not have — removed, and reported as a fixed meaning mismatch',
       zf.prompt === 'Say that yesterday there were very few people.' && (zf._cueFlags || []).some(f => /CUE_ADDED_MEANING/.test(f)), { cue: zf.prompt, flags: zf._cueFlags })
@@ -92,7 +94,8 @@ const NARR = /^(He|She|A|B)\s+(tells|says|asks|suggests|offers|answers|agrees|ap
       ja.r.pairs.filter(p => /tone|pointing|casual/i.test(p.prompt)).map(p => p.prompt))
     T('C9', 'ja addressee is resolved from the scene: "Ask Ken: Are you taking the train today?" → "Ask Ken if he is taking the train today."', ja.by(81).prompt === 'Ask Ken if he is taking the train today.', ja.by(81).prompt)
     T('C10', 'zh: the "Tell the other person: …" / "Ask: …?" template copies become instructions — "Ask if they want to eat together." · "Say you haven\'t arrived yet." · "Tell them to drive a little faster." · "Suggest we go home together."',
-      zh.by(39).prompt === 'Ask if they want to eat together.' && zh.by(7).prompt === "Say you haven't arrived yet." && zh.by(21).prompt === 'Tell them to drive a little faster.' && zh.by(41).prompt === 'Suggest we go home together.', [39, 7, 21, 41].map(k => zh.by(k).prompt))
+      // 15 Nov: "they / them" for the other person become she / her (Thai habit), so the expected cues read "Ask if she wants …" and "Tell her to drive …"
+      zh.by(39).prompt === 'Ask if she wants to eat together.' && zh.by(7).prompt === "Say you haven't arrived yet." && zh.by(21).prompt === 'Tell her to drive a little faster.' && zh.by(41).prompt === 'Suggest we go home together.', [39, 7, 21, 41].map(k => zh.by(k).prompt))
     // two grammar faults found by the Haiku prompt-following check (old-contract cues through the pass)
     const one = (cue, en, thai) => c.cueClarify('th', { prompt: cue, english: en, thai, speaker: 'A', pairType: 'recall' }, ctxOf('th')).cue
     const c11 = one('He tells her that pair of socks costs twenty-nine baht.', 'That pair of socks is twenty-nine baht.', 'ถุงเท้าคู่นั้นยี่สิบเก้าบาทครับ')
@@ -119,7 +122,8 @@ const NARR = /^(He|She|A|B)\s+(tells|says|asks|suggests|offers|answers|agrees|ap
       const narr = content.filter(p => /^(He|She)\s+(says|remarks|asks)\b/.test(p.prompt || ''))
       // v706 — _cueLint / _cueLintFrom are cue metadata like _cueFlags: with the cue pass OFF the fixture's "He says: he really like the price"
       // now (correctly) carries BROKEN_ENGLISH from the cue grammar guard; with it ON the cue is rewritten first. Only the cue side differs.
-      const strip = p => { const { prompt, _cueClarifiedFrom, _cueClass, _cueFlags, _semVerdicts, _semCue, _cueLint, _cueLintFrom, ...rest } = p || {}; return JSON.stringify(rest) }
+      // 15 Nov: _cueAddressee marks a cue whose "they / name" was changed to he / she (a cue field, like the others stripped here)
+      const strip = p => { const { prompt, _cueClarifiedFrom, _cueAddressee, _cueClass, _cueFlags, _semVerdicts, _semCue, _cueLint, _cueLintFrom, ...rest } = p || {}; return JSON.stringify(rest) }
       const offBy = new Map(OFF.t.pairs.map(p => [t14.txt(lang, p), p]))
       const meta = content.filter(p => { const b = offBy.get(t14.txt(lang, p)); return !b || strip(b) !== strip(p) })
       const qOn = JSON.stringify((t.integrity || {}).quota || null), qOff = JSON.stringify((OFF.t.integrity || {}).quota || null)

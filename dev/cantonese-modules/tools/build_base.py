@@ -39,6 +39,15 @@ def main():
         if k in seen: r['skip'] = 'duplicate of deck row ' + seen[k]; r['use_class'] = 'D'; continue
         seen[k] = r['key']
         if (r['word'], r['meaning']) in EXTRA: r['skip'] = 'duplicate sense of ' + r['word']; r['use_class'] = 'D'
+    # 2026-11 gap fixes: two words are not Cantonese for what they teach (穿 is the Mandarin word for putting on clothes: Cantonese says 著 / 戴, and the cell has 著衫 and 戴;
+    # 睜 is written style: spoken Cantonese says 打開眼), so they leave the curriculum; 32 of the words that were cut for the local-context words come back (clean register, spoken in
+    # Hong Kong) so the curriculum is the full 2,500 words and the last belt has its 325. They keep the ids and tiers they were given at the first release.
+    DROP_WORDS = {'好吃': 'Mandarin form (Cantonese says 好食)',   # skipped here, BEFORE the ranking, so it leaves no empty position in the order
+                  '穿': 'Mandarin usage for clothes (Cantonese says 著 / 戴)', '睜': 'written style (spoken Cantonese says 打開眼)'}
+    REINSTATE = set('平安 前途 成立 診斷 資源 成人 獨特 生產 貸款 轉變 地位 行業 戲劇 執照 溝通 寂寞 論文 固定 註冊 果然 樂觀 陌生 人才 難怪 克服 計算 猶豫 青少年 決心 疑問 最初 反而'.split())
+    for r in allt:
+        if r['word'] in DROP_WORDS and not r['skip']: r['skip'] = DROP_WORDS[r['word']]; r['use_class'] = 'D'
+        elif r['word'] in REINSTATE and r['skip'].startswith('cut for the local-context'): r['skip'] = ''
     CR = {'A': 0, 'B': 1, 'C': 2, 'D': 3}
     live = [r for r in allt if not r['skip']]
     skipped = [r for r in allt if r['skip']]
@@ -97,7 +106,8 @@ def main():
                # the fixers' tag patches (modules were rewritten against these slots)
                '零食': (None, 'snacks'), '民族': ('ethnic groups', 'ethnic groups'), '長輩': ('elders', 'elders'), '年花': (None, 'New Year flowers'), '老友': ('old friend', 'old friends'),
                '後日': ('the day after tomorrow', ''), '前日': ('the day before yesterday', ''), '耳環': ('earrings', 'earrings'), '襪': ('socks', 'socks'), '派': ('hand out', ''),
-               '搶': ('grab', ''), '堆': ('bunch', ''), '吓': ('a look', ''), '唔使': ("don't need to", ''), '呢': ('how about', ''), '唔識': ("don't know how to", ''), '打電話': ('make a call', ''), '叉電': ('charge the phone', '')}
+               '搶': ('grab', ''), '堆': ('bunch', ''), '吓': ('a look', ''), '唔使': ("don't need to", ''), '呢': ('how about', ''), '唔識': ("don't know how to", ''), '打電話': ('make a call', ''), '叉電': ('charge the phone', ''),
+               '當': ('work as', '')}                                                      # 當 dōng (work as / act as; 當老師), not dong3 'treat as'
     for r in order:
         if r['word'] in TAG_FIX and not (r['word'] == '呢' and r['english_slot'] != 'and you'):          # 呢 is also the demonstrative 'this' (id 14): only the question particle is patched
             sl, pl = TAG_FIX[r['word']]

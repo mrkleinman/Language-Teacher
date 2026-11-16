@@ -87,6 +87,19 @@ def main():
     for r in order:
         if r['word'] in SLOT_FIX2 and r['english_slot'] in ('exhausting', 'long (time)', 'painful'): r['english_slot'], r['english_plural'] = SLOT_FIX2[r['word']]
         if r['word'] == '好吃' and not r['skip']: r['skip'] = 'Mandarin form (Cantonese says 好食)'
+    # from the 2026 review of the finished modules: English slots / plurals that read wrongly in the exchanges, and one simplified-character headword
+    TAG_FIX = {'番茄': ('tomato', 'tomatoes'), '葉': ('leaf', 'leaves'), '頸巾': ('scarf', 'scarves'), '太太': (None, 'wives'), '妻子': (None, 'wives'), '小姐': ('young lady', 'young ladies'),
+               '先生': ('gentleman', 'gentlemen'), '後生仔': ('young man', 'young men'), '豆腐': ('tofu', 'tofu'), '書架': ('bookshelf', 'bookshelves'), '活動': ('activity', 'activities'),
+               '愛好': ('hobby', 'hobbies'), '回憶': ('memory', 'memories'), '個性': ('personality', 'personalities'), '幻想': ('fantasy', 'fantasies'), '生活': ('life', 'lives'),
+               '能力': ('ability', 'abilities'), '社會': ('society', 'societies'), '願望': ('wish', 'wishes'), '責任': ('responsibility', 'responsibilities'), '實際': ('practical', ''),
+               '豐富': ('generous', ''), '口味': ('taste', 'tastes'), '水平': ('standard', 'standards'), '主人': ('host', 'hosts'), '位置': ('spot', 'spots'), '身體': ('health', 'health'),
+               '淡': ('weak', ''), '難食': ('awful', ''), '唔好意思': ('sorry', '')}
+    for r in order:
+        if r['word'] in TAG_FIX:
+            sl, pl = TAG_FIX[r['word']]
+            if sl is not None: r['english_slot'] = sl
+            r['english_plural'] = pl
+        if r['word'] == '旅游': r['word'] = '旅遊'
     for r in order:
         if r['word'] in SLOT_FIX and r['english_slot'] in ('clothes', 'jeans', 'physics'): r['english_slot'], r['english_plural'] = SLOT_FIX[r['word']]
     # cells of one or two words (outside the one-off X_ groups) are folded into the nearest cell of their group so a module can serve at least three words

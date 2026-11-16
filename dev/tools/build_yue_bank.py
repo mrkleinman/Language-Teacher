@@ -8,14 +8,14 @@ Single source (nothing is typed into tt.jsx by hand):
 
 A bank row (the Mandarin field names are reused so the ~230 readers of `pinyin` keep working):
   id            the locked id of the word list (permanent: saved progress is keyed by it)
-  unlockOrder   the curriculum POSITION: the list's rank order with its gaps closed (1, 2, 3 ... 2470). The list's `rank` has one gap (753: a word dropped as a
-                Mandarin form) and the app measures a belt against the positions it requires, so a belt with a gap could never be completed (rankTestStatus:
-                missingPositions) and the learner would be stopped at 7th Kyu. Mandarin does the same (build_ja_zh_banks.zh_order). Ids are NOT positions here, as in the Japanese bank.
+  unlockOrder   the curriculum POSITION = the list's `rank` (1 ... 2500). Since the 2026-11 gap fix the rank has NO gap (the word dropped as a Mandarin form is skipped before
+                the ranking), so a belt can always be completed. If a gap ever comes back the build stops here (a belt with a gap could never be finished: rankTestStatus
+                missingPositions). Ids are NOT positions, as in the Japanese bank.
   chinese       the written form, traditional characters
   pinyin        the YALE romanisation (this field name is kept for every reader; Yale for yue, never Jyutping, no tone numbers)
   jyutping      kept for the voice and for debugging; never shown
   english, partOfSpeech, tier, entryType ('word'), curriculumIndex (= unlockOrder)
-Only live rows (`skip` empty) are embedded: 2,470 words. There is no phrase data for Cantonese.
+Only live rows (`skip` empty) are embedded: 2,500 words (the full curriculum). There is no phrase data for Cantonese.
 
 Run from dev/:  python3 tools/build_yue_bank.py          (idempotent)
                 python3 tools/build_yue_bank.py --check  (only report; nothing is written)
@@ -52,11 +52,8 @@ def build():
         assert cid not in ids and rank not in ranks, ('id or rank used twice', cid, rank)
         ids.add(cid); ranks.add(rank)
         pos = pos_of[t['id']]
-        assert pos <= rank and rank - pos <= 1, ('a position moves by at most the one closed gap', cid, rank, pos)
-        # the belt of the list (by rank) and the belt of the position differ only for the words at a belt boundary after the closed gap
-        if B.belt_for(pos) != t['belt']:
-            assert B.belt_for(rank) == t['belt'] and rank > 753, ('belt does not follow the rank', cid, rank, t['belt'])
-            build.moved.append((cid, t['word'], rank, pos, t['belt'], B.belt_for(pos)))
+        assert pos == rank, ('the list must have no gap in its ranks (position != rank)', cid, rank, pos)
+        assert B.belt_for(pos) == t['belt'], ('belt does not follow the rank', cid, rank, t['belt'])
         assert t['yale'] and not re.search(r'[0-9]', t['yale']), ('Yale missing or holding a tone number', cid, t['yale'])
         assert JYUTPING.match(t['jyutping'].strip()), ('Jyutping shape', cid, t['jyutping'])
         assert t['entry_type'] == 'word' and t['pos'] in YUE_POS, ('entry type / part of speech', cid, t['pos'])

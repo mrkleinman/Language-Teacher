@@ -27829,6 +27829,17 @@ function ttsTextForPair(pair) {
   if (pair.japanese) {
     const rd = (pair.reading || '').trim()
     if (rd && !/[\u4E00-\u9FFF]/.test(rd) && !/[\/\uFF5C|]/.test(rd)) return stripModelMarkup(rd)
+    // 16 Nov: a reading that still lists alternatives (なに / なん) or holds a kanji is rebuilt from the word segments (each one's own kana reading, first alternative), so the voice
+    // is still given kana; only when no kana reading can be made does it get the written text
+    try {
+      const segs = Array.isArray(pair.segments) ? pair.segments.filter(Boolean) : []
+      if (segs.length) {
+        const built = segs.map(sg => { const r0 = String(sg.reading || '').split(/\s*[\/\uFF5C|]\s*/)[0].trim(); return r0 || String(sg.surface || '') }).join('')
+        if (built && !/[\u4E00-\u9FFF]/.test(built)) return stripModelMarkup(built)
+      }
+      const first = rd.split(/\s*[\/\uFF5C|]\s*/)[0].trim()
+      if (first && !/[\u4E00-\u9FFF]/.test(first) && !/[\/\uFF5C|]/.test(rd.replace(/[^\/\uFF5C|]/g, '').slice(1))) return stripModelMarkup(first)
+    } catch (e) {}
     return stripModelMarkup(pair.japanese)
   }
   // Mandarin and Thai are read from their own script.
@@ -43319,6 +43330,8 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
   // speech here (history itself is not rewritten).
   const targetTextOf = p => (!p ? '' : stripModelMarkup(_tl === 'zh' ? (p.chinese || p.thai || '')
                                       : _tl === 'ja' ? (p.japanese || p.thai || '') : (p.thai || '')))
+  // 16 Nov: the voice is given the KANA reading for Japanese (the engine used to be handed the kanji and guess the reading); what is shown stays the written text
+  const speechTextOf = p => (!p ? '' : _tl === 'ja' ? ttsTextForPair(p) : targetTextOf(p))
   const phoneticOf   = p => (!p ? '' : (_tl === 'zh' ? (p.pinyin || p.phonetic || '')
                                       : _tl === 'ja' ? (p.romaji || p.phonetic || '') : (p.phonetic || '')))
   const readingOf    = p => (!p ? '' : (p.reading || ''))
@@ -43467,7 +43480,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
         return () => clearTimeout(t)
       }) || (() => {})
     } else {
-      cleanup = speakOrWait(targetTextOf(pair), _tlCode, revealDur, () => {
+      cleanup = speakOrWait(speechTextOf(pair), _tlCode, revealDur, () => {
         startCountdown(2500)
         const t = setTimeout(() => {
           if (cancelledRef.current) return

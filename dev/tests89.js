@@ -26,8 +26,14 @@ if (exp) { const blocks = exp.slice(exp.indexOf('TRACK PAIRS')).split(/\nPAIR \d
     for (const cd of cands(w, 5).slice(0, 2)) { const ls = render(cd, w, l => ''); if (!ls) continue
       for (const l of ls) { n++; if (norm(l.segments.filter(sg => sg.type !== 'punct').map(sg => sg.romaji).join('')) !== norm(l.romaji)) bad.push([l.japanese, l.romaji]) } } }
   T('M1', 'in ' + n + ' rendered module lines the romaji of the words read together equals the line\'s romaji (a word ending in a small っ keeps its doubled consonant: 言っ + て → "it" "te")', bad.length === 0, bad.slice(0, 3))
-  const w = V.find(x => x.japanese === 'すみません'), cd = cands(w, 5).find(x => /^X_PHRASE\.SUMIMASEN/.test(x.m.id)), ls = cd && render(cd, w, l => '')
-  T('M2', 'a word with a small っ at its end: the segment romaji of 言っ is "it", not "i"', !!ls && ls.some(l => l.segments.some(sg => sg.surface === '言っ' && sg.romaji === 'it')) || !cd)
+  // M2 was tied to one line of the old すみません module that quoted 言って; the 16 Nov rewrite of the phrase modules removed that line, so the test now looks for ANY module line
+  // with a segment that ends in a small っ and checks that its romaji keeps the doubled consonant (the same rule, no longer tied to one sentence)
+  let seenT = 0, badT = []
+  for (const id of Object.keys(data.t)) { const w = V.find(x => String(x.id) === id); if (!w) continue
+    for (const cd of cands(w, 5).slice(0, 2)) { const ls = render(cd, w, l => ''); if (!ls) continue
+      for (const l of ls) for (const [k, sg] of l.segments.entries()) if (/っ$/.test(sg.surface || '') && sg.reading && /っ$/.test(sg.reading) && l.segments[k + 1] && l.segments[k + 1].type !== 'punct') {   // an interjection before punctuation (えっ、) has no next syllable to double
+         seenT++; if (!/[kstpgdbzjcfhmnrwy]$/.test(sg.romaji || '')) badT.push([sg.surface, sg.romaji]) } } }
+  T('M2', 'a segment that ends in a small っ keeps its doubled consonant in the romaji (' + seenT + ' such segments, e.g. 言っ → "it", not "i")', seenT > 0 && badT.length === 0, badT.slice(0, 3))
 }
 console.log((fails ? 'FAIL ' : 'ALL PASS ') + (n - fails) + '/' + n)
 process.exit(fails ? 1 : 0)

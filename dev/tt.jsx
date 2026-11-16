@@ -12046,6 +12046,8 @@ function romajiMatchesReading(romaji, reading) {
   if (!reading) return true
   const a = romajiKey(romaji), b = romajiKey(kanaToRomaji(reading))
   if (a === b) return true
+  // a segment that ends in a small っ carries the doubled consonant of the next syllable (言っ → "it" before て): its kana alone romanises without it
+  if (/[\u3063\u30C3]$/.test(String(reading).trim()) && a.length === b.length + 1 && a.startsWith(b) && /[kstpgdbzjcfhmnrwy]/.test(a[a.length - 1])) return true
   // v671 §B3 — the particles は / へ / を are romanised by pronunciation (wa / e / o) while the kana spells ha / he / wo:
   // the same normalisation on both sides (あれはなに ↔ are wa nani)
   const loose = x => x.replace(/wa/g, 'ha').replace(/wo/g, 'o').replace(/he/g, 'e')

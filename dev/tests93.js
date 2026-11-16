@@ -80,10 +80,10 @@ const fn = (name, body) => { const i = SRC.indexOf(name); return i < 0 ? '' : SR
   // ── U ──
   const html = el => RDS.renderToStaticMarkup(el)
   const sel = html(React.createElement(c.LanguageSelector, { lang: 'th', onSetLang() {}, onHome() {} }))
-  T('U1', 'the language picker is a list of every language: Thai, Japanese, Mandarin and Cantonese with its 廣東話 script in the Cantonese face (the list opens on tap, so the closed picker is checked with the open state forced)', (() => {
+  T('U1', 'the language picker is a list of every language: Thai, Japanese, Mandarin and Cantonese, each by its English name only (16 Nov: the 廣東話 label beside the flag wrapped into a column of three characters in the narrow menu and no other language has one, so it was removed; the list opens on tap, so the closed picker is checked with the open state forced)', (() => {
     const cx = load(FILE, { React: { ...React, useState: (v) => [v === false ? true : v, () => {}] } }); cx.console.info = () => {}
     const h = RDS.renderToStaticMarkup(React.createElement(cx.LanguageSelector, { lang: 'th', onSetLang() {}, onHome() {} }))
-    return /Thai/.test(h) && /Japanese/.test(h) && /Mandarin/.test(h) && /Cantonese/.test(h) && /class="yue"[^>]*>廣東話/.test(h) || /廣東話/.test(h) })(), sel.slice(0, 200))
+    return /Thai/.test(h) && /Japanese/.test(h) && /Mandarin/.test(h) && /Cantonese/.test(h) && !/廣東話/.test(h) })(), sel.slice(0, 200))
   const learned = c.initCantoneseVocab().map((w, i) => i < 60 ? { ...w, status: 'learning', lastSeen: '2026-11-01', introducedAt: '2026-10-01', repCount: 3, okStreak: 1, dueDate: '2026-11-12' } : w)
   const dash = html(React.createElement(c.CantoneseDashboard, { vocab: learned, tracks: [], targets: learned.slice(60, 65).map(w => ({ ...w, selectionRole: 'new' })), trackTargets: [], notice: '', onStartTrack() {}, onNav() {}, onDeleteTrack() {}, onOpenTrack() {},
     revisionSelection: { counts: { total: 12, due: 12 }, targets: [] }, selection: null, onNotYet() {} }))

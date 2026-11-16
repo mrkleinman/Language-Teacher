@@ -16877,8 +16877,8 @@ function LanguageSelector({ lang, onSetLang, onHome }) {
         <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>{cur.name}</span>
       </div>
       <button onClick={() => setOpen(o => !o)} aria-label="Switch language"
-        style={{ background:'transparent', border:'none', color:'var(--muted)', fontSize:10,
-                 cursor:'pointer', padding:'6px 4px', lineHeight:1 }}>▾</button>
+        style={{ background:'transparent', border:'none', color:'var(--text)', fontSize:18,
+                 cursor:'pointer', padding:'8px 8px', lineHeight:1, minWidth:36, minHeight:36 }}>▾</button>
       {open && (
         <div style={{ position:'absolute', top:42, left:0, background:'var(--surface)', border:'1px solid var(--border)',
                       borderRadius:10, padding:4, minWidth:150, zIndex:100, boxShadow:'0 8px 24px rgba(0,0,0,0.5)' }}>
@@ -16889,7 +16889,7 @@ function LanguageSelector({ lang, onSetLang, onHome }) {
                        background: L.code === lang ? 'var(--surface2)' : 'transparent',
                        border:'none', borderRadius:7, padding:'9px 10px', cursor:'pointer',
                        color:'var(--text)', fontSize:13, fontWeight: L.code === lang ? 700 : 500 }}>
-              <span style={{ fontSize:15 }}>{L.flag}</span>{L.name}{L.script ? <span className="yue" lang="zh-HK" style={{ fontSize:12, color:'var(--muted)' }}>{L.script}</span> : null}
+              <span style={{ fontSize:15 }}>{L.flag}</span>{L.name}
               {L.code === lang && <span style={{ marginLeft:'auto', color:'var(--gold)' }}>✓</span>}
             </button>
           ))}

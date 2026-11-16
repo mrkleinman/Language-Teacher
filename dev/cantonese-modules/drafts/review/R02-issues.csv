@@ -1,0 +1,39 @@
+﻿module_id,word_id,line,kind,severity,problem,suggested_fix
+N_DISH.MEAL-T2-02,715,B,fit,MINOR,"Scrambled eggs are cooked or ordered, not something you ""go and buy"" (and A2 repeats it), so the exchange does not fit this word.",exclude 715
+N_DRINK.WATER-T2-01,451,A2,cantonese,MINOR,整滾水 is not how people say it; boiling water is 煲滾水.,"yue: 等陣，我煲{W}畀你。 | en: Wait a moment, I'll boil some {E} for you. | prompt: Tell her to wait and you will boil some {E} for her."
+N_FAMILY.CLOSE-T1-11,3042,A2,cantonese,MINOR,"Bare 阿爸 in 我而家嚟搵阿爸 reads as the speaker's own dad, but the English and prompt say ""your dad"".",yue: 我嚟搵你{W}。 | en: I'm coming to see your {E}. | prompt: Say you are coming to see her {E}.
+N_FAMILY.CLOSE-T2-13,3136,A2,cantonese,FIX,"Bare 老婆成日叫我哋 means ""my wife"", which contradicts the friend's wife just discussed (English says ""the wife""). Same problem for 老公.",yue: 好食呀！佢{W}成日叫我哋去食飯。 | en: It's great! My friend's {E} is always asking us over to eat. | prompt: Say it is great and your friend's {E} is always asking you over to eat.
+N_FAMILY.GENERAL-T2-01,263,ALL,fit,FIX,我家庭有五個人 / 你嘅家庭有幾多個人 is written-style; people say 屋企人 or 一家人.,exclude 263
+N_FAMILY.GENERAL-T2-02,263,ALL,fit,FIX,成個家庭 / 我家庭好少一齊食飯 is written-style; spoken Cantonese says 一家人 or 屋企人.,exclude 263
+N_FAMILY.GENERAL-T2-03,263,ALL,fit,FIX,"想念你嘅家庭, 我家庭喺鄉下 and 打電話畀你家庭 are not spoken Cantonese; 家庭 is the abstract household, not relatives.",exclude 263
+N_FAMILY.RELATIVE-T2-02,789,A1,fit,MINOR,"仲有冇阿姨 / ""Do you still have an aunt?"" implies an aunt who may have died; odd as an opener.",yue: 你有冇{W}喺香港呀？ | en: Do you have {a} {E} in Hong Kong? | prompt: Ask her if she has {a} {E} in Hong Kong.
+N_FOODSTUFF.FRUIT-T1-01,183,A2,cantonese,MINOR,"你食一條香蕉。 sounds like a statement, not an offer (""Here, have a banana"").",yue: 你食{M}{W}啦。
+N_FOODSTUFF.GENERAL-T2-02,281,A1,cantonese,MINOR,我屋企冇食物 is stiff; people say 冇嘢食. Also 去超市買食物 in B is bookish.,
+N_FOODSTUFF.SNACK-T2-01,776,ALL,english,FIX,"""Did you buy the biscuit? / sale on the biscuit / buy the biscuit"" is unnatural English for a generic purchase; the Cantonese is plural-neutral.",A1 en: Did you buy any {Es}? | B en: Yes. The {Es} were on sale today. | A2 en: That cheap? I'll go and buy some {Es} too. (prompts to match)
+N_FOODSTUFF.VEG-T2-01,305,A1,prompt,FIX,"Prompt ""there are really fresh {Es}"" is ungrammatical with the mass noun choy sum (the English line is fine).",prompt: Tell her to look at the really fresh {Es} today.
+N_FOODSTUFF.VEG-T2-01,640,A1,prompt,FIX,"Prompt ""there are really fresh {Es}"" is ungrammatical with the mass noun lettuce (the English line is fine).",prompt: Tell her to look at the really fresh {Es} today.
+N_HEALTH.ILLNESS-T2-01,597,A2,fit,FIX,"""Good, if you haven't got medicine there's nothing to worry about"" does not follow from B's answer; the exchange is not coherent for medicine.",exclude 597
+N_HEALTH.ILLNESS-T2-03,597,ALL,fit,FIX,"B says the medicine is gone (ran out) and A2 replies ""Good, no more medicine then""; incoherent for medicine.",exclude 597
+N_HEALTH.ILLNESS-T2-02,455,B,cantonese,FIX,有肚痛好辛苦: 有 + ache is not Cantonese; 肚痛 is a state you are in.,yue: {W}好辛苦，食咗藥冇？ | en: That {E} sounds miserable. Did you take medicine? | prompt: Say that {E} sounds miserable and ask if he took medicine.
+N_HOME.FURNITURE-T2-02,522,A2,fit,MINOR,"Four chairs is not ""that many"" and does not mean a big home; the number only suits rooms or beds.",exclude 522
+N_HOME.ROOM-T2-11,3092,ALL,fit,FIX,"A1 says the room is big, B says it is small, A2 then says ""small is fine"": the three lines contradict each other.",A1 yue: 你間{W}有冇冷氣呀？ | en: Does your {E} have air conditioning? | prompt: Ask if her {E} has air conditioning.
+N_HOME.TABLEWARE-T1-01,191,A1,cantonese,MINOR,幾多筷子 counts single sticks without the pair classifier 對.,yue: 我哋有幾多{M}{W}呀？ | en: How many pairs of {Es} do we have? | prompt: Ask her how many pairs of {Es} you have.
+N_HOME.TABLEWARE-T1-03,191,B,cantonese,MINOR,你要幾多筷子 has no pair classifier 對; A2 then answers with a number of people.,yue: 你要幾多{M}{W}？ | en: How many pairs of {Es} do you need? | prompt: Ask how many pairs of {Es} he needs.
+N_HOME.TABLEWARE-T2-01,365,B,english,MINOR,"A1 asks to borrow ""a spoon"" but B washed ""the spoons"" and A2 returns ""the spoons"": number shifts for no reason.","B en: Yes, I just washed {a} {E}. | A2 en: Thanks, I'll give the {E} back when I'm done. (prompts to match)"
+N_ITEM.TRAVEL-T2-01,798,A2,english,MINOR,"記得 = remember; English ""I think I left"" weakens it and changes the meaning.",en: I remember leaving the {E} at home. | prompt: Say you remember leaving the {E} at home.
+N_MONEY.BANK-T2-02,575,A1,fit,MINOR,"""These days lots of people use ATMs"" suggests a new trend, and ""ATMs mean no need to carry cash"" is odd; the exchange suits mobile payment, not ATMs.",exclude 575
+N_MONEY.INCOME-T2-01,391,A2,cantonese,MINOR,"睇咗收據幾次: the frequency goes before the object, 睇咗幾次收據.",yue: 睇咗幾次{W}，好似錯咗。
+N_MONEY.INCOME-T2-02,391,A2,fit,MINOR,"""Check the receipt every month"" is odd; a receipt is for one purchase, not a monthly thing.",
+N_MONEY.MONEY-T1-02,88,A1,english,MINOR,"""How many dollars is this?"" is not natural English.",en: How many {Es} does this cost? | prompt: Ask how many {Es} it costs.
+N_MONEY.MONEY-T2-03,255,ALL,fit,FIX,"HK friends in a shop say 五十蚊, not 五十港幣; 港幣 is the currency name (exchange, tourists), so the whole exchange sounds stiff.",exclude 255
+N_OUTDOORS.LANDSCAPE-T2-03,588,A2,english,MINOR,"""even slipperier"" is not natural English.","en: Yes, it's raining today, so the {E} is even more slippery. | prompt: Say yes, it is raining today so the {E} is even more slippery."
+N_OUTDOORS.PLANT-T2-01,793,ALL,fit,FIX,"我好鍾意草 / ""I love grass"" is not what people say, and 草 alone also means cannabis in HK slang.",exclude 793
+N_OUTDOORS.PLANT-T2-02,793,ALL,fit,FIX,"睇草 / ""looking at grass"" as an activity is unnatural; 草 alone also means cannabis in HK slang.",exclude 793
+N_OUTDOORS.PLANT-T2-03,793,ALL,fit,FIX,"""lots of grass on my balcony"" / 有冇草 would be read as cannabis; people say 花草 or 植物.",exclude 793
+N_PERSONROLE.JOB-T2-02,769,B,english,MINOR,"A1 says ""a police officer"" but B asks about ""the police officer""; should repeat ""a"".",en: Why do you need to find {a} {E}? | prompt: Ask him why he needs to find {a} {E}.
+N_PERSONROLE.JOB-T2-03,769,A2,fit,FIX,"""Because lots of people like the police"" is a weak and politically loaded reason, and the English singular ""the police officer"" does not match the generic Cantonese.",exclude 769
+N_PERSONROLE.POLITE-T2-01,487,ALL,english,FIX,"English slot ""miss"" is not usable as a noun (""Is this miss a friend of yours?"", ""that miss looks busy"").","change english_slot to ""young lady"" (plural ""young ladies""), or exclude 487"
+N_PERSONROLE.POLITE-T2-02,487,ALL,english,FIX,"English slot ""miss"" is not usable as a noun (""Is this miss a friend of yours?"", ""that miss looks busy"").","change english_slot to ""young lady"" (plural ""young ladies""), or exclude 487"
+N_PERSONROLE.WORK-T1-03,157,A2,english,MINOR,"English ""He's fine"" invents a gender; 冇事 is neutral.","en: It's nothing, my {E} is seeing the doctor today. | prompt: Say it is nothing, your {E} is seeing the doctor today."
+N_PLACE.EAT-T1-02,10,A2,english,MINOR,"Cantonese 我好鍾意茶餐廳 is general (""I like cha chaan tengs""); English and prompt say ""this cha chaan teng"".","en: Let's wait, I really like {Es}. | prompt: Suggest waiting, you really like {Es}."
+N_PLACE.EAT-T1-03,10,A1,cantonese,MINOR,"去茶餐廳有冇炒飯 mixes ""going"" with a question about the menu; the 去 is out of place.",yue: {W}有冇炒飯呀？

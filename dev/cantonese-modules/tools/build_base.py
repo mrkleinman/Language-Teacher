@@ -97,7 +97,7 @@ def main():
                # the fixers' tag patches (modules were rewritten against these slots)
                '零食': (None, 'snacks'), '民族': ('ethnic groups', 'ethnic groups'), '長輩': ('elders', 'elders'), '年花': (None, 'New Year flowers'), '老友': ('old friend', 'old friends'),
                '後日': ('the day after tomorrow', ''), '前日': ('the day before yesterday', ''), '耳環': ('earrings', 'earrings'), '襪': ('socks', 'socks'), '派': ('hand out', ''),
-               '搶': ('grab', ''), '堆': ('bunch', ''), '吓': ('a look', ''), '唔使': ("don't need to", ''), '呢': ('how about', ''), '唔識': ("don't know how to", '')}
+               '搶': ('grab', ''), '堆': ('bunch', ''), '吓': ('a look', ''), '唔使': ("don't need to", ''), '呢': ('how about', ''), '唔識': ("don't know how to", ''), '打電話': ('make a call', ''), '叉電': ('charge the phone', '')}
     for r in order:
         if r['word'] in TAG_FIX and not (r['word'] == '呢' and r['english_slot'] != 'and you'):          # 呢 is also the demonstrative 'this' (id 14): only the question particle is patched
             sl, pl = TAG_FIX[r['word']]

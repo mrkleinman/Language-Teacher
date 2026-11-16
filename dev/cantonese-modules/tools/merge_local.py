@@ -32,7 +32,7 @@ def main():
         r['_note'] = rr['note']
         seen.add(r['word']); kept.append(r)
     CR = {'A': 0, 'B': 1, 'C': 2}; CF = {'high': 0, 'medium': 1, 'low': 2}
-    kept.sort(key=lambda r: (CF.get(r['confidence'], 2), CR.get(r['use_class'], 2), r['_src'], r['_i']))
+    kept.sort(key=lambda r: (CF.get(r['confidence'], 2), CR.get(r['use_class'], 2), r['_i'], r['_src']))   # round-robin over the four topic writers inside a class
     local = kept[:LOCAL_TARGET]
     deck = rd(f'{HERE}/drafts/classify/ALL-tags.csv')
     cells = {}

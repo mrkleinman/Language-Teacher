@@ -20,7 +20,8 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
   const data = JSON.parse(zlib.gunzipSync(Buffer.from(c.ev('YUE_MODULES_GZ'), 'base64')).toString('utf8'))
   const useData = c.ev('yueModulesUseData'), fillEn = c.ev('jaModuleFillEn'), chunk = c.ev('yueModuleChunk')
   c.yueModulesSetEnabled(true)
-  T('E0', 'the embedded data unpacks: 2,995 modules, every row has 15 fields, every chunk index is valid, every tag has 7 fields', useData(data) === data.m.length && data.m.length === 2995 && data.v === 'y1' &&
+  // 16 Nov gap fixes: the data is the full set now (4,174 modules for 2,500 words: 697 new top-up modules, every word has at least three); pins below follow the data
+  T('E0', 'the embedded data unpacks: 4,174 modules, every row has 15 fields, every chunk index is valid, every tag has 7 fields', useData(data) === data.m.length && data.m.length === 4174 && data.v === 'y1' &&
     data.m.every(r => r.length === 15 && [4, 7, 10].every(i => Array.isArray(r[i]) && r[i].every(x => x === '{W}' || x === '{M}' || (Number.isInteger(x) && x >= 0 && x < data.c.length)))) &&
     Object.values(data.t).every(t => t.length === 7), { modules: data.m.length })
   const D = c.ev('YUE_MODULES').data
@@ -31,7 +32,7 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
   const missing = Object.entries(data.t).filter(([id, t]) => { const w = bank.get(id); return !w || w.chinese !== t[0] })
   T('E2', 'every embedded tag id exists in the app bank with the same headword', missing.length === 0, missing.slice(0, 5))
   const noMod = V0.filter(w => !data.t[String(w.id)]).map(w => w.chinese)
-  T('E2b', 'the words with no module are exactly 穿 睜 當, and YUE_NO_MODULE_IDS lists exactly them (the selector knows before the data is unpacked)', noMod.length === 3 && ['穿', '睜', '當'].every(x => noMod.includes(x)) &&
+  T('E2b', 'no word is without a module any more (穿 and 睜 left the list, 當 has its own modules), so YUE_NO_MODULE_IDS is empty and equals the words the data does not know', noMod.length === 0 &&
     JSON.stringify(c.ev('YUE_NO_MODULE_IDS')) === JSON.stringify(V0.filter(w => !data.t[String(w.id)]).map(w => w.id).sort((a, b) => a - b)), noMod)
   const tagFor = id => { const t = data.t[id]; return { word: t[0], tier: t[1], cell: t[2], slot: t[3], plural: t[4], measure: t[5], measureYale: t[6] } }
   const enBad = ids.filter(id => { const t = tagFor(id), e = fx.en[id]; return [fillEn('{E}', t.slot, t.plural), fillEn('{Es}', t.slot, t.plural), fillEn('x {a} y {E}', t.slot, t.plural)].some((x, k) => x !== e[k]) })
@@ -62,7 +63,7 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
   const modCount = ([cell, ws]) => ws.map(([id, t]) => [t.word, (D.byCell.get(cell) || []).filter(m => m.tier >= t.tier && !(m.excl && m.excl.has(id))).length])
   const counts = [...wordsByCell.entries()].flatMap(modCount)
   const thin = counts.filter(([, k]) => k < 3), none = counts.filter(([, k]) => k < 1), one = counts.filter(([, k]) => k === 1)
-  T('E6', 'every tagged word has at least one module (none without); words with fewer than 3 modules (known data debt, ceiling ' + 1018 + ') are counted here, not hidden: ' + thin.length + ' thin, ' + one.length + ' with exactly one', none.length === 0 && thin.length <= 1018 && thin.length > 0, { thin: thin.length, one: one.length, none: none.slice(0, 5) })
+  T('E6', 'every tagged word has at least THREE modules (the old ceiling of 1,018 thin words is gone): ' + thin.length + ' thin, ' + one.length + ' with exactly one', none.length === 0 && thin.length === 0 && one.length === 0, { thin: thin.length, one: one.length, none: none.slice(0, 5) })
 
   // ── R ──
   const cands = c.ev('yueModuleCandidates'), render = c.ev('yueModuleRender'), lineProblems = c.ev('yueLineProblems')
@@ -137,7 +138,7 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
   T('G4', 'every pair carries the shared identity the Player and the finisher read: language yue, targetId, wordId, recallIndex, pairId, thai / phonetic (= the Cantonese and the Yale), segments, spokenPinyin = pinyin (no tone sandhi)',
     content.every(p => p.language === 'yue' && p.isTargetPair === true && p.wordId === p.targetId && p.thai === p.chinese && p.phonetic === p.pinyin && p.spokenPinyin === p.pinyin && p.pairId && Array.isArray(p.segments) && p.segments.length && c.validateYale(p.pinyin).ok &&
       c.ev('assertTrackPairsProvenance')(res.pairs, 'yue').ok), content.slice(0, 1))
-  T('G5', 'the log says which module wrote each target and that no request was made', logs.some(l => /YUE_MODULE .*: module .* the three recalls, no request/.test(l)) && logs.some(l => /YUE_MODULES y1 · 2995 gap-fill modules/.test(l)) && logs.some(l => /0 model requests/.test(l)), logs.slice(0, 3))
+  T('G5', 'the log says which module wrote each target and that no request was made', logs.some(l => /YUE_MODULE .*: module .* the three recalls, no request/.test(l)) && logs.some(l => /YUE_MODULES y1 · 4174 gap-fill modules/.test(l)) && logs.some(l => /0 model requests/.test(l)), logs.slice(0, 3))
   const track = c.cantoneseBuildTrack(res, targets, 'daily', '2026-11-16T10:00:00.000Z'), chk = c.cantoneseTrackCheck(track)
   T('G6', 'the finished track record: language yue, mode, 30 keywords with Yale, 90 pairs, module marker, trackContext for yue; the structure check passes (every target 3 recalls, every line sound)',
     track.language === 'yue' && track.trackMode === 'daily' && track.keywords.length === 30 && track.keywords.every(k => k.pinyin && k.wordId != null) && track.pairs.length === 90 && track.moduleTrack.modelRequests === 0 &&
@@ -145,11 +146,19 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
   const broken = { ...track, pairs: track.pairs.map((p, i) => i === 5 ? { ...p, pinyin: 'nei5' } : i === 7 ? { ...p, segments: [] } : p).filter((p, i) => i !== 40) }
   const chk2 = c.cantoneseTrackCheck(broken)
   T('G7', 'the structure check of a finished track finds a bad Yale, lost segments and a missing recall', !chk2.ok && chk2.problems.length >= 3 && chk2.problems.some(x => /recalls \(3 needed\)/.test(x)), chk2.problems)
+  // 16 Nov gap fixes: no real word is without a module any more (穿 and 睜 left the list, 當 got modules), but the app must still refuse a word no module can fill: these tests
+  // keep that safety path covered by BLOCKING three real words for the duration of the check (their ids are added to every module's exclusion set and to the selector's
+  // no-module set); the stand-ins are 當 像 適合, the three words that took the place of 穿 睜 當 in the old pins. They are unblocked right after.
+  const STAND_IN = ['當', '像', '適合']
+  const standIds = STAND_IN.map(x => V0.find(w => w.chinese === x).id)
+  const blockWords = () => { standIds.forEach(id => { c.ev('YUE_NO_MODULE_SET').add(id); (c.ev('YUE_MODULES').data.m || []).forEach(m => m.excl && m.excl.add && m.excl.add(String(id))); c.ev('YUE_MODULES').data.byCell.forEach(list => list.forEach(m => m.excl && m.excl.add(String(id)))) }) }
+  const unblockWords = () => { standIds.forEach(id => { c.ev('YUE_NO_MODULE_SET').delete(id); c.ev('YUE_MODULES').data.byCell.forEach(list => list.forEach(m => m.excl && m.excl.delete(String(id)))) }) }
+  blockWords()
   // a word with no module: the run stops, names it, and says nothing else can write it
-  const tNo = { ...learned.find(w => w.chinese === '穿'), selectionRole: 'review' }
+  const tNo = { ...learned.find(w => w.chinese === '當'), selectionRole: 'review' }
   let e2 = null
   try { await c.generateCantoneseTrack([targets[0], tNo], learned, () => {}, () => {}, { cancelled: false }) } catch (e) { e2 = e }
-  T('G8', 'a word with no module (穿) makes the run INCOMPLETE and names the word and the reason; nothing is written for it by another path', !!e2 && !!e2.incomplete && e2.incomplete.failures.some(f => f.target === '穿' && /no module can fill/.test(f.reason)) && e2.incomplete.produced === 3 && calls === 0, e2 && e2.message)
+  T('G8', 'a word with no module (the stand-in 當, blocked here) makes the run INCOMPLETE and names the word and the reason; nothing is written for it by another path', !!e2 && !!e2.incomplete && e2.incomplete.failures.some(f => f.target === '當' && /no module can fill/.test(f.reason)) && e2.incomplete.produced === 3 && calls === 0, e2 && e2.message)
   // modules switched off: a plain message, not another language and not a model
   c.yueModulesSetEnabled(false)
   let e3 = null
@@ -170,21 +179,22 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
   T('G12', 'cancelling stops the run without an error and without a half track being returned as complete', !r4.err && r4.pairs.length < 18, r4.err ? r4.err.message : r4.pairs.length)
   // a learned word that no module can fill never blocks a Revision track: it is swapped for the next learned word
   {
-    const noWord = learned.filter(w => !data.t[String(w.id)]).map(w => w.id)
+    const noWord = standIds.filter(id => learned.some(w => w.id === id))
     const L2 = learned.map((w, i) => noWord.includes(w.id) ? { ...w, dueDate: '2020-01-01', status: 'learning', lastSeen: '2026-10-30', okStreak: 0 } : i < 120 ? w : { ...w, status: 'new', lastSeen: null, introducedAt: null, repCount: 0, dueDate: null, okStreak: 0 })
     const rv = c.selectRevisionTargets('yue', L2)
     const rawRv = c.ev('selectRevisionTrackTargets')({ vocab: c.ev('jazhWordsOnly')(L2), maxTargets: 30, language: 'yue' }).targets
-    T('G15', 'Revision never offers a word no module can fill (穿 睜 當 are the most overdue words here, so the plain selector would put them first): they are swapped for the next learned words and the track keeps its 30 words',
-      rawRv.some(w => noWord.includes(w.id)) && !rv.targets.some(w => noWord.includes(w.id)) && rv.targets.length === 30 && rv.targets.every(w => data.t[String(w.id)]), { raw: rawRv.map(w => w.chinese).slice(0, 5), got: rv.targets.length })
+    T('G15', 'Revision never offers a word no module can fill (the blocked stand-ins 當 像 適合 are the most overdue words here, so the plain selector would put them first): they are swapped for the next learned words and the track keeps its 30 words',
+      rawRv.some(w => noWord.includes(w.id)) && !rv.targets.some(w => noWord.includes(w.id)) && rv.targets.length === 30 && rv.targets.every(w => data.t[String(w.id)] && !standIds.includes(w.id)), { raw: rawRv.map(w => w.chinese).slice(0, 5), got: rv.targets.length })
   }
   // the module-less words are out of every selection path, including a hand-queued word and the 30-target backfill
   {
-    const noWord = V0.filter(w => !data.t[String(w.id)])
+    const noWord = V0.filter(w => standIds.includes(w.id))
     const fresh = V0.map(w => ({ ...w })), Q = fresh.map(w => noWord.some(x => x.id === w.id) ? { ...w, queuedNext: '2026-11-16T00:00:00Z' } : w)
     const sel = c.selectTrackTargets({ vocab: c.ev('jazhWordsOnly')(Q), targetCap: 30, recentTrackWordIds: [], lang: 'yue', newSelector: v => c.cantoneseSelectTargets(v, []) })
     const tg = c.jazhDailyTargets(sel.targets, Q, 'yue')
-    T('G16', 'a Daily for a new learner holds 30 words, none of 穿 睜 當 (not even hand-queued: they are not eligible targets); every target has a module', tg.length === 30 && !tg.some(w => noWord.some(x => x.id === w.id)) && tg.every(w => data.t[String(w.id)]) && noWord.every(w => !c.ev('jazhTargetEligible')(w, 'yue')) && c.ev('jazhTargetEligible')(V0[1], 'yue'))
+    T('G16', 'a Daily for a new learner holds 30 words, none of the blocked stand-ins 當 像 適合 (not even hand-queued: they are not eligible targets); every target has a module', tg.length === 30 && !tg.some(w => noWord.some(x => x.id === w.id)) && tg.every(w => data.t[String(w.id)]) && noWord.every(w => !c.ev('jazhTargetEligible')(w, 'yue')) && c.ev('jazhTargetEligible')(V0[1], 'yue'))
   }
+  unblockWords()
   // ── nothing of Mandarin ──
   const body = SRC.slice(SRC.indexOf('function generateCantoneseTrack') - 20, SRC.indexOf('function cantoneseBuildTrack'))
   T('G13', 'the Cantonese writer never calls a Mandarin or model function (no mandarin*, no segmentMandarin, no validateMandarin*, no geminiGenerate / geminiRequest, no tone sandhi)', !/mandarin|Mandarin|segmentMandarin|validateMandarin|gemini|TONE3|v684Zh|zhModule/.test(body.replace(/\/\/[^\n]*/g, '')), body.match(/mandarin\w*|gemini\w*|zhModule\w*/g))

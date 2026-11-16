@@ -8291,9 +8291,10 @@ function genCheckpointSummary(cp, targets) {
   return { accepted: (cp && cp.accepted || []).length, expected: cp ? cp.expected : 0, missing: miss.map(m => ({ ...m, target: label(m.targetId) })), resumes: cp ? cp.resumes || 0 : 0 }
 }
 // ONE storage write site for every checkpoint operation (save and clear) — isolated keys only.
-async function genCheckpointWrite(lang, cp) { if (GEN_CHECKPOINT_KEYS[lang]) await stSet(GEN_CHECKPOINT_KEYS[lang], cp || null) }
+// v750: a generation's recovery save belongs to ONE tab (key + tab id); another tab's running generation is never offered or overwritten (see stTabGet)
+async function genCheckpointWrite(lang, cp) { if (GEN_CHECKPOINT_KEYS[lang]) await stTabSet(GEN_CHECKPOINT_KEYS[lang], cp || null) }
 async function genCheckpointLoad(lang) {
-  try { const v = GEN_CHECKPOINT_KEYS[lang] ? await stGet(GEN_CHECKPOINT_KEYS[lang]) : null; return v && typeof v === 'object' && v.version ? v : null } catch (e) { return null }
+  try { const v = GEN_CHECKPOINT_KEYS[lang] ? await stTabGet(GEN_CHECKPOINT_KEYS[lang], { accept: x => x && typeof x === 'object' && x.version }) : null; return v && typeof v === 'object' && v.version ? v : null } catch (e) { return null }
 }
 const genCheckpointClear = lang => genCheckpointWrite(lang, null)
 
@@ -13135,19 +13136,25 @@ const stJson = x => { try { return JSON.stringify(x) } catch (e) { return '' } }
 function stSyncSnapshot(list, idOf) { const m = new Map(); (Array.isArray(list) ? list : []).forEach(x => { if (x != null) m.set(String(idOf(x)), stJson(x)) }); return m }
 // the tab's base for a stored list = what it has just loaded or written
 function stSyncMark(key, list, idOf) { ST_SYNC.base.set(key, stSyncSnapshot(list, idOf)) }
-// three-way merge: base (id → json of what this tab last saw in storage), mine (this tab's list), theirs (storage now). Mine wins only for what I changed, added or removed.
+// three-way merge: base (id → json of what this tab last saw in storage), mine (this tab's list), theirs (storage now). Mine wins only for what I changed or added.
+// An item that is in storage but NOT in my list is KEPT — a save from a screen that opened a while ago holds an older list (a generation that finished 20 minutes after
+// it started saves the list it started with), and that must never delete a track another tab added in between. Only a deliberate delete (o.deleted = the ids) or a
+// replacement of everything (o.replace, an import) removes items.
 function stMerge3(base, mine, theirs, idOf, o) {
-  const opt = o || {}, b = base || new Map()
+  const opt = o || {}, b = base || new Map(), gone = new Set((opt.deleted || []).map(String))
   const mm = new Map(), tm = new Map()
   ;(mine || []).forEach(x => { if (x != null) mm.set(String(idOf(x)), x) })
   ;(theirs || []).forEach(x => { if (x != null) tm.set(String(idOf(x)), x) })
   const out = new Map()
   tm.forEach((tv, id) => {
     const mv = mm.get(id)
-    if (mv === undefined) { if (!b.has(id)) out.set(id, tv) }                             // I do not have it: another tab added it (kept) — unless I deleted it (dropped)
-    else out.set(id, stJson(mv) !== b.get(id) ? mv : tv)                                  // I changed it ⇒ mine; I did not ⇒ the stored one
+    if (mv === undefined) { if (!opt.replace && !gone.has(id)) out.set(id, tv); return }   // not in my list: kept (unless deleted on purpose / replaced)
+    if (gone.has(id)) return
+    const mj = stJson(mv)
+    if (mj !== b.get(id)) out.set(id, (opt.newer && !opt.replace && opt.newer(tv, mv)) ? tv : mv)   // I changed it ⇒ mine — unless the stored one is plainly newer (a screen holding an older copy of the word)
+    else out.set(id, stJson(tv) === mj ? mv : tv)                                           // I did not ⇒ the stored one (the same object as mine when nothing differs)
   })
-  mm.forEach((mv, id) => { if (!tm.has(id) && (!b.has(id) || stJson(mv) !== b.get(id))) out.set(id, mv) })   // new in this tab, or changed here after another tab deleted it
+  mm.forEach((mv, id) => { if (!tm.has(id) && !gone.has(id) && (!b.has(id) || stJson(mv) !== b.get(id))) out.set(id, mv) })   // new here, or changed here after another tab removed it
   let list = [...out.values()]
   if (opt.order) list = list.sort(opt.order)
   else { const rank = new Map((mine || []).map((x, i) => [String(idOf(x)), i])); list = list.map((x, i) => [x, i]).sort((p, q) => (rank.has(String(idOf(p[0]))) ? rank.get(String(idOf(p[0]))) : 1e9 + p[1]) - (rank.has(String(idOf(q[0]))) ? rank.get(String(idOf(q[0]))) : 1e9 + q[1])).map(p => p[0]) }
@@ -13180,19 +13187,17 @@ async function stWithLock(name, fn) {
   if (L) return L.request(name, fn)           // an error inside fn reaches the caller; the lock is released either way
   return fn()
 }
-// save a list the merged way; returns { merged, mine } — merged is what is now stored
+// save a list the merged way; returns { merged, other } — merged is what is now stored, other = whether it differs from what this tab handed in
 async function stSyncSave(key, mine, idOf, o) {
   return stWithLock('tt-store:' + key, async () => {
     const stored = await stGet(key)
     const base = ST_SYNC.base.get(key) || new Map()
     const theirs = Array.isArray(stored) ? stored : []
-    // nothing stored by anyone else since this tab last saw it (the common case): the plain write, as before
-    const sameAsBase = theirs.length === base.size && theirs.every(x => base.get(String(idOf(x))) === stJson(x))
-    let merged = sameAsBase ? mine : stMerge3(base, mine, theirs, idOf, o)
-    if (sameAsBase && o && o.cap && merged.length > o.cap) merged = merged.slice(merged.length - o.cap)
+    const merged = stMerge3(base, mine, theirs, idOf, o)
+    const other = merged.length !== (mine || []).length || merged.some((x, i) => x !== mine[i])
     await stSet(key, merged)
     ST_SYNC.base.set(key, stSyncSnapshot(merged, idOf))
-    return { merged, other: !sameAsBase }
+    return { merged, other }
   })
 }
 // save and fold what other tabs did into this tab's state (setList is the React setter; the update is pure)
@@ -13209,7 +13214,10 @@ function stSyncOnChange(key, fn) {
       try {
         if (!e.key || (typeof localStorage !== 'undefined' && e.storageArea && e.storageArea !== localStorage)) return
         const fns = ST_SYNC.listeners.get(e.key); if (!fns || !fns.size) return
-        let v = null; if (e.newValue != null) { try { v = JSON.parse(e.newValue) } catch (x) { return } }
+        // the value is read from storage NOW, not taken from the event: an event can arrive after a later write (this tab's own, or a third tab's) and would carry an older list
+        let raw = null; try { raw = localStorage.getItem(e.key) } catch (x) {}
+        if (raw == null) raw = e.newValue
+        let v = null; if (raw != null) { try { v = JSON.parse(raw) } catch (x) { return } }
         fns.forEach(f => { try { f(v) } catch (x) {} })
       } catch (x) {}
     })
@@ -13234,6 +13242,9 @@ const stTrackId = t => (t && (t.id != null ? t.id : (t.createdAt || ((t.date || 
 const stTrackOrder = (a, b) => String(a.createdAt || a.date || '').localeCompare(String(b.createdAt || b.date || ''))
 const ST_TRACK_OPTS = Object.freeze({ order: stTrackOrder, cap: 20 })
 const stWordId = w => w.id
+// a word's progress only moves forward: more repetitions, or the same number seen later. A save from a screen that opened long ago (a generation finishing) holds OLD copies of
+// the words; they must not undo a rating made in another tab since.
+const ST_VOCAB_OPTS = Object.freeze({ newer: (t, m) => (t.repCount || 0) > (m.repCount || 0) || ((t.repCount || 0) === (m.repCount || 0) && String(t.lastSeen || '') > String(m.lastSeen || '')) })
 // tab-owned keys (a generation's recovery save, the Thai draft): written under this tab's id; read from this tab's key first, then the key used before v750, then — only if
 // it has not been written for 2 minutes — another tab's, which is then taken over (copied to this tab's key and removed)
 const ST_TAB_SEP = '@'
@@ -13261,6 +13272,23 @@ async function stTabSet(key, val) {
   await stSet(stTabKey(key), val)
 }
 // old tab-owned saves nobody has touched for 3 days are removed at start
+function stTabReadSync(key) {
+  try {
+    const own = localStorage.getItem(stTabKey(key)); if (own) return own
+    const old = localStorage.getItem(key); if (old) return old
+    let best = null, bestKey = null
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i); if (!k || k.indexOf(key + ST_TAB_SEP) !== 0) continue
+      let v = null; try { v = JSON.parse(localStorage.getItem(k)) } catch (e) { continue }
+      const at = stStamp(v); if (!v || Date.now() - at < 2 * 60 * 1000) continue
+      if (!best || at > best.at) { best = { at, raw: localStorage.getItem(k) }; bestKey = k }
+    }
+    if (best) { localStorage.setItem(stTabKey(key), best.raw); localStorage.removeItem(bestKey); return best.raw }
+  } catch (e) {}
+  return null
+}
+function stTabWriteSync(key, raw) { try { localStorage.setItem(stTabKey(key), raw) } catch (e) {} }
+function stTabRemoveSync(key) { try { localStorage.removeItem(stTabKey(key)); localStorage.removeItem(key) } catch (e) {} }
 function stTabSweep(prefixes) {
   try {
     const dead = [], now = Date.now()
@@ -15117,13 +15145,13 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
 
   const [genDraft, setGenDraft] = useState(() => {
     try {
-      const d = localStorage.getItem('tt-gen-draft')
+      const d = stTabReadSync('tt-gen-draft')
       if (!d) return null
       const parsed = JSON.parse(d)
       if (!parsed.pairs || !parsed.pairs.length) return null
       // Expire drafts older than 3 days
       if (parsed.savedAt && (Date.now() - new Date(parsed.savedAt)) > 3 * 86400000) {
-        localStorage.removeItem('tt-gen-draft'); return null
+        stTabRemoveSync('tt-gen-draft'); return null
       }
       return parsed
     } catch(e) { return null }
@@ -15195,14 +15223,14 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
               const track = { date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), mode: genDraft.mode || 'daily', pairs: genDraft.pairs, keywords: (genDraft.targets||[]).map(w => { const nw = genDraft.topicId ? (genDraft.selectedNewTargetIds || []).includes(w.id) : w.status === 'new'; return { thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: '', isNew: nw, isUnseen: nw && isUnseen(w) } }), rated: false, createdAt: new Date().toISOString(), partial: true,
                 ...(genDraft.topicId ? { language: 'th', trackType: 'daily', selectionMode: 'topic', topicId: genDraft.topicId, topicTitle: genDraft.topicTitle, topicsVersion: TOPICS_VERSION, selectedNewTargetIds: (genDraft.selectedNewTargetIds || []).slice() } : {}) }
               onNav('open-draft-track', track)
-              localStorage.removeItem('tt-gen-draft')
+              stTabRemoveSync('tt-gen-draft')
               setGenDraft(null)
             }} style={{ fontSize: 11, padding: '6px 10px', borderRadius: 8, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--muted)', cursor: 'pointer' }}>
               Study now
             </button>
             <button onClick={() => {
               const draft = genDraft
-              localStorage.removeItem('tt-gen-draft')
+              stTabRemoveSync('tt-gen-draft')
               setGenDraft(null)
               onNav('generate-resume', draft)
             }} style={{ fontSize: 11, padding: '6px 10px', borderRadius: 8, background: '#10b981', border: 'none', color: '#000', fontWeight: 700, cursor: 'pointer' }}>
@@ -42589,7 +42617,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
               // Auto-save draft to localStorage so user can resume if they navigate away
               if (partialPairsRef.current.length > 0) {
                 try {
-                  localStorage.setItem('tt-gen-draft', JSON.stringify({
+                  stTabWriteSync('tt-gen-draft', JSON.stringify({
                     pairs: partialPairsRef.current,
                     targetsDoneCount: meta && meta.wordStatus ? chipIdx + 1 : chipIdx,
                     targetsRemaining: targets.slice(chipIdx + 1),
@@ -48832,6 +48860,7 @@ function ThaiTeacher({ lang, onSetLang }) {
   // Expose the optional backup Gemini key to the Gemini client (same-model retries only)
   useEffect(() => { window.__geminiBackupKey = geminiBackupKey }, [geminiBackupKey])
   const [geminiSpend, setGeminiSpend] = useState(0)
+  const spendRef = useRef(0)
   const [gcpTtsKey, setGcpTtsKey] = useState('')
   const [settings, setSettings] = useState(() => { try { return JSON.parse(localStorage.getItem('thaiTeacherSettings') || '{}') } catch { return {} } })
   const [lastTrackCost, setLastTrackCost] = useState(null)
@@ -48847,12 +48876,11 @@ function ThaiTeacher({ lang, onSetLang }) {
 
   // Register Gemini spend tracker — called by the Gemini client on every successful request
   useEffect(() => {
+    // v750: the spend is ADDED to the stored total (another tab's requests are counted too), not written over it
     window.__trackGeminiUsage = (cost) => {
-      setGeminiSpend(prev => {
-        const next = Math.round((prev + cost) * 1e8) / 1e8
-        stSet('tt-gemini-spend', next)
-        return next
-      })
+      const next = stAddToNumber('tt-gemini-spend', spendRef.current, cost)
+      spendRef.current = next
+      setGeminiSpend(next)
     }
     return () => { window.__trackGeminiUsage = null }
   }, [])
@@ -49052,17 +49080,21 @@ function ThaiTeacher({ lang, onSetLang }) {
         const synced = missing.length > 0 ? [...migrated, ...missing] : migrated
         setVocab(synced)
         await stSet('tt-vocab', synced)
+        stSyncMark('tt-vocab', synced, stWordId)
       } else {
         const v = initVocab()
         setVocab(v)
         await stSet('tt-vocab', v)
+        stSyncMark('tt-vocab', v, stWordId)
       }
       setTracks(st || [])
+      stSyncMark('tt-tracks', st || [], stTrackId)
+      try { stTabSweep(['tt-th-gen-checkpoint', 'tt-ja-gen-checkpoint', 'tt-zh-gen-checkpoint', 'tt-th-topic-gen-checkpoint', 'tt-gen-draft']) } catch (e) {}
       await migrateGeminiOnlyCredentials()                  // v648: legacy non-Gemini settings removed (names logged, never values)
       const gk = await stGet('tt-gemini-key'); if (gk) setGeminiKey(gk)
       try { aiSetGenerationPreference(await stGet(AI_GEN_PREF_KEY)); aiSetAnthropicAccess(await stGet(AI_ANTHROPIC_ACCESS_KEY)) } catch (e) {}   // optional generation model (Gemini unless chosen)
       const gfk = await stGet('tt-gemini-fallback-key'); if (gfk) setGeminiBackupKey(gfk)
-      const gsp = await stGet('tt-gemini-spend'); if (gsp != null) setGeminiSpend(parseFloat(gsp) || 0)
+      const gsp = await stGet('tt-gemini-spend'); if (gsp != null) { spendRef.current = parseFloat(gsp) || 0; setGeminiSpend(spendRef.current) }
       const gtk = await stGet('tt-gcp-tts-key'); if (gtk) setGcpTtsKey(gtk)
       const dnw = await stGet('tt-daily-new'); if (dnw) setDailyNewWords(dnw)
       setLoading(false)
@@ -49070,14 +49102,19 @@ function ThaiTeacher({ lang, onSetLang }) {
     init()
   }, [])
 
-  const saveVocab = useCallback(async v => { setVocab(v); await stSet('tt-vocab', v) }, [])
+  // v750 — several tabs at once: saving MERGES with what the other tabs saved (see "SEVERAL TABS AT ONCE"), and what they save appears here without a reload
+  const saveVocab = useCallback(async (v, x) => { setVocab(v); await stSyncCommit('tt-vocab', v, setVocab, stWordId, x ? { ...ST_VOCAB_OPTS, ...x } : ST_VOCAB_OPTS) }, [])
   const saveDailyNewWords = useCallback(async dnw => { setDailyNewWords(dnw); await stSet('tt-daily-new', dnw) }, [])
-  const saveTracks = useCallback(async t => {
+  const saveTracks = useCallback(async (t, x) => {
     // Item 41: Cap at 20 tracks, remove oldest
     const capped = t.length > 20 ? t.slice(t.length - 20) : t
     setTracks(capped)
-    await stSet('tt-tracks', capped)
+    await stSyncCommit('tt-tracks', capped, setTracks, stTrackId, x ? { ...ST_TRACK_OPTS, ...x } : ST_TRACK_OPTS)
   }, [])
+  useTabSyncedList('tt-vocab', setVocab, stWordId, null, !loading)
+  useTabSyncedList('tt-tracks', setTracks, stTrackId, ST_TRACK_OPTS, !loading)
+  useEffect(() => stSyncOnChange('tt-daily-new', v => { if (v) setDailyNewWords(v) }), [])
+  useEffect(() => stSyncOnChange('tt-gemini-spend', v => { const x = parseFloat(v) || 0; spendRef.current = x; setGeminiSpend(x) }), [])
 
   function navigate(v, data) {
     if (!(v === 'browse' && data && data.fromTopic)) setReturnTopic(null)
@@ -49150,7 +49187,7 @@ function ThaiTeacher({ lang, onSetLang }) {
     const id = listeningTrackId(activeTrack)
     const upd = { ...activeTrack, listeningBuild: lb }
     const nt = tracks.map(t => listeningTrackId(t) === id ? { ...t, listeningBuild: lb } : t)
-    await saveTracks(nt); setTracks(nt); setActiveTrack(upd)
+    await saveTracks(nt); setActiveTrack(upd)
   }
 
   function onTrackComplete(keywords) {
@@ -49185,7 +49222,7 @@ function ThaiTeacher({ lang, onSetLang }) {
 
   function onDeleteTrack(idx) {
     const newTracks = tracks.filter((_, i) => i !== idx)
-    saveTracks(newTracks)
+    saveTracks(newTracks, { deleted: [stTrackId(tracks[idx])] })       // v750: a deliberate delete (everything else missing from a list is kept)
   }
 
   function onWordsAdded(words) {
@@ -49263,7 +49300,7 @@ function ThaiTeacher({ lang, onSetLang }) {
               const updated = idx >= 0
                 ? tracks.map((t,i) => i === idx ? updatedTrack : t)
                 : tracks.map((t,i) => i === tracks.length-1 ? updatedTrack : t)
-              saveTracks(updated); setTracks(updated)
+              saveTracks(updated)
               setActiveTrack(updatedTrack); setPendingReviewTrack(null); setView('player')
             }}
             onSkip={() => {
@@ -49310,8 +49347,8 @@ function ThaiTeacher({ lang, onSetLang }) {
           onOpenWord={w => { setBrowseFilter('all'); setBrowseBelt('all'); setBeltWordQuery(w.thai); setReturnBelt(null); navigate('browse', { fromTopic: topicWordsId }) }} />}
         {view === 'browse' && <Browser vocab={vocab} onBack={() => returnTopic ? navigate('topic-words', { topicId: returnTopic }) : navigate(returnBelt ? 'belt-rank' : 'dashboard')} initialFilter={browseFilter} initialQuery={beltWordQuery} initialBelt={browseBelt} phonetics={{}} onCustomTrack={onCustomTrack} apiKey={apiKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} apiKey={apiKey} />}
-        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={async k => { setGcpTtsKey(k); await stSet('tt-gcp-tts-key', k) }} geminiBackupKey={geminiBackupKey} onSaveGeminiBackupKey={async k => { setGeminiBackupKey(k); await stSet('tt-gemini-fallback-key', k) }} />}
-        {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} onSaveTracks={async t => { await saveTracks(t) }} fillApiKey={apiKey} fillModel={GEMINI_DEFAULT_MODEL} />}
+        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { spendRef.current = 0; setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={async k => { setGcpTtsKey(k); await stSet('tt-gcp-tts-key', k) }} geminiBackupKey={geminiBackupKey} onSaveGeminiBackupKey={async k => { setGeminiBackupKey(k); await stSet('tt-gemini-fallback-key', k) }} />}
+        {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v, { replace: true }); await saveTracks(t, { replace: true }); navigate('dashboard') }} onSaveTracks={async t => { await saveTracks(t) }} fillApiKey={apiKey} fillModel={GEMINI_DEFAULT_MODEL} />}
         {view === 'rank-test' && <RankTestView vocab={vocab} lang="th" onBack={() => navigate('dashboard')} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="th" onBack={() => navigate('dashboard')}
           initialBelt={returnBelt} initialBeltFilter={returnBeltFilter}
@@ -54764,9 +54801,11 @@ function JapaneseTeacher({ lang, onSetLang }) {
       const merged = mergeJapaneseVocab(sv)
       setVocab(merged)
       if (!Array.isArray(sv) || sv.length !== merged.length) stSet(JA.vocab, merged)
+      stSyncMark(JA.vocab, (!Array.isArray(sv) || sv.length !== merged.length) ? merged : sv, stWordId)     // v750: the base for merging = what is stored
       // §20 — heal tracks already corrupted by Thai QC before they can be played.
       const inv0 = japaneseLearnerInventory(merged, [])
       setTracks(Array.isArray(st) ? st.map(t => repairJapaneseTrack(t, inv0)) : [])
+      stSyncMark(JA.tracks, Array.isArray(st) ? st : [], stTrackId)
       if (rg && JAPANESE_REGISTER_RULES[rg]) setRegister(rg)
       setLoading(false)
     }
@@ -54774,12 +54813,16 @@ function JapaneseTeacher({ lang, onSetLang }) {
     return () => { dead = true }
   }, [])
 
-  const saveVocabJa  = useCallback(async v => { setVocab(v); await stSet(JA.vocab, v) }, [])
-  const saveTracksJa = useCallback(async t => {
+  // v750 — several tabs at once (see "SEVERAL TABS AT ONCE"): saves merge with the other tabs' saves; what they save appears here
+  const saveVocabJa  = useCallback(async (v, x) => { setVocab(v); await stSyncCommit(JA.vocab, v, setVocab, stWordId, x ? { ...ST_VOCAB_OPTS, ...x } : ST_VOCAB_OPTS) }, [])
+  const saveTracksJa = useCallback(async (t, x) => {
     const capped = t.length > 20 ? t.slice(t.length - 20) : t
-    setTracks(capped); await stSet(JA.tracks, capped)
+    setTracks(capped); await stSyncCommit(JA.tracks, capped, setTracks, stTrackId, x ? { ...ST_TRACK_OPTS, ...x } : ST_TRACK_OPTS)
   }, [])
   const saveSlots = useCallback(async ids => { setSlots(ids); await stSet(JA.dailyNew, { date: new Date().toISOString().slice(0,10), wordIds: ids }) }, [])
+  useTabSyncedList(JA.vocab, setVocab, stWordId, null, !loading)
+  useTabSyncedList(JA.tracks, setTracks, stTrackId, ST_TRACK_OPTS, !loading)
+  useEffect(() => stSyncOnChange(JA.dailyNew, v => { if (v && Array.isArray(v.wordIds) && v.date === new Date().toISOString().slice(0, 10)) setSlots(v.wordIds) }), [])
 
   // §1/§15 — same flow as Thai: save, then Quality Check. NEVER straight to Player.
   // §4/§9 — the generator only reports onGenerated; routing lives here.
@@ -54843,7 +54886,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
   // §7 — index arrives already mapped from the reversed display list, as Thai does.
   function onDeleteTrack(idx) {
     if (typeof window !== 'undefined' && window.confirm && !window.confirm('Delete this Japanese track?')) return
-    saveTracksJa(tracks.filter((_, i) => i !== idx))
+    saveTracksJa(tracks.filter((_, i) => i !== idx), { deleted: [stTrackId(tracks[idx])] })
   }
 
   // §13 — ratings touch ONLY tt-ja-vocab. Thai SRS state is never reachable from here.
@@ -58116,18 +58159,24 @@ function MandarinTeacher({ lang, onSetLang }) {
       const merged = mergeMandarinVocab(sv)
       setVocab(merged)
       if (!Array.isArray(sv) || sv.length !== merged.length) stSet(ZH.vocab, merged)
+      stSyncMark(ZH.vocab, (!Array.isArray(sv) || sv.length !== merged.length) ? merged : sv, stWordId)     // v750: the base for merging = what is stored
       setTracks(Array.isArray(st) ? st : [])
+      stSyncMark(ZH.tracks, Array.isArray(st) ? st : [], stTrackId)
       setSlots(sl && Array.isArray(sl.wordIds) ? sl.wordIds : [])
       setLoading(false)
     })()
     return () => { dead = true }
   }, [])
 
-  const saveVocabZh = useCallback(async v => { setVocab(v); await stSet(ZH.vocab, v) }, [])
-  const saveTracksZh = useCallback(async t => {
+  // v750 — several tabs at once (see "SEVERAL TABS AT ONCE")
+  const saveVocabZh = useCallback(async (v, x) => { setVocab(v); await stSyncCommit(ZH.vocab, v, setVocab, stWordId, x ? { ...ST_VOCAB_OPTS, ...x } : ST_VOCAB_OPTS) }, [])
+  const saveTracksZh = useCallback(async (t, x) => {
     const capped = t.length > 20 ? t.slice(t.length - 20) : t
-    setTracks(capped); await stSet(ZH.tracks, capped)
+    setTracks(capped); await stSyncCommit(ZH.tracks, capped, setTracks, stTrackId, x ? { ...ST_TRACK_OPTS, ...x } : ST_TRACK_OPTS)
   }, [])
+  useTabSyncedList(ZH.vocab, setVocab, stWordId, null, !loading)
+  useTabSyncedList(ZH.tracks, setTracks, stTrackId, ST_TRACK_OPTS, !loading)
+  useEffect(() => stSyncOnChange(ZH.dailyNew, v => { if (v && Array.isArray(v.wordIds) && v.date === new Date().toISOString().slice(0, 10)) setSlots(v.wordIds) }), [])
   const saveSlots = useCallback(async ids => {
     setSlots(ids); await stSet(ZH.dailyNew, { date:new Date().toISOString().slice(0, 10), wordIds:ids })
   }, [])
@@ -58239,7 +58288,7 @@ function MandarinTeacher({ lang, onSetLang }) {
   }
   function onDeleteTrack(idx) {
     if (typeof window !== 'undefined' && window.confirm && !window.confirm('Delete this Mandarin track?')) return
-    saveTracksZh(tracks.filter((_, i) => i !== idx))
+    saveTracksZh(tracks.filter((_, i) => i !== idx), { deleted: [stTrackId(tracks[idx])] })
   }
 
   if (loading) return (
@@ -58340,12 +58389,15 @@ function AppRoot() {
   const [lang, setLang] = useState(null)
   useEffect(() => {
     (async () => {
-      const saved = await stGet(LANG_KEY)
+      // v750: each tab keeps ITS language (sessionStorage survives a reload of the tab); a new tab takes the last one chosen
+      let own = null; try { own = sessionStorage.getItem(LANG_KEY) } catch (e) {}
+      const saved = own || await stGet(LANG_KEY)
       setLang(saved === 'ja' ? 'ja' : saved === 'zh' ? 'zh' : 'th')
     })()
   }, [])
   const onSetLang = useCallback(async code => {
     setLang(code)
+    try { sessionStorage.setItem(LANG_KEY, code) } catch (e) {}
     await stSet(LANG_KEY, code)
   }, [])
   // FontStyle is mounted here as well as inside each programme, so the CSS custom

@@ -284,8 +284,9 @@ const deep = x => JSON.parse(JSON.stringify(x))
   {
     const c = load(APP, { realBelt: true })
     const keys = has(c, 'genCheckpointWrite') ? JSON.stringify(c.ev('GEN_CHECKPOINT_KEYS')) : ''
+    // 16 Nov: the one write site is now stTabSet (the same key plus this tab's id), so two tabs generating the same language keep separate drafts — the property under test (one write site, own keys) is unchanged
     T('S1', 'drafts live under their OWN keys (tt-th/ja/zh-gen-checkpoint) through ONE storage write site; never the track list, vocabulary or SRS keys',
-      /tt-zh-gen-checkpoint/.test(keys) && /tt-ja-gen-checkpoint/.test(keys) && /tt-th-gen-checkpoint/.test(keys) && (SRC.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length === 1 && !/GEN_CHECKPOINT_KEYS = [^\n]*(tt-vocab|tt-tracks|tt-ja-vocab|tt-zh-vocab)/.test(SRC))
+      /tt-zh-gen-checkpoint/.test(keys) && /tt-ja-gen-checkpoint/.test(keys) && /tt-th-gen-checkpoint/.test(keys) && (SRC.match(/await stTabSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length === 1 && !/GEN_CHECKPOINT_KEYS = [^\n]*(tt-vocab|tt-tracks|tt-ja-vocab|tt-zh-vocab)/.test(SRC))
     T('S2', 'the screens offer "Retry missing recalls" and "Start new generation" (never a silent full paid regeneration); a draft is cleared only when the finished track is handed to the app',
       /Retry missing ' \+ unit/.test(SRC) && /Start new generation/.test(SRC) && /genCheckpointClear\('zh'\); onGenerated\(finalTrack\)/.test(SRC) && /genCheckpointClear\('ja'\); onGenerated\(finalTrack\)/.test(SRC) && /genCheckpointClear\('th'\); onGenerated\(generatedTrack\)/.test(SRC))
   }

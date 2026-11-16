@@ -164,6 +164,17 @@ const fn = (name, body) => { const i = SRC.indexOf(name); return i < 0 ? '' : SR
   T('F9', 'an unknown saved language still falls back to Thai, as before (only a KNOWN language chooses its own screen)', !/Cantonese Teacher|Loading Cantonese/.test(txt(r4)))
   await TR.act(async () => { r4.unmount() })
 
+  // the start gate (the Thai rules, as for Japanese and Mandarin): a lesson that cannot hold its 30 targets is blocked in words; a 4th Daily Track in one day is refused
+  {
+    const Vb = c.initCantoneseVocab(), gate = c.ev('jazhStartGate')
+    const full = Vb.slice(0, 30).map(w => ({ ...w, selectionRole: 'review' })), tiny = Vb.slice(0, 12).map(w => ({ ...w }))
+    const today = new Date().toISOString()
+    const four = [1, 2, 3, 4].map(i => ({ createdAt: today, date: today.slice(0, 10), trackMode: 'daily', language: 'yue', pairs: [] }))
+    const gt = gate({ lang: 'yue', targets: tiny.map(w => ({ ...w, selectionRole: 'new' })), vocab: tiny, trackMode: 'daily', tracks: [] })
+    T('S1', 'the start gate for Cantonese: 30 targets start; a bank that can hold only 12 is blocked with the Thai wording (TRACK_SELECTION_BLOCKED, no track started); a 4th Daily in one day is refused', gate({ lang: 'yue', targets: full, vocab: Vb, trackMode: 'daily', tracks: [] }) === null &&
+      !!gt && gt.code === 'TRACK_SELECTION_BLOCKED' && /vocabulary-data problem/.test(gt.message) && (gate({ lang: 'yue', targets: full, vocab: Vb, trackMode: 'daily', tracks: four }) || {}).code === 'DAILY_CAP', gt)
+  }
+
   // ── W ──
   const tb = SRC.slice(SRC.indexOf('function CantoneseTeacher('), SRC.indexOf('function AppRoot('))
   T('W1', 'multi-tab wiring (copied from the Mandarin screen, on the Cantonese keys): load + mark, commit with the shared options, tab-synced vocab and tracks, daily-new change listener', /stGet\(YUE\.vocab\)/.test(tb) && /stSyncMark\(YUE\.vocab/.test(tb) && /stSyncMark\(YUE\.tracks/.test(tb) && /stSyncCommit\(YUE\.vocab, v, setVocab, stWordId/.test(tb) && /stSyncCommit\(YUE\.tracks, capped, setTracks, stTrackId/.test(tb) &&

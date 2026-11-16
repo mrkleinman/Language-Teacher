@@ -57122,6 +57122,15 @@ function jaModuleRender(c, target, gloss) {
       }
     }
     if (miss) return null
+    // 16 Nov (owner's screenshot: 言って shown as "i  te"): a token that ends in a small っ (言っ + て) has no consonant to double on its own, so its romaji lost the t; the
+    // consonant of the next token is added to it ("it" + "te"), the way the whole line is romanised
+    for (let q = 0; q + 1 < segs.length; q++) {
+      const cur = segs[q], nx = segs[q + 1]
+      if (cur.type !== 'punct' && /[っッ]$/.test(String(cur.reading || '')) && nx && nx.type !== 'punct') {
+        const c1 = String(nx.romaji || kanaToRomaji(nx.reading || nx.surface) || '').charAt(0)
+        if (/[a-z]/.test(c1) && !/[aeiou]/.test(c1)) cur.romaji = String(cur.romaji || '') + c1
+      }
+    }
     const japanese = segs.map(x => x.surface).join(''), reading = segs.map(x => x.reading || x.surface).join('')
     const english = jaModuleFillEn(en, tag.slot, tag.plural), prompt = jaModuleFillEn(pr, tag.slot, tag.plural)
     if (/[{}]/.test(japanese + english + prompt)) return null

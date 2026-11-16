@@ -17,5 +17,17 @@ const exp = fs.existsSync('/root/.claude/uploads/676fe26a-1df8-5b6e-8a48-17ab214
 if (exp) { const blocks = exp.slice(exp.indexOf('TRACK PAIRS')).split(/\nPAIR \d+/).slice(1); const g = (b, k) => (b.match(new RegExp(k + ':\\s+(.*)')) || [, ''])[1]
   const bad = blocks.map(b => tts({ japanese: g(b, 'JAPANESE'), reading: g(b, 'READING') })).filter(x => /[一-鿿]/.test(x))
   T('K7', 'all ' + blocks.length + ' lines of the 16 Nov track export are spoken without any kanji', bad.length === 0, bad.slice(0, 3)) }
+// ── the romaji under each word of a module line (the 16 Nov screenshot showed 言って as "i  te") ──
+{
+  const zlib = require('zlib'), V = c.initJapaneseVocab(), data = JSON.parse(zlib.gunzipSync(Buffer.from(c.ev('JA_MODULES_GZ'), 'base64')).toString('utf8')); c.ev('jaModulesUseData')(data)
+  const render = c.ev('jaModuleRender'), cands = c.ev('jaModuleCandidates'), norm = x => x.replace(/[^a-z]/g, '').replace(/ha/g, 'wa').replace(/wo/g, 'o').replace(/he/g, 'e')
+  let n = 0, bad = []
+  for (const id of Object.keys(data.t)) { const w = V.find(x => String(x.id) === id); if (!w) continue
+    for (const cd of cands(w, 5).slice(0, 2)) { const ls = render(cd, w, l => ''); if (!ls) continue
+      for (const l of ls) { n++; if (norm(l.segments.filter(sg => sg.type !== 'punct').map(sg => sg.romaji).join('')) !== norm(l.romaji)) bad.push([l.japanese, l.romaji]) } } }
+  T('M1', 'in ' + n + ' rendered module lines the romaji of the words read together equals the line\'s romaji (a word ending in a small っ keeps its doubled consonant: 言っ + て → "it" "te")', bad.length === 0, bad.slice(0, 3))
+  const w = V.find(x => x.japanese === 'すみません'), cd = cands(w, 5).find(x => /^X_PHRASE\.SUMIMASEN/.test(x.m.id)), ls = cd && render(cd, w, l => '')
+  T('M2', 'a word with a small っ at its end: the segment romaji of 言っ is "it", not "i"', !!ls && ls.some(l => l.segments.some(sg => sg.surface === '言っ' && sg.romaji === 'it')) || !cd)
+}
 console.log((fails ? 'FAIL ' : 'ALL PASS ') + (n - fails) + '/' + n)
 process.exit(fails ? 1 : 0)

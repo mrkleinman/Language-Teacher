@@ -90,6 +90,10 @@ const msg = [{ role: 'user', content: 'Segment this Thai sentence into individua
     .replace(/(JA_MODULES_DATA_BEGIN\n)[\s\S]*?(\n\/\/ JA_MODULES_DATA_END)/, '$1const JA_MODULES_GZ = ""$2')
     // 15 Nov: the Mandarin gap-fill modules are embedded the same way (ZH_MODULES_DATA_BEGIN/END); same reason, same treatment (the data is not source text)
     .replace(/(ZH_MODULES_DATA_BEGIN\n)[\s\S]*?(\n\/\/ ZH_MODULES_DATA_END)/, '$1const ZH_MODULES_GZ = ""$2')
+    // 16 Nov: the Cantonese gap-fill modules are embedded the same way (YUE_MODULES_DATA_BEGIN/END): a random run of the base64 text matched a banned identifier by chance
+    // (tt.jsx line of YUE_MODULES_GZ), exactly the reason given above for the Thai, Japanese and Mandarin blocks. Only the data string is emptied: the id list and the code
+    // around it are still scanned, and the Cantonese word list (YUE_BANK) is NOT excluded, so it is scanned like source text (it holds no banned name).
+    .replace(/(YUE_MODULES_DATA_BEGIN\n)const YUE_MODULES_GZ = "[^"]*"/, '$1const YUE_MODULES_GZ = ""')
     .replace(/(\/\/ ══ (?:JA|ZH)_BANK begin[^\n]*\n)[\s\S]*?(\/\/ ══ (?:JA|ZH)_BANK end\n)/g, '$1$2')
   const shell = (() => { const h = fs.readFileSync(fs.existsSync('/mnt/user-data/uploads/index-1.html') ? '/mnt/user-data/uploads/index-1.html' : require('path').join(__dirname, 'build/index-1.shell.html'), 'utf8'); return h.slice(0, h.indexOf('<script type="text/babel">')) + h.slice(h.lastIndexOf('</script>')) })()
   const BANNED = /qwen|anthropic|claude|openai|gpt-|openrouter|deepseek|mistral|groq|ollama|huggingface|together\.ai|fallbackProvider|secondaryProvider|fallbackModel|secondaryModel|alternateModel|haiku|sk-or-|x-api-key|chat\/completions/i

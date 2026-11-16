@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v751"/>
+<meta name="app-version" content="v752"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v751';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v751').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v752';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v752').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -25510,6 +25510,7 @@ const CUE_JUDGE_CLASS_RULE = 'CUE CLASSES — for every item also return "cls": 
 const JA_ZH_CUE_ADDRESSEE_RULE = 'CUE WORDING: the other speaker is ALWAYS "him" or "her" (A is a man and speaks to a woman: "Ask her …", "Tell her …"; B is a woman and speaks to a man: "Ask him …", "Tell him …"). ' +
   'Never use the characters\' names and never "they" / "them" for the other person. One speech act per cue (Ask / Tell / Say / Suggest / Thank / Check), at most two short parts. ' +
   'Do not start with "Ask Name:" and do not copy the English sentence into the cue. ' +
+  'Never mention "A", "B" or "the other person\'s question" in a cue — say what to SAY ("Say yes, you\'re already here, then say sorry and ask if she waited."). ' +
   'A line is ONE speaker\'s turn: never ask a question and then answer it in the same line. The answer words (はい / いいえ / うん / ううん) open the OTHER speaker\'s reply to a question just asked.'
 const CC_STOP = new Set(('a an the this that these those it its it\'s is are am was were be been being do does did done to of in on at for with from by as and or ' +
   'but if whether so then too also just only really very much more most less some any no not never there here now what where when who whom whose why how which ' +
@@ -26048,7 +26049,8 @@ function cueAddresseeForm(cue, p, ctx) {
   if (!/\b(friends|people|everyone|everybody|group|others|students|children|kids|parents|family|colleagues|classmates|team|all of)\b/i.test(c)) {
     c = c.replace(/\b(Ask|Tell|Check with|Thank|Remind|Invite|Warn) them\b/g, (m0, v) => v + ' ' + him)
       .replace(/\b(if|whether|that|and say|and ask|so) they(?:'re| are)\b/gi, (m0, w) => w + ' ' + he + (/'re/.test(m0) ? "'s" : ' is'))
-      .replace(/\bthey(?:'ve| have)\b/gi, he + "'s").replace(/\bthey haven't\b/gi, he + " hasn't").replace(/\bthey (do|did|can|will|would|were|had|want|like|know|came|go|went|ate|got)\b/gi, (m0, v) => he + ' ' + ({ were: 'was', do: 'does', have: 'has', want: 'wants', like: 'likes', know: 'knows', go: 'goes' }[v.toLowerCase()] || v))
+      // "they have a car" → "she has a car" (the main verb); "they've finished" → "she's finished" (the helper) — a 16 Nov export had "Ask if she's a car today."
+      .replace(/\bthey(?:'ve| have)\b(?=\s+(?:been|gone|seen|done|eaten|left|come|finished|arrived|already|just|never|ever|\w+ed\b))/gi, m0 => he + (/'ve/i.test(m0) ? "'s" : ' has')).replace(/\bthey(?:'ve| have)\b/gi, he + ' has').replace(/\bthey haven't\b/gi, he + " hasn't").replace(/\bthey (do|did|can|will|would|were|had|want|like|know|came|go|went|ate|got)\b/gi, (m0, v) => he + ' ' + ({ were: 'was', do: 'does', have: 'has', want: 'wants', like: 'likes', know: 'knows', go: 'goes' }[v.toLowerCase()] || v))
       .replace(/\bthey\s+(\w+)/gi, (m0, w) => {
         const lw = w.toLowerCase()
         if (CC_THEY_PRESENT.has(lw)) return he + ' ' + (lw === 'have' ? 'has' : lw === 'do' ? 'does' : lw === 'go' ? 'goes' : /(s|sh|ch|x|z)$/.test(lw) ? lw + 'es' : /[^aeiou]y$/.test(lw) ? lw.slice(0, -1) + 'ies' : lw + 's')
@@ -30435,7 +30437,13 @@ async function jaBridgeReplyTriggers(t, c, log) {
     const g = (got || []).find(x => x && +x.i === k + 1)
     if (!g || !g.japanese) { refused.push(r.japanese + ' (no question returned)'); return }
     const asker = r.speaker === 'A' ? 'B' : 'A'
-    let b = { japanese: String(g.japanese).trim(), english: String(g.english || '').trim(), speaker: asker, prompt: 'Ask ' + nameOf(r.speaker) + ': ' + String(g.english || '').trim(),
+    // 16 Nov (owner's export: "Ask Ryo: Are you going tomorrow?" ×9): the cue calls the replier him / her like every other cue — "Ask her if she is busy today." — and keeps the English after a
+    // colon only when the question cannot be turned into "if …" safely
+    const _gOf = sp => { let g = null; try { const ch = (sc.characters || []).find(x => x && x.speaker === sp) || {}; g = _sceneCharGender(ch.description || (sp === 'A' ? scene.characterA : scene.characterB) || '') } catch (e) {} return g || (sp === 'A' ? 'm' : 'f') }
+    const _bq = String(g.english || '').trim(), _bg = _gOf(r.speaker)
+    let _bc = null; try { _bc = cueFromEnglish('ja', _bq, String(g.japanese || ''), { strict: true, addr: _bg, names: [] }) } catch (e) {}
+    const _bcue = _bc && !/^Ask:/.test(_bc) ? _bc : 'Ask ' + (_bg === 'm' ? 'him' : 'her') + ': ' + _bq
+    let b = { japanese: String(g.japanese).trim(), english: _bq, speaker: asker, prompt: _bcue,
       pairType: 'bridge', recallRole: 'trigger', supportsTargetId: r.targetId, targetId: null, wordId: null, sceneId: r.sceneId || null, language: 'ja', _replyTrigger: true }
     const why = []
     if (!jaIsYesNoQuestion(b)) why.push('not a yes/no question')
@@ -50783,8 +50791,15 @@ function auditJapaneseReading(pair) {
         ? segs.map(x => PART[x.surface] && (x.reading || x.surface) === x.surface ? PART[x.surface] : kanaToRomaji(x.reading || x.surface)).join('').replace(/[^a-z]/gi, '').toLowerCase() : null
       // 15 Nov (owner's export, pair 06: NOT_READY for one line "toire o kiku ne" vs "toirewokikune"): the particle を is written o in Hepburn; when the segments could not
       // be matched to the reading it was compared as "wo". を is a particle in every sentence of the course, so the reading is also tried with を as お.
-      const wantO = /を/.test(rd) ? kanaToRomaji(rd.replace(/を/g, 'お')).replace(/[^a-z]/gi, '').toLowerCase() : null
-      if (norm(want) !== norm(got) && !(wantP && norm(wantP) === norm(got)) && !(wantO && norm(wantO) === norm(got)))
+      // 16 Nov (the next export: "basu de iku no wa dou?" refused against "…nohadou"): は and へ as particles are wa / e, so every は / へ / を of the reading is tried as the particle
+      // and as the plain kana (all subsets, at most six of them; more than six: all or none)
+      const wantV = (() => {
+        const pos = [...rd].map((ch, i) => /[はへを]/.test(ch) ? i : -1).filter(i => i >= 0)
+        if (!pos.length) return []
+        const sub = { 'は': 'わ', 'へ': 'え', 'を': 'お' }, masks = pos.length <= 6 ? [...Array(1 << pos.length).keys()] : [0, (1 << pos.length) - 1]
+        return masks.map(mk => [...rd].map((ch, i) => { const k = pos.indexOf(i); return k >= 0 && (pos.length <= 6 ? (mk >> k) & 1 : mk) ? sub[ch] : ch }).join('')).map(x => norm(kanaToRomaji(x).replace(/[^a-z]/gi, '').toLowerCase()))
+      })()
+      if (norm(want) !== norm(got) && !(wantP && norm(wantP) === norm(got)) && !wantV.includes(norm(got)))
         problems.push('romaji does not transcribe the reading: "' + ro + '" vs expected "' + kanaToRomaji(rd) + '"')
     }
   }

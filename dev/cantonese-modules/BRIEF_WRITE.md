@@ -32,6 +32,9 @@ Prompts (`*_prompt`): a short English instruction telling the learner what to sa
 - The English must be natural spoken English, not a gloss of the Cantonese structure, and it must say what the Cantonese says (a negation stays a negation, a question a question).
 - Every module must read naturally for EVERY word it fits: if one word does not fit, list it in `exclude_ids`. Test with `render` on at least four different words of the cell (all of them for small cells).
 
+## Fixed expressions (thanks, sorry, yes/no, greetings, 多謝 唔該 對唔住 係 唔係 再見 ...): USE them, never talk ABOUT them
+A learner repeating aloud "I'll say excuse me first" practises nothing. Write the phrase as a real utterance inside a small believable exchange: A bumps into B and says it, B answers it, A reacts. NEVER lines like 「{W}」係乜嘢意思 / 我會講{W} / 你要講{W} / 呢句叫做{W} / the quoting frame "{W}話 ..." for a plain greeting or politeness word. The English must be the real utterance too ("Oh, sorry! Did that hurt?"), and the prompt says what to say ("Say sorry and ask if it hurt"). The Japanese set had 73 of 92 phrase modules written the quoting way; the owner found them confusing.
+
 ## Lessons from the Thai, Japanese and Mandarin sets (do not repeat these)
 1. A line that needs an untaught word is wasted: stay inside the tier's list. 2. The slot English must make sense in every frame ("this clothes" for 衫 is wrong: report such slots instead of writing around them). 3. Aspect markers, particles and one-off function words (咗 過 啦 …) cannot be dropped into an ordinary frame: write the small one-off modules the cell needs and keep each line natural. 4. Keep the three lines about the same word and the same situation (no jumping from lunch to school). 5. Prompts must match the Cantonese exactly: if the line starts with a thank-you the prompt says so.
 

@@ -1,0 +1,89 @@
+﻿module_id,word_id,line,kind,severity,problem,suggested_fix
+N_PLACE.TOILET-T2-03,216,B,cantonese,MINOR,"我唔要用 is stiff/odd for ""I am not using this toilet""; spoken is 唔想用.",係呀，我唔想用呢間{W}。
+N_STUDYWORK.LANGUAGE-T1-13,3044,A2,cantonese,FIX,"識講{W}早晨 is ungrammatical; ""say good morning in Cantonese"" needs 嘅 (or 用...講).",識講{W}嘅早晨喇！
+N_STUDYWORK.LANGUAGE-T2-01,534,A1,cantonese,MINOR,學習緊 is written-style; spoken Cantonese says 學緊.,你學緊{W}呀？
+N_STUDYWORK.LANGUAGE-T2-01,534,B,cantonese,MINOR,我而家學習中文 is written-style (學習); spoken is 學.,係呀，我而家學{W}。
+N_STUDYWORK.LANGUAGE-T2-01,534,A2,cantonese,MINOR,學習中文 is written-style; spoken is 學.,學{W}難唔難呀？
+N_STUDYWORK.LANGUAGE-T2-03,534,B,cantonese,MINOR,學習中文 is written-style; spoken is 學.,學{W}好難，慢慢嚟呀。
+N_STUDYWORK.LANGUAGE-T2-13,3085,A1,cantonese,MINOR,考試好驚 is not natural word order; Cantonese says 好驚考試.,我嘅{W}好差，好驚考試。
+N_STUDYWORK.SCHOOL-T2-01,624,A2,fit,FIX,"""let's talk about the maths class after school"" does not follow from ""we have maths class today""; the reply to B is a non sequitur.",好，我哋一齊去上{W}啦。
+N_STUDYWORK.SCHOOL-T2-02,779,A1,fit,MINOR,"Asking whether you ""like your school year"" (grade) is an odd thing to ask; 年級 is not something one likes.",exclude 779
+N_STUDYWORK.SCHOOL-T2-03,779,ALL,fit,FIX,"A grade/school year cannot be ""busy"" or ""how is it going""; A1, B and A2 make no sense for 年級.",exclude 779
+N_TIMEUNIT.GENERAL-T2-01,561,A1,fit,FIX,"A1 says ""you decide the time"" (時間由你 is also stiff), then B/A2 talk about deciding it tonight and A thinking it over: contradictory.",你話{W}，我都得。
+N_TIMEUNIT.GENERAL-T2-01,561,B,fit,FIX,Follows from the revised A1 (A leaves the time to B).,咁我今晚諗吓{W}先。
+N_TIMEUNIT.GENERAL-T2-01,561,A2,fit,FIX,Follows from the revised B.,好呀，今晚再講{W}啦。
+N_TIMEUNIT.GENERAL-T2-03,561,A2,cantonese,MINOR,"講時間畀我 is unnatural for ""tell me the time""; spoken is 話畀我知.",你問完，話畀我知{W}。
+N_TIMEUNIT.UNIT-T2-01,468,ALL,fit,FIX,"""He calls me every year ... I am worn out"" does not make sense for 年 (only fits hour/day); also 每{W} needs 個 for other units.",exclude 468
+N_TIMEUNIT.UNIT-T2-01,665,A1,cantonese,FIX,每鐘頭 lacks the classifier; spoken Cantonese says 每個鐘頭.,佢每個{W}都打電話畀我。
+N_TIMEUNIT.UNIT-T2-01,665,B,cantonese,FIX,每鐘頭 lacks 個.,真係每個{W}都打電話呀？
+N_TIMEUNIT.UNIT-T2-01,665,A2,cantonese,FIX,每鐘頭 lacks 個.,係呀，每個{W}都打電話，我攰喇。
+N_TIMEUNIT.UNIT-T2-02,602,A2,fit,FIX,"Buying a tea first only makes sense for a short wait (minutes), not two days; prompt also adds ""is a long time"" which is not in the line.",exclude 602
+N_TRANSPORT.VEHICLE-T1-02,177,ALL,fit,FIX,"地鐵 is the rail system, not a place you can see or hurry to; needs 站 (not available at T1).",exclude 177
+N_TRANSPORT.VEHICLE-T2-02,5,ALL,fit,FIX,Taking a photo of a bus / not having seen a bus in ages is implausible in Hong Kong (works for boat only).,exclude 5
+N_WEATHER.GENERAL-T2-03,518,B,cantonese,FIX,"我記得天氣好清楚 puts 好清楚 as if the weather were clear; ""remember clearly"" is 記得好清楚.",記得呀，{W}我記得好清楚。
+N_WEATHER.SKY-T2-02,372,B,fit,FIX,"""a little afraid, I'm most afraid of fog"" is self-contradictory, and fearing fog is odd.",exclude 372
+T_TIME.DATE-T2-01,752,A2,fit,FIX,"B says they must work at the weekend; A2 ""I'm free, let's go for dim sum"" ignores that (does not follow).",咁{W}唔得，聽日飲茶啦。
+T_TIME.DATE-T2-01,752,ALL,english,MINOR,"""free on a weekend / work on a weekend"" is not natural English (at the weekend / this weekend).",
+T_TIME.DATE-T2-03,752,B,english,MINOR,"""I went hiking with friends on a weekend"" is unnatural English (at the weekend); A2 ""I'll go ... on a weekend too"" also shifts tense against the question ""How was your weekend?"".",
+T_TIME.DATE-T2-02,750,ALL,english,FIX,"""so busy end of the month"" lacks ""at the""; English slot ""end of the month"" cannot follow busy/rest without a preposition (english_slot problem).",
+T_TIME.PARTOFDAY-T2-01,685,A1,cantonese,FIX,每晏晝 is not Cantonese; needs 個 (每個晏晝).,你每個{W}都飲咖啡呀？
+T_TIME.PARTOFDAY-T2-01,685,B,cantonese,FIX,每晏晝 is not Cantonese; needs 個.,係呀，每個{W}都要一杯。
+T_TIME.PARTOFDAY-T2-01,685,A2,cantonese,FIX,每晏晝 is not Cantonese; needs 個.,我每個{W}飲茶，唔飲咖啡。
+T_TIME.PARTOFDAY-T2-02,277,A2,cantonese,MINOR,"咁夜唔搵你 reads as ""so late (at night) I won't look for you"" (咁夜 = so late), confusing.",
+T_TIME.PARTOFDAY-T2-02,685,ALL,english,MINOR,"""busy during the midday"" is unnatural English (at midday / at lunchtime).",
+T_TIME.PARTOFDAY-T2-01,685,ALL,english,MINOR,"""every midday"" is unnatural English for 晏晝 (every lunchtime / every afternoon).",
+T_TIME.PAST-T2-01,691,A1,fit,FIX,"以前 means ""in the past"", so ""Where were you before? I was at the office before"" is nonsense (would need 頭先).",你{W}住喺邊度呀？
+T_TIME.PAST-T2-01,691,B,fit,FIX,Follows from the revised A1.,{W}我住喺旺角。
+T_TIME.PAST-T2-01,691,A2,fit,FIX,Follows from the revised B.,我{W}都住喺旺角呀。
+T_TIME.PERIOD-T2-01,462,A2,cantonese,MINOR,"三點呢個時候 is odd (""this time"" = now); ""is three o'clock a good time"" is 三點嗰個時候 / 三點好唔好.",咁三點嗰個{W}好唔好呀？
+V_CHANGE.CHANGE-T2-01,709,A1,english,MINOR,"English ""change your clothes"" does not match the exchange-for-a-smaller-size meaning of the rest of the exchange.",
+V_CHANGE.GAME-T2-01,773,A1,prompt,MINOR,"Prompt ""Ask her if she did lose"" is unnatural (did + verb); say ""if she lost"".",
+V_CHANGE.GAME-T2-02,773,B,cantonese,MINOR,"你唔輸 for ""you won't lose"" needs 會.",放心啦，你唔會{W}嘅。
+V_CHANGE.GAME-T2-03,773,A2,cantonese,MINOR,"我唔輸喇 does not mean ""I won't lose""; needs 唔會.",好呀，聽日打籃球，我唔會{W}喇。
+V_CHANGE.HEALTH-T2-01,417,A1,prompt,MINOR,"Prompt ""Ask her if she did cry"" is unnatural (did + verb).",
+V_CHANGE.HEALTH-T2-01,767,A1,prompt,MINOR,"Prompt ""Ask her if she did have a fever"" is unnatural (did + verb).",
+V_CHANGE.HEALTH-T2-13,3077,A1,cantonese,MINOR,佢好似病 is bare; spoken is 佢好似病咗.,佢好似{W}咗，今日冇返工。
+V_CHANGE.LIFE-T1-01,193,A1,cantonese,FIX,我唔要狗死 is not natural (唔要 + bare noun + verb); also 狗 lacks its classifier.,隻狗唔好{W}呀！
+V_CHANGE.LIFE-T1-01,193,B,cantonese,FIX,"佢唔死 means ""he does not die"" (habitual); future ""won't die"" needs 唔會.",佢唔會{W}嘅。
+V_CHANGE.LIFE-T1-02,193,A2,cantonese,MINOR,"我唔死喇 is not a natural way to say ""I'm not going to die now"".",好食，我唔會{W}喇！
+V_CHANGE.PROCESS-T2-02,559,A2,cantonese,MINOR,唔使趕快 is Mandarin-flavoured (趕快); spoken is 唔使咁快.,唔使咁快，慢慢{W}啦。
+V_CHANGE.PROCESS-T2-03,578,ALL,cantonese,MINOR,"Bare 完 as a verb of ""we finish soon"" is unnatural; spoken is 做完.",
+V_COMMUNICATE.GENERAL-T2-01,477,A1,english,MINOR,"Slot gloss ""phone someone"" gives ""Let me phone someone first"" (natural: make a call).",
+V_COMMUNICATE.GENERAL-T2-02,477,A1,english,FIX,"""don't phone someone"" and ""I really have to phone someone"" are unnatural English (slot gloss ""phone someone""; should be make a call).",
+V_COMMUNICATE.GENERAL-T2-03,477,A2,english,FIX,"""I'll phone someone quickly"" is unnatural English (slot gloss ""phone someone"").",
+V_COMMUNICATE.SPEAK-T1-11,3012,A1,english,FIX,"English ""I never say that!"" has the wrong tense for 冇話過 (I never said that).",
+V_CONSUME.INTAKE-T1-01,82,B,fit,FIX,"B does not answer A1 ""what do you want to drink?"" (""I want to drink. You?"").",我想{W}，你呢？
+V_CONSUME.INTAKE-T1-01,82,A1,fit,FIX,Revised to a yes/no question so B's answer fits.,你想唔想{W}呀？
+V_CONSUME.INTAKE-T1-02,82,A1,prompt,MINOR,"Prompt ""whether she managed to drink"" adds ""managed to"" that the line does not say (有冇 = did you).",
+V_CONSUME.INTAKE-T1-12,3036,A1,fit,FIX,"A1 proposes tomorrow, B asks what time, A2 answers ""right now"": contradictory.",我哋一起{W}呀？
+V_CONSUME.INTAKE-T1-12,3036,B,english,MINOR,"Slot gloss ""drink something"" gives unnatural ""What time shall we drink something?"" (natural: have a drink).",
+V_CONSUME.INTAKE-T2-02,56,A1,prompt,MINOR,"Prompt ""managed to eat"" adds a meaning not in the line.",
+V_CONSUME.INTAKE-T2-02,620,A1,prompt,MINOR,"Prompt ""managed to have lunch"" adds a meaning not in the line.",
+V_CONSUME.SENSE-T1-01,41,ALL,fit,MINOR,"聽 with no object (""listen now"", ""buy water then listen"") is vague and 買水再聽 is nonsense.",
+V_CONSUME.SENSE-T2-01,476,ALL,fit,FIX,"見到 is a result verb; 老師講嘢你有冇見到 (hearing, not seeing) and 聽日再見到啦 make no sense.",exclude 476
+V_CONSUME.SENSE-T2-02,476,ALL,fit,FIX,"再見到啦 / ""let's see again tonight"" makes no sense for 見到 (result verb, no object).",exclude 476
+V_HANDLE.CLEAN-T2-01,609,ALL,fit,FIX,"Bare 洗 with no object (""let's wash!"", ""after we wash we go hiking"") is unclear/nonsense; works with 洗衫/洗車 only.",exclude 609
+V_HANDLE.CLEAN-T2-02,609,ALL,fit,FIX,"Bare 洗 with no object (""we need to wash today because it will rain tomorrow"") is unclear; needs 洗衫 etc.",exclude 609
+V_HANDLE.CLEAN-T2-11,3130,A1,prompt,MINOR,"Prompt ""managed to do laundry"" adds a meaning not in the line.",
+V_HANDLE.CLEAN-T2-12,3130,B,cantonese,FIX,我唔想洗衫好耐: duration cannot follow the verb-object compound 洗衫 (would be 洗好耐衫).,好呀，但係要快啲{W}。
+V_HANDLE.COPY-T2-02,368,A1,prompt,MINOR,"Prompt ""managed to download"" adds a meaning not in the line.",
+V_HANDLE.GIVE-T2-01,573,A1,english,MINOR,"""send me a cup of tea"" is unnatural English (bring/give me); 送 as hand over is also odd.",
+V_HANDLE.GIVE-T2-03,713,B,fit,MINOR,"""divide into four, one each"" for two people (我哋) is incoherent.",好呀，{W}兩件，一人一件。
+V_HANDLE.HOBBY-T2-03,363,A2,cantonese,FIX,唔好釣魚到太夜 is ungrammatical (would be 釣到太夜 / 去釣魚).,好喇，太夜唔好去{W}。
+V_HANDLE.HOLD-T2-02,296,A2,cantonese,FIX,"揸住好呀 does not mean ""hold it well""; English says ""Please hold it well"".",多謝，{W}佢呀，我好快返嚟。
+V_HANDLE.PUSH-T2-01,334,ALL,fit,FIX,"Bare 伸 with no object (""don't stretch out!"") is meaningless.",exclude 334
+V_HANDLE.PUSH-T2-02,314,A1,english,FIX,"Bare ""Why did you step on?"" / ""I didn't mean to step on"" has no object (English incomplete); the Cantonese lines are the same.",你點解{W}到我呀？
+V_HANDLE.PUSH-T2-02,314,B,cantonese,FIX,"Missing object; revised so ""step on"" has one.",唔好意思，我唔小心{W}到你。
+V_HANDLE.PUSH-T2-02,314,A2,cantonese,FIX,Missing object; revised.,冇事，唔好再{W}到我就得。
+V_HANDLE.REGISTER-T2-02,454,A1,prompt,MINOR,"Prompt ""managed to register"" adds a meaning not in the line.",
+V_HANDLE.TAKE-T2-01,676,ALL,fit,FIX,"""I'll go and bring some"" (去帶啲) and ""bring some first, then catch the bus"" make no sense for 帶 (would be 買).",exclude 676
+V_HANDLE.TAKE-T2-03,673,A1,english,FIX,"""Where did you take this?"" is wrong English (where did you get this); 拿 is also Mandarin for 拎.",
+V_HANDLE.TAKE-T2-03,673,ALL,fit,FIX,"""Take some in the park"" is nonsense, and 拿 is Mandarin-flavoured (spoken 拎); the exchange does not hold together.",exclude 673
+V_HANDLE.USE-T1-01,195,ALL,english,FIX,"Slot gloss ""charge a phone"" gives ""Can I charge a phone?"" / ""I'll charge a phone quickly"" (should be ""charge my phone""): english_slot problem.",
+V_HANDLE.USE-T1-02,195,ALL,english,FIX,"Slot gloss ""charge a phone"" gives ""Did you charge a phone?"" / ""I'm going to charge a phone now"": english_slot problem.",
+V_HANDLE.USE-T1-03,195,ALL,english,FIX,"Slot gloss ""charge a phone"" gives ""I need to charge a phone"": english_slot problem.",
+V_HANDLE.WEAR-T2-01,572,ALL,cantonese,FIX,"穿 for wearing clothes is Mandarin; spoken Cantonese says 著 (jeuk), 穿 means pierce/wear through.",exclude 572
+V_HANDLE.WEAR-T2-02,572,ALL,cantonese,FIX,"穿 for wearing clothes is Mandarin; spoken Cantonese says 著 (jeuk), 穿 means pierce/wear through.",exclude 572
+V_HANDLE.WEAR-T2-03,572,ALL,cantonese,FIX,"穿 for wearing clothes is Mandarin; spoken Cantonese says 著 (jeuk), 穿 means pierce/wear through.",exclude 572
+V_MIND.FEEL-T2-02,271,ALL,english,MINOR,"""it'd really scare people / that film can really scare people"" is awkward English (slot gloss ""scare""); natural is ""scary"".",
+V_MIND.FEEL-T2-02,271,A1,cantonese,MINOR,琴晚個電影: should be 琴晚嗰套電影 (classifier/demonstrative).,

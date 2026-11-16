@@ -128,6 +128,29 @@ const ids = l => l.map(x => x.id != null ? x.id : x.createdAt).join(',')
   ev(A, 'stTabWriteSync')('tt-gen-draft', JSON.stringify({ pairs: [1], savedAt: new Date().toISOString(), who: 'A' }))
   T('P5', 'the Thai draft is per tab: B does not see A\'s fresh draft; A does', ev(B, 'stTabReadSync')('tt-gen-draft') === null && /"who":"A"/.test(ev(A, 'stTabReadSync')('tt-gen-draft')))
 
+  // ── Japanese grammar progress (an object of records) and the Listening saves ──
+  const gk = 'tt-ja-grammar-srs'
+  shared.setItem(gk, JSON.stringify({ 'block:1': { key: 'block:1', exposures: 1, lastSeen: '2026-11-10' } }))
+  const gA = await ev(A, 'jaGrammarLoad')(), gB = await ev(B, 'jaGrammarLoad')()                 // both tabs start a generation with the same progress
+  gA['block:2'] = { key: 'block:2', exposures: 1, lastSeen: '2026-11-16' }                         // tab A introduces block 2 …
+  await ev(A, 'jaGrammarSave')(gA)
+  gB['block:3'] = { key: 'block:3', exposures: 1, lastSeen: '2026-11-16' }                         // … tab B (older copy) introduces block 3 and saves later
+  await ev(B, 'jaGrammarSave')(gB)
+  const gs = JSON.parse(shared.getItem(gk))
+  T('G1', 'Japanese grammar progress: two tabs introduce different blocks during their generations → the saved progress has block 1, 2 AND 3 (before: the later save kept only its own)', ['block:1', 'block:2', 'block:3'].every(k => gs[k]), Object.keys(gs))
+  const gA2 = await ev(A, 'jaGrammarLoad')(); gA2['block:1'] = { ...gA2['block:1'], exposures: 4, lastSeen: '2026-11-16' }; await ev(A, 'jaGrammarSave')(gA2)
+  const staleB = { ...gB, 'block:1': { key: 'block:1', exposures: 1, lastSeen: '2026-11-10' } }
+  await ev(B, 'jaGrammarSave')(staleB)
+  T('G2', 'an older copy of a progress record (fewer exposures) saved later does not undo the newer one', JSON.parse(shared.getItem(gk))['block:1'].exposures === 4, JSON.parse(shared.getItem(gk))['block:1'])
+  // Web Locks as a browser gives them: one queue per name, shared by every tab of the site
+  const queues = new Map(); const fakeLocks = { request: (name, fn) => { const prev = queues.get(name) || Promise.resolve(); const run = prev.then(() => fn()); queues.set(name, run.catch(() => {})); return run } }
+  A.c.navigator.locks = fakeLocks; B.c.navigator.locks = fakeLocks
+  const lt = (id, track) => ({ language: 'ja', sourceMainTrackId: track, listeningTrackId: id, status: 'ready' })
+  await Promise.all([ev(A, 'listeningSave')(lt('l1', 't1')), ev(B, 'listeningSave')(lt('l2', 't2'))])
+  const all = JSON.parse(shared.getItem('tt-listening-v1'))
+  T('G3', 'two tabs saving Listening versions at the same moment: both are kept', all.ja && all.ja.t1 && all.ja.t2, all)
+  await Promise.all([ev(A, 'saveListeningAttempt')('ja', { attemptId: 'a1' }), ev(B, 'saveListeningAttempt')('ja', { attemptId: 'a2' })])
+  T('G4', 'two tabs recording a Listening attempt at the same moment: both are kept', JSON.parse(shared.getItem('tt-listening-attempts-ja')).length === 2)
   // ── spend ──
   shared.setItem('tt-gemini-spend', '1')
   const s1 = ev(A, 'stAddToNumber')('tt-gemini-spend', 1, 0.5)

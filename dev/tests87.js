@@ -45,5 +45,10 @@ for (const r of regs) {
   T('C7', 'a cue that is already him / her, or that names a group (their friends), is left exactly as it is', f('Ask her if the room is big.', { speaker: 'A' }, ctx) === 'Ask her if the room is big.' && f('Ask if their friends are coming.', { speaker: 'A' }, ctx) === 'Ask if their friends are coming.' && f('Say you will go.', { speaker: 'B' }, ctx) === 'Say you will go.')
   T('C8', 'the scene\'s genders win when the scene states them (a woman speaking to a woman: Ask her …)', f('Ask Mio what she likes.', { speaker: 'B' }, { nameOf: { A: 'Rie', B: 'Mio' }, genders: { A: 'f', B: 'f' } }) === 'Ask Mio what she likes.' && f('Ask Rie what she likes.', { speaker: 'B' }, { nameOf: { A: 'Rie', B: 'Mio' }, genders: { A: 'f', B: 'f' } }) === 'Ask her what she likes.')
 }
+{
+  const pr = c.ev('jaPragmaticProblems'), bad = jp => pr(jp, { japanese: 'いいえ' }).some(x => /^SELF_ANSWER/.test(x))
+  T('D1', 'a line that asks a question and answers it itself is refused (the lines of pairs 16, 21 and 57 of the owner\'s 15 Nov export)', ['昼、もう食べた？いいえ、まだだよ。一緒に食べよう。', '今日、大丈夫？いいえ、まだ分からない。', 'そうなの？うん、そう。'].every(bad))
+  T('D2', 'a reply that opens with the answer, a question that follows an answer, and two questions in a row are all fine', ['いいえ、車で来たよ。', 'うん、いいよ。どこ行く？', 'えっ、行かないの？なんで？', 'はい、じゃあ一緒に食べよう。'].every(x => !bad(x)))
+}
 console.log((fails ? 'FAIL ' : 'ALL PASS ') + (n - fails) + '/' + n)
 process.exit(fails ? 1 : 0)

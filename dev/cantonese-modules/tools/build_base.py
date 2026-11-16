@@ -93,9 +93,13 @@ def main():
                '愛好': ('hobby', 'hobbies'), '回憶': ('memory', 'memories'), '個性': ('personality', 'personalities'), '幻想': ('fantasy', 'fantasies'), '生活': ('life', 'lives'),
                '能力': ('ability', 'abilities'), '社會': ('society', 'societies'), '願望': ('wish', 'wishes'), '責任': ('responsibility', 'responsibilities'), '實際': ('practical', ''),
                '豐富': ('generous', ''), '口味': ('taste', 'tastes'), '水平': ('standard', 'standards'), '主人': ('host', 'hosts'), '位置': ('spot', 'spots'), '身體': ('health', 'health'),
-               '淡': ('weak', ''), '難食': ('awful', ''), '唔好意思': ('sorry', '')}
+               '淡': ('weak', ''), '難食': ('awful', ''), '唔好意思': ('sorry', ''),
+               # the fixers' tag patches (modules were rewritten against these slots)
+               '零食': (None, 'snacks'), '民族': ('ethnic groups', 'ethnic groups'), '長輩': ('elders', 'elders'), '年花': (None, 'New Year flowers'), '老友': ('old friend', 'old friends'),
+               '後日': ('the day after tomorrow', ''), '前日': ('the day before yesterday', ''), '耳環': ('earrings', 'earrings'), '襪': ('socks', 'socks'), '派': ('hand out', ''),
+               '搶': ('grab', ''), '堆': ('bunch', ''), '吓': ('a look', ''), '唔使': ("don't need to", ''), '呢': ('how about', ''), '唔識': ("don't know how to", '')}
     for r in order:
-        if r['word'] in TAG_FIX:
+        if r['word'] in TAG_FIX and not (r['word'] == '呢' and r['english_slot'] != 'and you'):          # 呢 is also the demonstrative 'this' (id 14): only the question particle is patched
             sl, pl = TAG_FIX[r['word']]
             if sl is not None: r['english_slot'] = sl
             r['english_plural'] = pl

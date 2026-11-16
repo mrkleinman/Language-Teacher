@@ -9215,6 +9215,13 @@ function mergeCantoneseVocab(saved) {
     if (w.manualKnown == null) w.manualKnown = false })
   return merged
 }
+// Tables of the Mandarin programme that have NO Cantonese twin in this first slice, each with its decision (the Cantonese Daily has no model and no Mandarin checker, so none is read):
+//   MANDARIN_GRAMMAR_SCAFFOLD / MANDARIN_CONVERSATION_BASICS / ZH_PARTICLES / ZH_COMMON_COMPOUNDS — they gate and segment MODEL-written Mandarin; the Cantonese words 嘅 咗 唔 冇 喺 are
+//     ordinary words of the list, and the fixed module text was proved against the list at build time; a Cantonese scaffold comes with the model path.
+//   TEACHING_APPLICATIONS_LANG.zh / CC_LANG.zh / LEX_FRAMES.zh / TP_CLASS_BY_SURFACE.zh — teaching plans, cue clarity and frames for model-written lines; not used by modules (their cues
+//     come with the module); a Cantonese entry comes with the model path.
+//   segmentMandarin / mandarinLexicon / mandarinSpokenPinyin / TONE3 / v684Zh* / validateMandarinPinyin — Mandarin only. Cantonese words are cut at build time (yue_check.segment),
+//     the spoken form is the citation form (no sandhi), and the Yale validator below replaces the pinyin validator.
 // ── Yale validation (twin: validate_yale in tools/build_yue_modules.py; the Node test checks both against every word of the list) ─────────────────
 // Yale writes tone with a mark on the first vowel (macron high level, acute mid rising, grave low falling) and with an h after the vowels for the low tones
 // (grave+h low falling, acute+h low rising, no mark+h low level); mid level has no mark. Syllabic m and ng: m̀h ńgh ḿ. No digits, no pinyin marks (ǎ ǐ ü), no Jyutping.

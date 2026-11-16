@@ -289,7 +289,7 @@ def fixture(d):
     for k, row in enumerate(d['m']):
         r = mrows[row[0]]
         h = hashlib.sha1()
-        fw = Z.fits(r)
+        fw = sorted(Z.fits(r), key=lambda w: int(w['id']))          # by id: the order of the word list is by rank, the Node test walks the ids in ascending order
         for w in fw:
             mw = (w.get('classifier') or '').strip()
             mw = '' if mw == '-' else mw

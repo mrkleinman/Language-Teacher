@@ -25,7 +25,7 @@ def rd(p): return list(csv.DictReader(open(p, encoding='utf-8-sig')))
 def main():
     merged = f'{HERE}/drafts/classify/ALL-tags-merged.csv'
     allt = rd(merged if os.path.exists(merged) else f'{HERE}/drafts/classify/ALL-tags.csv')
-    kn = lambda k: int(k) if str(k).isdigit() else 3000 + int(str(k)[1:])        # deck keys are numbers; local words (L001 ...) sort after the deck rows of their class
+    kn = lambda k: int(k) if str(k).isdigit() else (3000 + int(str(k)[1:]) if str(k)[0] == 'L' else int(str(k)[1:]) - 1000)        # deck keys are numbers; local words (L001 ...) sort after the deck rows of their class; core words (C001 ...) sort before them
     cells = {}
     for f in sorted(glob.glob(f'{HERE}/drafts/classify/H0*-cells.csv')) + sorted(glob.glob(f'{HERE}/drafts/classify/H[1-9]-cells.csv')):
         for r in rd(f): cells[r['key']] = r
@@ -42,7 +42,7 @@ def main():
     CR = {'A': 0, 'B': 1, 'C': 2, 'D': 3}
     live = [r for r in allt if not r['skip']]
     skipped = [r for r in allt if r['skip']]
-    missing = [r['key'] for r in live if r['key'] not in cells and not str(r['key']).startswith('L')]
+    missing = [r['key'] for r in live if r['key'] not in cells and not str(r['key'])[0] in 'LC']
     assert not missing, ('no cell for', missing[:10], len(missing))
     th = lambda r: int((r['tier_hint'] or 'T3')[1])
     live.sort(key=lambda r: (CR.get(r['use_class'], 3), th(r), kn(r['key'])))
@@ -56,6 +56,29 @@ def main():
         if (len(inter) + 1) % 5 == 0 and li < len(local_live): inter.append(local_live[li]); li += 1
         elif di < len(deck_live): inter.append(deck_live[di]); di += 1
         else: inter.append(local_live[li]); li += 1
+    # id-lock: the words of the first release keep their id and tier (the written modules stay valid); the missing core words (keys C001 ...) get new ids and are spread evenly through
+    # the span of their own tier, so the existing order is kept and no belt is crowded
+    lock = {r['key']: (int(r['id']), r['tier']) for r in rd(f'{HERE}/id-lock.csv')} if os.path.exists(f'{HERE}/id-lock.csv') else {}
+    if lock:
+        old_live = sorted([r for r in inter if r['key'] in lock], key=lambda r: lock[r['key']][0])
+        core_new = [r for r in inter if r['key'] not in lock]
+        for r in old_live: r['_tier'] = lock[r['key']][1]
+        for r in core_new: r['_tier'] = r['tier_hint'] or 'T2'
+        merged_live = list(old_live)
+        for t in ('T4', 'T3', 'T2', 'T1'):                      # from the back so earlier indexes stay valid
+            ins = sorted([r for r in core_new if r['_tier'] == t], key=lambda r: ({'A': 0, 'B': 1}.get(r['use_class'], 2), kn(r['key'])))
+            idx = [i for i, r in enumerate(merged_live) if r['_tier'] == t]
+            if not ins: continue
+            lo, span = (idx[0], len(idx)) if idx else (len(merged_live), 0)
+            m = len(ins)
+            for j, r in reversed(list(enumerate(ins))):
+                merged_live.insert(lo + int((j + 0.5) * span / m), r)
+        inter = merged_live
+        for r in skipped: r['_tier'] = lock[r['key']][1] if r['key'] in lock else 'T5'
+        nid = max(v[0] for v in lock.values())
+        for r in inter + skipped:
+            if r['key'] in lock: r['_id'] = lock[r['key']][0]
+            else: nid += 1; r['_id'] = nid
     order = inter + skipped
     # slot English that cannot stand in 'this {E}' / '{Es}': (word, english_slot, english_plural)
     SLOT_FIX = {'衫': ('top', 'tops'), '牛仔褲': ('jeans', 'jeans'), '物理': ('physics', 'physics')}
@@ -76,8 +99,8 @@ def main():
         sub = c['subgroup'] if c else r['subgroup']
         sub = CELL_MAP.get(sub, sub)
         frame = (c['frame'] if c and c['frame'] != '' else r['frame']) if c else r['frame']
-        base.append({'id': i, 'key': r['key'], 'word': r['word'], 'jyutping': r['jyutping'], 'yale': r['yale'], 'meaning': r['meaning'], 'belt': belt_for(i), 'tier': tier_for(i), 'entry_type': 'word', 'use_class': r['use_class']})
-        tags.append({'id': i, 'key': r['key'], 'word': r['word'], 'jyutping': r['jyutping'], 'yale': r['yale'], 'meaning': r['meaning'], 'belt': belt_for(i), 'tier': tier_for(i), 'entry_type': 'word',
+        base.append({'id': r.get('_id', i), 'rank': i, 'key': r['key'], 'word': r['word'], 'jyutping': r['jyutping'], 'yale': r['yale'], 'meaning': r['meaning'], 'belt': belt_for(i) if not r['skip'] else 'Beyond curriculum', 'tier': r.get('_tier') or tier_for(i), 'entry_type': 'word', 'use_class': r['use_class']})
+        tags.append({'id': r.get('_id', i), 'rank': i, 'key': r['key'], 'word': r['word'], 'jyutping': r['jyutping'], 'yale': r['yale'], 'meaning': r['meaning'], 'belt': belt_for(i) if not r['skip'] else 'Beyond curriculum', 'tier': r.get('_tier') or tier_for(i), 'entry_type': 'word',
                      'pos': r['pos'], 'group': r['group'], 'subgroup': sub, 'frame': frame, 'english_slot': r['english_slot'], 'english_plural': r['english_plural'], 'classifier': r['classifier'],
                      'register_note': r['cantonese_note'] + ((' | cell note: ' + c['note']) if c and c['note'] else ''), 'skip': r['skip'], 'use_class': r['use_class']})
     for name, rows in (('cantonese-word-base.csv', base), ('cantonese-word-tags.csv', tags)):

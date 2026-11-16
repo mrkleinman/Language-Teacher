@@ -31,6 +31,19 @@ def main():
             if rr['english_slot_fixed'].strip(): r['english_slot'] = rr['english_slot_fixed'].strip()
         r['_note'] = rr['note']
         seen.add(r['word']); kept.append(r)
+    # core words (the missing everyday words the deck lacks), reviewed in drafts/core/RC1-review.csv; they win over a local word of the same spelling
+    core = []
+    crev = {r['word']: r for r in rd(f'{HERE}/drafts/core/RC1-review.csv')}
+    for i, r in enumerate(rd(f'{HERE}/drafts/core/C01-candidates.csv')):
+        v = crev.get(r['word'])
+        if not v or v['verdict'] == 'DROP': continue
+        r = dict(r)
+        if v['jyutping_fixed'].strip(): r['jyutping'] = v['jyutping_fixed'].strip()
+        if v['english_slot_fixed'].strip(): r['english_slot'] = v['english_slot_fixed'].strip()
+        if v['tier_fixed'].strip(): r['tier_hint'] = v['tier_fixed'].strip()
+        r['_note'] = v['note']; core.append(r)
+    core_words = {r['word'] for r in core}
+    kept = [r for r in kept if r['word'] not in core_words]
     CR = {'A': 0, 'B': 1, 'C': 2}; CF = {'high': 0, 'medium': 1, 'low': 2}
     kept.sort(key=lambda r: (CF.get(r['confidence'], 2), CR.get(r['use_class'], 2), r['_i'], r['_src']))   # round-robin over the four topic writers inside a class
     local = kept[:LOCAL_TARGET]
@@ -39,7 +52,7 @@ def main():
     for f in sorted(glob.glob(f'{HERE}/drafts/classify/H[1-9]-cells.csv')):
         for r in rd(f): cells[r['key']] = r
     live = [r for r in deck if not r['skip']]
-    need_cut = len(live) + len(local) - CURRICULUM
+    need_cut = len(live) + len(core) + len(local) - CURRICULUM
     th = lambda r: int((r['tier_hint'] or 'T3')[1])
     order = sorted(live, key=lambda r: ({'D': 0, 'C': 1, 'B': 2, 'A': 3}.get(r['use_class'], 1), -th(r), -int(r['key'])))
     cut = {r['key'] for r in order[:max(0, need_cut)]}
@@ -48,6 +61,10 @@ def main():
         r = dict(r)
         if r['key'] in cut: r['skip'] = 'cut for the local-context words (lowest-value deck word)'
         out.append(r)
+    for n, r in enumerate(core, 1):
+        out.append({'key': 'C%03d' % n, 'word': r['word'], 'jyutping': r['jyutping'], 'yale': yale.convert(r['jyutping']), 'meaning': r['meaning'], 'use_class': r['use_class'], 'tier_hint': r['tier_hint'],
+                    'group': r['group'], 'subgroup': r['subgroup'], 'frame': r['frame'], 'english_slot': r['english_slot'], 'english_plural': r['english_plural'], 'classifier': r['classifier'],
+                    'pos': r['pos'], 'cantonese_note': ('CORE (missing from the deck) · ' + r['note'] + (' · review: ' + r['_note'] if r['_note'] else '')).strip(' ·'), 'skip': ''})
     for n, r in enumerate(local, 1):
         out.append({'key': 'L%03d' % n, 'word': r['word'], 'jyutping': r['jyutping'], 'yale': yale.convert(r['jyutping']), 'meaning': r['meaning'], 'use_class': r['use_class'], 'tier_hint': r['tier_hint'],
                     'group': r['group'], 'subgroup': r['subgroup'], 'frame': r['frame'], 'english_slot': r['english_slot'], 'english_plural': r['english_plural'], 'classifier': r['classifier'],
@@ -55,6 +72,6 @@ def main():
     cols = ['key', 'word', 'jyutping', 'yale', 'meaning', 'use_class', 'tier_hint', 'group', 'subgroup', 'frame', 'english_slot', 'english_plural', 'classifier', 'pos', 'cantonese_note', 'skip']
     with open(f'{HERE}/drafts/classify/ALL-tags-merged.csv', 'w', encoding='utf-8-sig', newline='') as f:
         w = csv.DictWriter(f, fieldnames=cols); w.writeheader(); w.writerows([{c: r.get(c, '') for c in cols} for r in out])
-    print('candidates', len(cands), 'kept after review', len(kept), '· local used', len(local), '· deck live', len(live), '· deck cut', len(cut), '· curriculum', len(live) - len(cut) + len(local))
+    print('candidates', len(cands), 'kept after review', len(kept), '· core', len(core), '· local used', len(local), '· deck live', len(live), '· deck cut', len(cut), '· curriculum', len(live) - len(cut) + len(local))
     print('local use classes', dict(collections.Counter(r['use_class'] for r in local)), 'tiers', dict(collections.Counter(r['tier_hint'] for r in local)))
 if __name__ == '__main__': main()

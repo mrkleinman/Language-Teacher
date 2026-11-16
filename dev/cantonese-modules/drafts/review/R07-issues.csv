@@ -1,0 +1,119 @@
+﻿module_id,word_id,line,kind,severity,problem,suggested_fix
+N_FOODSTUFF.STAPLE-T3-02,80,A1,prompt,FIX,"Prompt says ""there are no toast left"" (uncountable with ""are"").",Say you have no {E} left at home and ask her to buy some on her way back.
+N_FOODSTUFF.STAPLE-T3-02,940,A1,prompt,FIX,"Prompt says ""there are no sliced bread left"" (uncountable with ""are"").",Say you have no {E} left at home and ask her to buy some on her way back.
+N_FOODSTUFF.STAPLE-T4-01,1740,A2,fit,FIX,"""我而家去煮"" makes no sense for croissants (cook croissants).",exclude 1740
+N_FOODSTUFF.STAPLE-T4-02,1740,B,fit,MINOR,"Eating lots of croissants described as ""好健康"" is odd.",
+N_FOODSTUFF.VEG-T3-01,1027,ALL,english,FIX,"English plural spelled ""tomatos"" (should be ""tomatoes"") in every line.","plural of slot must be ""tomatoes"""
+N_FOODSTUFF.VEG-T3-02,1027,ALL,english,FIX,"English plural spelled ""tomatos"" (should be ""tomatoes"").","plural of slot must be ""tomatoes"""
+N_FOODSTUFF.VEG-T4-01,1355,B,fit,MINOR,"Always putting cucumber into cooked dishes is not normal for cucumber (""煮餸一定放青瓜"").",exclude 1355
+N_FOODSTUFF.VEG-T5-02,2160,A2,fit,MINOR,"""原來咁簡單"" contradicts B saying you must rinse several more times.",
+N_FOODSTUFF.VEG-T5-02,305,A2,fit,MINOR,"""原來咁簡單"" contradicts B saying you must rinse several more times.",
+N_HEALTH.ILLNESS-T3-01,801,A2,english,MINOR,"English and prompt add ""early"" which the Cantonese does not say.",
+N_HOME.CLEAN-T3-02,1016,ALL,fit,FIX,"Toothpaste ""用幾年"" and ""a new toothpaste ... better toothpaste that lasts a few years"" do not make sense.",exclude 1016
+N_HOME.CLEAN-T4-02,1016,B,fit,MINOR,Keeping toothpaste in the kitchen is odd.,
+N_HOME.FURNITURE-T3-01,227,ALL,english,MINOR,"English uses plural ""new sofas"" for singular Cantonese, then ""The sofa"".",
+N_HOME.FURNITURE-T4-02,1763,A2,fit,MINOR,"A mirror ""looks more comfortable (睇落舒服)"" is odd.",
+N_HOME.TABLEWARE-T3-02,888,ALL,fit,MINOR,"Washing just the knife after dinner / ""收好"" everything is odd for knife.",
+N_HOME.TABLEWARE-T4-02,1297,ALL,fit,MINOR,Needing several kettles for guests is odd; fits teapot/bowl.,exclude 1297
+N_ITEM.GENERAL-T5-01,48,A2,cantonese,FIX,"""同經理講嘢嘅問題"" - 講嘢 means ""talk/speak""; reads as nonsense.",exclude 48
+N_ITEM.TOOL-T5-01,166,B,fit,MINOR,"A lift being ""好難用 / hard to use"" and ""試吓電梯"" is odd.",
+N_ITEM.TRAVEL-T4-02,184,A1,fit,MINOR,"Asking to see ""your menu"" and ""my menu"" is odd for a restaurant menu.",
+N_MEDIA.NEWS-T3-01,902,ALL,cantonese,MINOR,"短信 is not HK spoken (短訊); ""短信入面有好多有用嘅嘢"" odd for a text message.",
+N_MEDIA.NEWS-T3-02,898,A2,fit,FIX,"""睇雜誌啱唔啱 / ask someone to check the magazine"" makes no sense for magazine.",exclude 898
+N_MEDIA.SCREEN-T3-01,489,A1,english,MINOR,"""watch the movie"" should be ""a movie"" (Cantonese is generic).",
+N_MEDIA.STORY-T4-02,1437,B,fit,MINOR,"""我屋企有好多故事"" odd (stories at home); fits books.",
+N_MEDIA.STORY-T5-01,2183,ALL,fit,MINOR,"傳說 as a countable ""legends to read"" is not natural spoken use.",exclude 2183
+N_MONEY.INCOME-T4-01,1261,A2,cantonese,MINOR,比較 is written style.,我哋睇吓{W}，同去年比吓啦。
+N_MONEY.INCOME-T5-01,232,ALL,fit,FIX,"Salary ""多得離譜"" then ""Is it that bad?"" is incoherent for 人工.",exclude 232
+N_MONEY.MONEY-T4-01,54,A1,fit,FIX,"""我而家淨係得錢"" (only got money) is meaningless.",exclude 54
+N_MONEY.MONEY-T4-01,1245,B,english,MINOR,"""lend you some ten cents"" is ungrammatical English.",
+N_MONEY.MONEY-T5-01,2470,A2,fit,MINOR,"""睇吓樓價有冇錯"" (check property price for a mistake) is odd.",
+N_MONEY.MONEY-T5-01,605,A2,fit,MINOR,Checking whether there is a mistake in a sale is odd.,
+N_MONEY.MONEY-T5-02,2222,ALL,fit,FIX,"Locking ""funds"" in a drawer with a key makes no sense; English ""funds ... it"" mismatch.",exclude 2222
+N_OUTDOORS.DIRECTION-T4-01,1536,ALL,fit,FIX,"北方 means northern region; walking ten minutes to ""the north"" is unnatural (北邊).",exclude 1536
+N_OUTDOORS.DIRECTION-T4-02,1536,ALL,fit,FIX,"北方 means northern region, not a local direction (北邊).",exclude 1536
+N_OUTDOORS.LANDSCAPE-T3-01,984,ALL,fit,FIX,"""去海洋玩"" is not natural (海洋 is the ocean, not a place to go for a day).",exclude 984
+N_OUTDOORS.LANDSCAPE-T4-01,1347,A1,cantonese,MINOR,"Bare 島 (""去過島"") lacks a specifier; unnatural.",
+N_OUTDOORS.LANDSCAPE-T4-02,1347,A1,cantonese,MINOR,"Bare ""島嗰度 / 去島"" lacks a specifier; unnatural.",
+N_OUTDOORS.NATURE-T4-01,1654,ALL,cantonese,FIX,"""睇自然 / 需要自然"" is not Cantonese (would be 大自然).",exclude 1654
+N_OUTDOORS.PLANT-T3-01,1022,ALL,english,FIX,"English plural ""leafs"" should be ""leaves"".","plural of slot must be ""leaves"""
+N_OUTDOORS.PLANT-T3-02,793,A1,fit,MINOR,"""畀水畀屋企啲草 / water the grass at home"" odd; 畀水 is not the watering verb (淋水).",
+N_OUTDOORS.PLANT-T5-01,2465,ALL,english,FIX,"English uses singular ""lots of New Year flower ... the New Year flower"".","plural of slot ""New Year flowers"""
+N_PERSONROLE.CHARACTER-T5-01,2058,A1,cantonese,FIX,"""係唔係"" is Mandarin-style V-not-V; Cantonese uses 係咪.",你覺得佢係咪一個真正嘅{W}呀？
+N_PERSONROLE.JOB-T4-01,1803,ALL,english,MINOR,"Slot gloss ""master worker"" is unnatural English (tradesman / skilled worker).",
+N_PERSONROLE.JOB-T4-02,1803,ALL,english,MINOR,"Slot gloss ""master worker"" is unnatural English (tradesman / skilled worker).",
+N_PERSONROLE.JOB-T4-03,1803,ALL,english,MINOR,"Slot gloss ""master worker"" is unnatural English (tradesman / skilled worker).",
+N_PERSONROLE.PEOPLE-T4-01,1718,ALL,cantonese,MINOR,兒童 is stiff/written; spoken would be 小朋友/細路.,
+N_PERSONROLE.PEOPLE-T4-02,1718,ALL,cantonese,MINOR,兒童 is stiff/written; spoken would be 小朋友/細路.,
+N_PERSONROLE.PEOPLE-T5-01,1718,ALL,cantonese,MINOR,兒童 is stiff/written; spoken would be 小朋友/細路.,
+N_PERSONROLE.POLITE-T3-02,1049,B,cantonese,FIX,"幫手 is intransitive; ""幫手女士"" is ungrammatical.",係呀，我哋過去幫吓{W}啦。
+N_PERSONROLE.SCHOOL-T4-01,1671,A2,fit,MINOR,"""放學之後 ... 同教授打招呼"" suits school teacher not professor.",
+N_PERSONROLE.SOCIAL-T3-02,1147,ALL,english,FIX,"Slot gloss ""owner"" is wrong for dinner context (should be ""host"").","slot gloss ""host"""
+N_PERSONROLE.SOCIAL-T4-01,1824,A2,english,MINOR,"English says ""next time"" but Cantonese says 聽日 (tomorrow).",
+N_PERSONROLE.SOCIAL-T4-01,61,ALL,fit,MINOR,"""That friend / the friend"" reads oddly; vague referent.",exclude 61
+N_PERSONROLE.SOCIAL-T4-02,1824,ALL,fit,FIX,A landlord helping find a job is nonsense.,exclude 1824
+N_PERSONROLE.SOCIAL-T5-01,61,ALL,english,MINOR,"""meeting the friend"" unnatural; should be ""a friend"".",
+N_PERSONROLE.SOCIAL-T5-01,2395,ALL,english,MINOR,"""meeting the buddy"" unnatural English.",
+N_PERSONROLE.SOCIAL-T5-02,61,ALL,english,FIX,"""look after the friend ... Many friends"" singular/plural mismatch.","plural/generic English: ""friends"""
+N_PERSONROLE.SOCIAL-T5-02,2395,ALL,english,FIX,"""look after the buddy ... Many buddies"" singular/plural mismatch.","plural/generic English: ""old friends"""
+N_PERSONROLE.WORK-T4-01,1690,ALL,fit,FIX,"""我哋嘅打工仔"" / being told off by ""the employee"" is nonsense.",exclude 1690
+N_PLACE.CITY-T5-01,2034,A1,cantonese,MINOR,"""熟悉唔熟悉"" is Mandarin-style V-not-V (熟唔熟悉 / 熟唔熟).",
+N_PLACE.CITY-T5-01,738,A1,cantonese,MINOR,"""熟悉唔熟悉"" is Mandarin-style V-not-V.",
+N_PLACE.EAT-T5-01,1920,ALL,english,MINOR,"Singular ""the food stall"" unnatural for 大排檔; use ""dai pai dong"" or plural.",
+N_PLACE.LOCATION-T3-02,1074,ALL,english,FIX,"""This position is so convenient / going to that position"" unnatural; should be ""spot/place"".","slot gloss ""spot"""
+N_PLACE.LOCATION-T4-01,1684,ALL,cantonese,MINOR,地點 is written style; 嗰個地點 for a remembered place is stiff (地方).,
+N_PLACE.PUBLIC-T3-01,1193,B,english,FIX,Cantonese says 十分鐘 but English and prompt say five minutes.,Tell him it is close: ten minutes on foot to the {E}.
+N_PLACE.PUBLIC-T3-01,90,B,english,FIX,Cantonese says 十分鐘 but English and prompt say five minutes.,Tell him it is close: ten minutes on foot to the {E}.
+N_PLACE.PUBLIC-T4-02,1760,ALL,fit,MINOR,"Going by vehicle ""去隧道"" is odd.",
+N_PLACE.BUILDING-T4-02,153,ALL,fit,FIX,"Bare 屋 (""屋喺邊度 / 搵屋"") is not natural; needs 間屋/屋企.",exclude 153
+N_PLACE.SERVICE-T5-02,2277,A2,fit,FIX,"""我哋每日都好需要移民局"" is untrue/nonsensical.",exclude 2277
+N_PLACE.STUDY-T4-01,1393,A1,english,MINOR,"""waiting at the classroom"" should be ""in the classroom"".",
+N_STUDYWORK.DOCUMENT-T4-01,1811,A1,cantonese,MINOR,寫表格 is Mandarin-style; HK says 填表.,
+N_STUDYWORK.LANGUAGE-T4-02,1842,ALL,cantonese,MINOR,詞語 is written style.,
+N_STUDYWORK.SCHOOL-T3-01,819,ALL,fit,MINOR,Liking a blackboard and discussing it tomorrow is odd.,exclude 819
+N_STUDYWORK.SCHOOL-T4-01,1815,ALL,fit,FIX,"""呢個學位邊度最好"" / being happy with ""this school place"" is incoherent.",exclude 1815
+N_STUDYWORK.SUBJECT-T4-02,1787,ALL,fit,FIX,"""我嘅知識仲要努力"" and confidence in own knowledge is incoherent.",exclude 1787
+N_STUDYWORK.TEST-T4-02,1848,ALL,fit,MINOR,"""準備碩士 / master's degree turns out well"" is odd.",
+N_STUDYWORK.WORK-T5-01,1735,B,english,FIX,"Grammar error ""interviews has to be handled seriously"".",
+N_TRANSPORT.TRAFFIC-T4-02,1281,ALL,fit,FIX,"""我哋呢度嘅車廂真係好方便 / train carriage around here"" is nonsense.",exclude 1281
+N_TRANSPORT.VEHICLE-T3-01,1144,ALL,fit,FIX,"Taking a lorry as transport (""搭卡車去"") is not natural.",exclude 1144
+N_TRANSPORT.VEHICLE-T3-02,1144,ALL,cantonese,MINOR,卡車 is Mandarin-leaning; HK says 貨車.,
+N_TRANSPORT.VEHICLE-T5-01,1860,ALL,fit,FIX,"School bus to work (""搭校巴返工"") is incoherent.",exclude 1860
+N_WEATHER.GENERAL-T4-01,1595,ALL,fit,FIX,"""天氣預報好嚴重"" - a forecast cannot be serious (fits 風球).",exclude 1595
+N_WEATHER.SKY-T3-02,1184,ALL,fit,FIX,"""一出門就睇到天空"" is meaningless; sky is always there.",exclude 1184
+N_WEATHER.SKY-T4-01,1534,A1,fit,MINOR,"""Have you seen moonlight in Hong Kong?"" is odd.",
+N_WEATHER.SKY-T5-01,1936,ALL,cantonese,MINOR,"""有雷嘅日子 / 好鍾意雷"" not natural (打雷).",
+T_TIME.DAY-T4-01,1490,ALL,english,FIX,"English ""free day after tomorrow"" lacks ""the"" (and ""after day after tomorrow"").","slot gloss ""the day after tomorrow"""
+T_TIME.DAY-T4-02,1485,ALL,english,FIX,"English ""day before yesterday"" lacks ""the"".","slot gloss ""the day before yesterday"""
+T_TIME.DATE-T5-02,2285,A2,fit,MINOR,"Both busy at start of month, then suggest dinner then to relax: incoherent.",
+T_TIME.FUTURE-T3-01,1068,ALL,cantonese,MINOR,未來 is written style; spoken 將來.,
+T_TIME.FUTURE-T3-02,565,A1,english,MINOR,"""Can I find you later?"" does not match 遲啲先搵你 (I will get back to you).",
+T_TIME.NOW-T3-01,1084,B,english,FIX,"English repeats slot: ""I'm at the office. That's where I am at the moment.""",
+T_TIME.NOW-T3-01,1084,A2,english,FIX,"English ""that's close to where I am"" does not match 我目前喺公司附近.",
+T_TIME.PARTOFDAY-T4-01,277,ALL,cantonese,MINOR,"Bare 夜 as noun (""我最鍾意夜"") is literary; 夜晚.",
+T_TIME.PARTOFDAY-T4-02,277,ALL,cantonese,FIX,"""喺夜"" is not natural spoken; English ""in the night"" should be ""at night"".",exclude 277
+T_TIME.PAST-T4-01,1487,A2,fit,FIX,"""可能係我後來睇錯咗"" (I saw wrongly later) is illogical.",exclude 1487
+V_CHANGE.AMOUNT-T4-02,1849,ALL,fit,FIX,"積累 with no object (""想積累真係唔容易"") is meaningless.",exclude 1849
+V_CHANGE.AMOUNT-T5-01,1849,ALL,fit,FIX,"""會唔會積累"" with no object is meaningless.",exclude 1849
+V_CHANGE.AMOUNT-T4-02,981,A1,fit,MINOR,"""想減少"" with no object is vague.",
+V_CHANGE.CAUSE-T4-01,1481,B,english,MINOR,"""won't affect you all"" - addressee is one person.",
+V_CHANGE.CAUSE-T5-01,2027,ALL,fit,FIX,"暴雨 ""產生啲乜嘢 / produce a lot of things"" is incoherent and written style.",exclude 2027
+V_CHANGE.EVENT-T4-01,1676,ALL,fit,FIX,"""會唔會剩 ... 剩就要快啲走"" makes no sense.",exclude 1676
+V_CHANGE.EVENT-T4-02,1676,ALL,fit,FIX,"""萬一剩"" with no subject makes no sense.",exclude 1676
+V_CHANGE.EVENT-T4-01,381,A2,fit,MINOR,"""如果真係摔倒，我哋就要快啲走"" does not follow.",
+V_CHANGE.EVENT-T5-01,405,ALL,english,MINOR,"""it will have a typhoon here"" unnatural English.",a typhoon is coming
+V_CHANGE.GAME-T4-01,1831,ALL,fit,FIX,合格 (pass a standard) does not fit a 比賽 (competition).,exclude 1831
+V_CHANGE.HEALTH-T4-01,417,ALL,fit,FIX,"Crying all the time because of cold weather, and wearing clothes to stop crying, is nonsense.",exclude 417
+V_CHANGE.HEALTH-T4-02,1267,A1,fit,MINOR,Being tired is not a cause of shivering.,
+V_CHANGE.HEALTH-T5-01,2469,ALL,fit,FIX,"""有冇需要嘔 / 最好聽日就嘔"" (need to vomit, best tomorrow) is nonsense.",exclude 2469
+V_CHANGE.IMPROVE-T4-02,1693,ALL,english,FIX,"English typo ""developd""; and ""有冇發展 / 點解會發展"" is incoherent.",exclude 1693
+V_CHANGE.IMPROVE-T5-01,1857,ALL,fit,FIX,"養成 needs an object (habit); ""點樣先可以養成"" / ""develop a lot"" is incoherent.",exclude 1857
+V_CHANGE.LIFE-T3-02,913,A2,english,MINOR,"""the day the baby will be born"" should be ""is born"".",
+V_CHANGE.PROCESS-T4-01,1814,ALL,fit,FIX,"""幾時延遲 / 一延遲就話我知"" - 延遲 needs an object; incoherent as delay a homework.",exclude 1814
+V_COMMUNICATE.ADVISE-T3-01,1191,A1,prompt,MINOR,"Prompt invents ""your brother"" not in the Cantonese (佢).",
+V_COMMUNICATE.ADVISE-T3-02,1191,A1,prompt,MINOR,"Prompt invents ""your colleague"" not in the Cantonese (佢).",
+V_COMMUNICATE.ADVISE-T5-01,2026,A1,prompt,MINOR,"Prompt invents ""the boy"" not in the Cantonese (佢).",
+V_COMMUNICATE.EXPLAIN-T4-01,1584,ALL,fit,FIX,"""指一下呢個新方法 / point at this new method"" is meaningless.",exclude 1584
+V_COMMUNICATE.EXPLAIN-T5-01,2243,A1,fit,MINOR,形容 (describe appearance) for presenting a plan to a client is odd (介紹).,
+V_COMMUNICATE.GENERAL-T4-01,1581,ALL,cantonese,MINOR,"聯繫 is Mandarin/written; HK 聯絡; ""冇回答"" odd.",
+V_COMMUNICATE.GENERAL-T4-02,1581,A1,prompt,MINOR,"Prompts say ""your boss"" but Cantonese only says 佢 and English says ""him"".",

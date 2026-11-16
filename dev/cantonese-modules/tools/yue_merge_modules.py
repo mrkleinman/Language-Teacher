@@ -2,8 +2,9 @@
 The missing core words (tag keys C001 ...) have their own WC modules: every ordinary module gets the core ids added to exclude_ids, so a core word is only ever served by a WC module."""
 import csv, glob, collections
 def rd(p): return list(csv.DictReader(open(p, encoding='utf-8-sig')))
-ordinary = sorted(glob.glob('drafts/W[0-9][0-9]-modules.csv')) + sorted(glob.glob('drafts/ZT[0-9][0-9]-modules.csv')) + sorted(glob.glob('drafts/TOPUP-*-modules.csv'))
-corefiles = sorted(glob.glob('drafts/WC[0-9]-modules.csv'))
+CORE_TOPUP = 'drafts/TOPUP-TU05-modules.csv'        # the core-word top-up serves core words only
+ordinary = sorted(glob.glob('drafts/W[0-9][0-9]-modules.csv')) + sorted(glob.glob('drafts/ZT[0-9][0-9]-modules.csv')) + [f for f in sorted(glob.glob('drafts/TOPUP-*-modules.csv')) if f != CORE_TOPUP]
+corefiles = sorted(glob.glob('drafts/WC[0-9]-modules.csv')) + ([CORE_TOPUP] if glob.glob(CORE_TOPUP) else [])
 core = {t['id'] for t in rd('cantonese-word-tags.csv') if t['key'].startswith('C')}
 rows, hdr, added = [], None, 0
 for f in ordinary + corefiles:

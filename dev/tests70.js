@@ -166,14 +166,16 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     const mk = (lang, f) => Array.from({ length: 200 }, (_, i) => Object.assign({ id: i + 1, english: 'e' + i, curriculumIndex: i + 1, status: 'known' }, f(i)))
     const cr = load(FILE, { realBelt: true, React }); cr.console.info = () => {}; cr.console.warn = () => {}
     const rank = cr.ev('currentRankName')
-    const cases = [['th', i => ({ thai: 'ไทย' + i, phonetic: 'p' + i })], ['ja', i => ({ japanese: '日' + i, reading: 'r' + i })], ['zh', i => ({ chinese: '中' + i, pinyin: 'z' + i })]]
+    // 16 Nov: Cantonese is the fourth app and renders the same view for the same button, so it joins the cases (its rows are Chinese characters with Yale in the pinyin field) and the
+    // source count of apps that open the view is 4, not 3. The claim is unchanged: every language's app renders the Rank Test screen with the words still to prove.
+    const cases = [['th', i => ({ thai: 'ไทย' + i, phonetic: 'p' + i })], ['ja', i => ({ japanese: '日' + i, reading: 'r' + i })], ['zh', i => ({ chinese: '中' + i, pinyin: 'z' + i })], ['yue', i => ({ chinese: '粵' + i, pinyin: 'yuht' + i })]]
     const res = cases.map(([lang, f]) => {
       const v = mk(lang, f); v[7].status = 'learning'; v[7].repCount = 1; v[7].okStreak = 0
       const html = RDS.renderToStaticMarkup(React.createElement(cr.ev('RankTestView'), { vocab: v, lang, onBack() {} }))
       return { lang, rank: rank(v), shown: (html.match(/data-rank-passed="0"/g) || []).length, headword: html.includes(f(7)[Object.keys(f(7))[0]]) }
     })
-    T('Y12', 'the Rank Test screen lists the words still to prove (here exactly 1) with their headword, in Thai, Japanese and Mandarin; each app renders the view the button opens',
-      res.every(r => r.shown === 1 && r.headword) && (src.match(/view === 'rank-test' && <RankTestView/g) || []).length === 3, res)
+    T('Y12', 'the Rank Test screen lists the words still to prove (here exactly 1) with their headword, in Thai, Japanese, Mandarin and Cantonese; each app renders the view the button opens',
+      res.every(r => r.shown === 1 && r.headword) && res.length === 4 && (src.match(/view === 'rank-test' && <RankTestView/g) || []).length === 4, res)
   }
   {
     // 29 Oct blind reviews of the live track (6.8 / 6.6): the listener-copy cue lint turned the correct cue "Tell her you'll catch her later." into "Say catch her later."; the greeting cues named

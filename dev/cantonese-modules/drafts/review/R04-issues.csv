@@ -1,0 +1,43 @@
+﻿module_id,word_id,line,kind,severity,problem,suggested_fix
+V_MIND.FEEL-T2-03,271,A2,prompt,FIX,"Prompt ""just don't scare you again"" is ungrammatical and does not say who is told to stop.","Say it is okay, but tell her not to {E} you again."
+V_MIND.THINK-T1-01,19,A1,cantonese,FIX,"你諗乜嘢 means ""what are you thinking about"", not ""What do you think?"", and B answers with an opinion; the prompt ""what she does think"" is also unnatural.","A1_yue: 你點{W}呀？ (English ""What do you {E}?"" then fits; prompt ""Ask her what she thinks."")"
+V_MIND.THINK-T2-01,547,ALL,english,MINOR,"Slot gloss ""feel"" gives stilted English (""Do you feel today's movie is good?"", ""I feel it's really funny!""); ""think"" is what an English speaker says.","Use english_slot ""think"" for 547 in this module"
+V_MIND.THINK-T2-02,547,ALL,english,MINOR,"Slot gloss ""feel"" gives stilted English (""Why do you feel I don't like the teacher?"", ""You always feel he teaches badly"").","Use english_slot ""think"" for 547 in this module"
+V_MIND.THINK-T2-03,196,ALL,english,FIX,"Slot gloss ""think wrongly"" gives ungrammatical English in every line (""Don't think wrongly I'm angry"", ""I didn't think wrongly you were angry"").",exclude 196
+V_MIND.THINK-T2-03,196,A2,fit,FIX,"A2 tells her not to think he is angry right after she said she did not, so the exchange goes round in a circle.",exclude 196
+V_MIND.KNOW-T1-11,3026,B,english,MINOR,"""Do I not know?"" is not natural English for the echo question 我唔知？; the prompt does not say it is an echo.","English: ""I don't know? I know him!"" with {E} kept; prompt ""Say you do know him, surprised."""
+V_MIND.KNOW-T1-11,3026,A2,prompt,MINOR,"Prompt ""knows who he is but not his name"" does not match the line, which asks ""You know him. Do you not know his name?"".",Ask if she knows him but does not know his name.
+V_MIND.KNOW-T2-02,687,A1,cantonese,MINOR,"你成日記得 has no object, so ""You always remember"" reads oddly; native speakers would say 咩都記得.","你咩都{W}，好聰明喎！ (English ""You {E} everything, you're so smart!"")"
+V_MIND.WORRY-T2-02,784,B,cantonese,MINOR,"我試放心: 試 needs 吓 before a verb (""I'll try to ...""); bare 試 is not natural spoken Cantonese.",好，我試吓{W}。
+V_MOVE.GOAL-T1-03,52,A2,fit,MINOR,"Having homework is no reason for not going back, and 返 has no destination, so the exchange is vague.",
+V_MOVE.GENERAL-T2-02,423,A2,cantonese,MINOR,"大家 (""everyone"") for just two people; the English and prompt say ""everyone"" too.","好，我哋{W}好，唔好講嘢！ (English ""OK, let's {E} well and don't talk!""; prompt ""Say OK, you two should {E} well and not talk."")"
+V_MOVE.PASS-T2-02,540,A2,fit,MINOR,"A proposed the plan, so A agreeing with 好呀 to B's remark about the MTR is odd; the line should just fix the times.","咁我哋六點{W}，七點食飯。 (English ""Then let's {E} at six and eat at seven.""; prompt ""Suggest you {E} at six and eat at seven."")"
+V_MOVE.POSTURE-T2-01,332,A1,english,MINOR,"""Why do you squat over there?"" is not natural for something happening now; the prompt ""why she is going to squat"" is wrong too.",
+V_MOVE.TRAVEL-T2-01,654,ALL,cantonese,FIX,旅游 uses the simplified character 游; traditional is 旅遊 (in all three lines).,Headword 654 should be 旅遊
+V_MOVE.TRAVEL-T2-02,654,ALL,cantonese,FIX,旅游 uses the simplified character 游; traditional is 旅遊 (in all three lines).,Headword 654 should be 旅遊
+V_MOVE.TRAVEL-T2-03,654,ALL,cantonese,FIX,旅游 uses the simplified character 游; traditional is 旅遊 (in all three lines).,Headword 654 should be 旅遊
+V_MOVE.TRAVEL-T2-03,654,A2,prompt,MINOR,"Prompt ""Say you will travel when she is free"" says the opposite subject from 咁等你得閒先旅游啦 (let us wait until you are free).",Suggest you wait until she is free to {E}.
+V_ROUTINE.GENERAL-T1-02,186,A2,cantonese,MINOR,"我上網好快 means ""I go online fast""; it does not mean ""I won't be long"" as the English says.",
+V_ROUTINE.GENERAL-T2-03,71,A1,prompt,MINOR,"Prompt ""where she tends to live now"" is unnatural for 住.",Ask where she lives now.
+V_ROUTINE.REST-T1-03,97,ALL,cantonese,FIX,"瞓覺 is a separable verb-object word: 冇瞓覺夠 / 瞓覺夠 is not Cantonese (it must be 冇瞓夠覺 or 瞓得唔夠), so all three lines are wrong for this word.",exclude 97
+V_ROUTINE.REST-T2-11,3133,A1,english,MINOR,"都會 means ""sometimes even""; ""I can even wake up"" turns it into an ability and the prompt repeats it.","English ""I even {E} at three at night.""; prompt ""Say you even {E} at three at night."""
+V_ROUTINE.REST-T2-11,3133,B,prompt,MINOR,"Prompt ""when he has to wake up"" does not match the line (""after you wake up, can you get back to sleep?"").",
+V_ROUTINE.REST-T2-13,3133,A2,cantonese,FIX,"瞓醒唔到 is not grammatical (the potential form is 瞓唔醒), and ""call me if you can't wake up"" makes no sense for someone asleep; A1 要六點瞓醒 is also odd (起身 is what you must do).",exclude 3133
+V_ROUTINE.STUDY-T1-11,3029,B,fit,FIX,"A1 asks WHERE she learns Cantonese; B answers who with (我同朋友學), so the reply does not answer the question.","B_yue: 我喺屋企{W}。 (English ""I {E} at home.""; prompt ""Say you {E} at home."")"
+V_ROUTINE.STUDY-T2-03,497,ALL,cantonese,MINOR,"Bare 讀 for ""study"" (你一定要讀, 我一定讀) is not natural; spoken Cantonese says 讀書.",
+V_SOCIAL.PLAY-T2-02,375,ALL,english,MINOR,"Gloss ""watch a film"" after ""like to"" gives ""I like to watch a film best"", unnatural; plural ""films"" is needed.",exclude 375
+V_SOCIAL.PLAY-T2-03,375,B,fit,FIX,"A1 says Saturday, B asks ""what time ... today"" (今日); the day does not match, so the three lines do not agree.","好呀，星期六幾點{W}呀？ (English ""Sure. What time are we going to {E} on Saturday?"")"
+V_SOCIAL.PLAY-T2-03,651,B,fit,FIX,"A1 says Saturday, B asks ""what time ... today"" (今日); the day does not match, so the three lines do not agree.","好呀，星期六幾點{W}呀？ (English ""Sure. What time are we going to {E} on Saturday?"")"
+V_SOCIAL.ROMANCE-T2-02,312,A2,cantonese,MINOR,"我試拍拖: 試 needs 吓 (""try to""); bare 試 is not natural.",好啦，我試吓{W}啦。
+V_TRADE.BUY-T2-02,74,ALL,fit,MINOR,"聽日你記得買呀 has no object; with no earlier context ""Remember to buy tomorrow"" has no point, so the exchange is vague.",
+V_TRADE.BUY-T2-02,741,ALL,fit,MINOR,"聽日你記得借呀 has no object; ""Remember to borrow tomorrow"" is vague with no context.",
+V_TRADE.MONEY-T2-01,485,A1,fit,FIX,"A1 asks which day of the WEEK (星期幾), but B answers ""end of every month"", so the answer does not fit.","你平時幾時{W}呀？ (English ""When do you usually {E}?""; prompt ""Ask her when she can {E}."")"
+V_WANTLIKE.LIKE-T2-02,467,ALL,cantonese,MINOR,愛 for loving your mum (我最愛媽媽) is translation-like; spoken Cantonese says 錫 or 鍾意 for family.,
+X_ADVERB.DEGREE-T2-01,674,ALL,english,MINOR,"""You're even more busy"" is not natural English (even busier).",
+X_ADVERB.DEGREE-T2-02,22,ALL,fit,FIX,"The module contrasts ""this one is expensive / that one is MORE expensive""; with 好 both are 好貴, so there is no contrast and the lines make no sense.",exclude 22
+X_ADVERB.DEGREE-T2-03,674,ALL,cantonese,MINOR,"更靚嗰條裙 / 更靚嗰條好貴 is not how Cantonese compares (""靚啲嗰條""); English ""the even more beautiful skirt"" is also stiff.",exclude 674
+X_ADVERB.PLACE-T2-03,627,B,english,MINOR,"""I'm going beside the lift now"" is unnatural English; prompt repeats it.",
+X_ADVERB.PROMPT-T2-03,287,ALL,cantonese,FIX,"趕快 is an adverb (""at once"") in Cantonese and is not used bare as a verb in 你趕快啦 / 我趕快喇, which is Mandarin-style; colloquial is 快啲.",exclude 287
+X_ADVERB.TIME-T2-11,3061,A1,english,MINOR,"我哋行到前面 is ""walk ahead"", but English and prompt say ""walk to the end"".","We walk ahead. And then, which way do we go?"
+X_ASPECT.MARKER-T2-02,470,ALL,english,FIX,"Slot gloss ""briefly"" gives unnatural English in every line (""Look at it briefly"", ""You'll see after looking briefly""); 睇吓 means ""have a look"".","english_slot for 470 should be ""a look"" and English ""Take {E}""; or exclude 470"
+X_ASPECT.MARKER-T2-03,541,ALL,cantonese,FIX,"著 is the Mandarin/Taiwan character for the continuous marker; Hong Kong writes 住 (你等住, 我坐住等你, 你坐住啦).",Headword 541 should be 住

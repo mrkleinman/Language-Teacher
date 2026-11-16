@@ -40,7 +40,8 @@ const DISPLAY = { 'Mukyu': '1–100 · 100 words', '10th Kyu': '101–200 · 100
     !/from:\s*\d{3,4}\b|to:\s*\d{3,4}\b/.test(SRC.replace(/^const RAW_VOCAB = .*$/m, '')) && (SRC.match(/const CURRICULUM_BELTS =/g) || []).length === 1 && (SRC.match(/const CURRICULUM_STAGE_SIZES =/g) || []).length === 1)
   // the belt page, rendered for each language
   const cr = load(APP, { React, realBelt: true })
-  for (const lang of ['th', 'ja', 'zh']) {
+  // 16 Nov: Cantonese ('yue') is the fourth language: its belt page must show the same ranks and positions (and its own Yale ability lines), so it joins this loop
+  for (const lang of ['th', 'ja', 'zh', 'yue']) {
     const html = RDS.renderToStaticMarkup(React.createElement(cr.BeltRankView, { vocab: [], onBack() {}, lang })).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
     const miss = Object.entries(DISPLAY).filter(([rank, range]) => !new RegExp(rank.replace(/ /g, '\\s*') + '[\\s\\S]{0,400}?' + range).test(html)).map(([r, g]) => r + ' ' + g)
     T('B5' + lang, 'belt page (' + lang + ') shows every rank\'s positions: 9th Kyu 201–400 · 200 words … 1st Kyu 2,176–2,500 · 325 words · Shodan all 2,500 qualifying words',
@@ -69,8 +70,9 @@ const DISPLAY = { 'Mukyu': '1–100 · 100 words', '10th Kyu': '101–200 · 100
     === JSON.stringify([[801, 1000], [1001, 1200], [1201, 1525], [1526, 1850], [1851, 2175], [2176, 2500], null]))
   // ══ W — membership and counters, all three languages ═══════════════════════════════════════════════════════════
   // a full 2,500-word curriculum (as Thai / Japanese / Mandarin banks will grow into): each belt gets exactly its range
-  for (const lang of ['th', 'ja', 'zh']) {
-    const F = { th: 'thai', ja: 'japanese', zh: 'chinese' }[lang]
+  // 16 Nov: + Cantonese (field 'chinese', like Mandarin): with a full 2,500-word curriculum every belt holds exactly its range, in every language
+  for (const lang of ['th', 'ja', 'zh', 'yue']) {
+    const F = { th: 'thai', ja: 'japanese', zh: 'chinese', yue: 'chinese' }[lang]
     const full = Array.from({ length: 2600 }, (_, i) => ({ id: 100000 + i, [F]: 'w' + i, curriculumIndex: i < 2500 ? i + 1 : 0, status: i < 700 ? 'known' : 'new', repCount: i < 700 ? 3 : 0, okStreak: i < 700 ? 2 : 0 }))
     const counts = WANT.map(w => c.wordsForRank(full, w[0]).length), want = WANT.map(w => w[3] - w[2] + 1)
     const firstLast = WANT.map(w => { const ws = c.wordsForRank(full, w[0]); return [ws[0].curriculumIndex, ws[ws.length - 1].curriculumIndex] })
@@ -104,6 +106,9 @@ const DISPLAY = { 'Mukyu': '1–100 · 100 words', '10th Kyu': '101–200 · 100
   T('P1', 'sentence-length requirement per belt unchanged (preferred min–max, hard max)', Object.entries(wantCx).every(([r, [a, b, h]]) => cx[r].preferredMin === a && cx[r].preferredMax === b && cx[r].hardMax === h))
   T('P2', 'new-word quota per belt unchanged (Mukyu th 3 / ja 3 / zh 5; 10th–9th 5; 8th–7th 7; 6th–5th 10; 4th–3rd 12; 2nd Kyu–Shodan 15)',
     JSON.stringify(c.ev('CURRICULUM_BELTS').map(b => ['th', 'ja', 'zh'].map(l => c.getNewWordLimitForBelt(b.name, l)))) === JSON.stringify([[3, 3, 5], [5, 5, 5], [5, 5, 5], [7, 7, 7], [7, 7, 7], [10, 10, 10], [10, 10, 10], [12, 12, 12], [12, 12, 12], [15, 15, 15], [15, 15, 15]]) && c.getNewWordLimitForBelt('Shodan', 'th') === 15)
+  // 16 Nov: the fourth language joins the unchanged-quota check (a new test line, the P2 line above is untouched): Cantonese takes the Mandarin column (Mukyu 5, then the belt table)
+  T('P2y', 'new-word quota per belt for Cantonese: Mukyu 5; 10th–9th 5; 8th–7th 7; 6th–5th 10; 4th–3rd 12; 2nd Kyu–Shodan 15',
+    JSON.stringify(c.ev('CURRICULUM_BELTS').map(b => c.getNewWordLimitForBelt(b.name, 'yue'))) === JSON.stringify([5, 5, 5, 7, 7, 10, 10, 12, 12, 15, 15]))
   // learner records: loading a saved Thai profile through the app's own sync keeps every learner field byte-for-byte
   const L = load(APP, { realBelt: true })
   const bank = L.initVocab()

@@ -20,9 +20,10 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
     const c = load(APP, { realBelt: true })
     const want = { 'White': [3, 3, 5], 'Orange': [5, 5, 5], 'Orange + Stripe': [5, 5, 5], 'Blue': [7, 7, 7], 'Blue + Stripe': [7, 7, 7], 'Yellow': [10, 10, 10],
       'Yellow + Stripe': [10, 10, 10], 'Green': [12, 12, 12], 'Green + Stripe': [12, 12, 12], 'Brown': [15, 15, 15], 'Brown + Stripe': [15, 15, 15], 'Shodan': [15, 15, 15] }
-    const bad = Object.entries(want).filter(([b, v]) => ['th', 'ja', 'zh'].some((l, k) => c.getNewWordLimitForBelt(b, l) !== v[k]))
-    T('Q1', 'ONE configuration gives the owner\'s table for every rank and language (Mukyu th 3 / ja 3 / zh 5; 10th–9th Kyu 5; 8th–7th 7; 6th–5th 10; 4th–3rd 12; 2nd Kyu–Shodan 15)',
-      !bad.length, bad.map(([b]) => b + ': ' + ['th', 'ja', 'zh'].map(l => c.getNewWordLimitForBelt(b, l)).join('/')))
+    // 16 Nov: Cantonese ('yue') is the fourth language of the table: its column is the Mandarin one (Mukyu 5, then the belt table), so the loop gets a fourth entry
+    const bad = Object.entries(want).filter(([b, v]) => ['th', 'ja', 'zh', 'yue'].some((l, k) => c.getNewWordLimitForBelt(b, l) !== v[Math.min(k, 2)]))
+    T('Q1', 'ONE configuration gives the owner\'s table for every rank and language (Mukyu th 3 / ja 3 / zh 5 / yue 5; 10th–9th Kyu 5; 8th–7th 7; 6th–5th 10; 4th–3rd 12; 2nd Kyu–Shodan 15)',
+      !bad.length, bad.map(([b]) => b + ': ' + ['th', 'ja', 'zh', 'yue'].map(l => c.getNewWordLimitForBelt(b, l)).join('/')))
     T('Q2', 'every surface reads it: newWordsPerTrack (dashboard, belt card, selectors, logs, shortfall/QC checks) → getNewWordLimitForBelt; no separate Japanese or Mandarin constant remains',
       !/JA_DAILY_NEW_WORDS|ZH_DAILY_NEW_WORDS/.test(SRC) && /function dailyNewWordsFor\(lang, vocab\) \{ return newWordQuotaFor\(vocab, lang\) \}/.test(SRC) &&
       /function newWordQuotaFor\(vocab, lang\) \{ return getNewWordLimitForBelt\(quotaBeltFor\(vocab\), lang \|\| 'th'\) \}/.test(SRC) &&
@@ -57,7 +58,7 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
       
       c.rankProgressFor(J10).current.rank === '10th Kyu' && c.newWordsPerTrack('ja', 'daily', J10) === 5 && j10New === 5 && j10.targets.length === 30)
     T('Q5', 'Revision and Listening tracks introduce 0 new words in every language (unchanged)',
-      ['th', 'ja', 'zh'].every(l => c.newWordsPerTrack(l, 'revision', []) === 0 && c.newWordsPerTrack(l, 'listening', []) === 0))
+      ['th', 'ja', 'zh', 'yue'].every(l => c.newWordsPerTrack(l, 'revision', []) === 0 && c.newWordsPerTrack(l, 'listening', []) === 0))   // 16 Nov: + Cantonese
   }
   // ══ D — Mandarin target display ═════════════════════════════════════════════════════════════════════════════════════
   {
@@ -68,8 +69,10 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
       !/Next targets \(/.test(SRC) && !/>Learn New Words</.test(SRC) && !/very casual, still polite/.test(SRC) &&
       /<GenTargetPreview targets=\{_wd\}/.test(SRC) && /<GenTargetPreview targets=\{targets\}/.test(SRC) && /<TargetHeader \/>/.test(SRC) &&
       /<JapaneseSpeechStyle value=\{register\}/.test(SRC))
-    T('D2', 'generation-screen headings (Mandarin and Japanese) count the targets actually generated, not the raw new-word selection',
-      (SRC.match(/describeTargetSelection\(\(selection && selection\.counts\) \|\| \{[^}]*\}, targets\)/g) || []).length === 3)
+    // 16 Nov: the Cantonese generator screen (CantoneseGenerator) is a fourth screen that writes its heading with the same rule (the targets actually generated), so the pattern
+    // is now found 4 times, not 3. The test still proves every generation screen counts the generated targets: it was widened by one screen, nothing was relaxed.
+    T('D2', 'generation-screen headings (Mandarin, Japanese and Cantonese) count the targets actually generated, not the raw new-word selection',
+      (SRC.match(/describeTargetSelection\(\(selection && selection\.counts\) \|\| \{[^}]*\}, targets\)/g) || []).length === 4)
   }
   // ══ C — language-quality corpus (real sentences from the 2026-10-12 production logs and the v682 sandbox runs) ═══════════
   {

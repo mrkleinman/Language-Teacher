@@ -19,7 +19,7 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
 const flush = async (k = 40) => { for (let i = 0; i < k; i++) await new Promise(r => setImmediate(r)) }
 const WANT = [['Mukyu', 1, 100], ['10th Kyu', 101, 200], ['9th Kyu', 201, 400], ['8th Kyu', 401, 600], ['7th Kyu', 601, 800], ['6th Kyu', 801, 1000],
   ['5th Kyu', 1001, 1200], ['4th Kyu', 1201, 1525], ['3rd Kyu', 1526, 1850], ['2nd Kyu', 1851, 2175], ['1st Kyu', 2176, 2500]]
-const FIELD = { th: 'thai', ja: 'japanese', zh: 'chinese' }
+const FIELD = { th: 'thai', ja: 'japanese', zh: 'chinese', yue: 'chinese' }   // 16 Nov: + Cantonese (it stores its written form in `chinese`)
 // a complete 2,500-position curriculum (as every bank will grow into); the first k words proven (Known, seen)
 const full = (lang, k, extra) => Array.from({ length: 2500 + (extra || 0) }, (_, i) => ({ id: 500000 + i, [FIELD[lang]]: 'w' + i, english: 'w' + i,
   curriculumIndex: i < 2500 ? i + 1 : 0, status: i < k ? 'known' : 'new', repCount: i < k ? 3 : 0, okStreak: i < k ? 7 : 0, lastSeen: i < k ? '2026-10-01' : null }))
@@ -49,8 +49,9 @@ const strip = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
     rk('th', 2500) === 'Shodan' && c.awardedRankName(v2000) === 'Shodan' && c.currentRankName(seenOnly) === 'White' && c.rankTestStatus(seenOnly, 'White').unlocked && !c.rankTestStatus(seenOnly, 'White').complete)
 
   // ══ 19  all three languages ══
-  const per = ['th', 'ja', 'zh'].map(l => [rk(l, 399), rk(l, 400), rk(l, 2499), rk(l, 2500)].join('|'))
-  T(19, 'Thai, Japanese and Mandarin use the same requirements (399 → 9th, 400 → 8th, 2,499 → 1st Kyu, 2,500 → Shodan in each)', per.every(x => x === '9th Kyu|8th Kyu|1st Kyu|Shodan'), per)
+  // 16 Nov: Cantonese is the fourth language and uses the same requirements, so it joins the loop (the claim text names it)
+  const per = ['th', 'ja', 'zh', 'yue'].map(l => [rk(l, 399), rk(l, 400), rk(l, 2499), rk(l, 2500)].join('|'))
+  T(19, 'Thai, Japanese, Mandarin and Cantonese use the same requirements (399 → 9th, 400 → 8th, 2,499 → 1st Kyu, 2,500 → Shodan in each)', per.every(x => x === '9th Kyu|8th Kyu|1st Kyu|Shodan'), per)
 
   // ══ 20  every surface agrees ══
   {

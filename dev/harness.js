@@ -30,6 +30,9 @@ function load(file, opts = {}) {
   // v717: the Thai gap-fill modules are the Daily writer's first candidate in the app; tests of the model path must not get them, so they start OFF
   // (a test that exercises them switches them on with ctx.thaiModulesSetEnabled(true) and loads data with ctx.thaiModulesUseData)
   if (typeof ctx.thaiModulesSetEnabled === 'function') ctx.thaiModulesSetEnabled(false)
+  // 16 Nov: the Cantonese gap-fill modules are the ONLY writer of a Cantonese Daily (there is no model path for it yet). They start OFF here like the Thai ones, so a test that
+  // exercises the model path of another language never meets them; a Cantonese test switches them on with ctx.yueModulesSetEnabled(true) and loads the data with ctx.yueModulesUseData
+  if (typeof ctx.yueModulesSetEnabled === 'function') ctx.yueModulesSetEnabled(false)
   ctx.__logs = logs
   // v648: tests replace the ONE Gemini transport. A positional mock (key, model, messages, maxTokens)
   // is adapted onto geminiRequest, so every call path — geminiGenerate, scene, Kru, auto-fill —
@@ -41,6 +44,7 @@ function load(file, opts = {}) {
     if (typeof ctx.thaiBankSetEnabled === 'function' && !ctx.__bankForced) ctx.thaiBankSetEnabled(false)
     // v717: the gap-fill modules (the Daily writer's first candidate) are off too unless a test opts in with ctx.thaiModulesSetEnabled(true) + thaiModulesUseData
     if (typeof ctx.thaiModulesSetEnabled === 'function') ctx.thaiModulesSetEnabled(false)
+    if (typeof ctx.yueModulesSetEnabled === 'function') ctx.yueModulesSetEnabled(false)
     if (typeof ctx.geminiRequest === 'function' || typeof ctx.geminiGenerate === 'function')
       ctx.geminiRequest = async o => { ctx.__geminiMockCalls.push({ model: o.model, stage: o.stage || null }); return fn(o.apiKey, o.model, o.messages, o.maxTokens, o) }
     else ctx.callOpenRouterOnce = fn   // pre-v648 builds (loaded only for before/after comparisons) used the old transport name

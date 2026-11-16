@@ -9,4 +9,4 @@ Belts: the same eleven belts and 2,500-word curriculum as the other languages; t
 ## Status (16 Nov 2026)
 - Word list: 2,470 curriculum words (deck words + 500 Hong Kong local-context words + 145 core words the deck lacked), belts by position, ids locked (`id-lock.csv`).
 - Modules: 2,995 gap-fill modules in `drafts/ALL-modules.csv` (merge with `python3 tools/yue_merge_modules.py`), checker clean (`python3 tools/yue_check.py drafts/ALL-modules.csv`), independently reviewed (8 reviewers, 648 findings applied or answered), top-ups written for thin words. Three words have no module (穿 睜 當: their English slots cannot sit in a sentence).
-- Not yet in the app: language picker, Yale display, Cantonese voice, embedded data and tests are the next step (see the project notes).
+- In the app (slice 1, 16 Nov): language picker, Yale display, Hong Kong voice choice, embedded bank and module data, a module-driven Daily and Revision track, tests. Not yet: model-written Cantonese, Listening, Topics, Gen2, quality review (see APP-INTEGRATION.md "Slice 1 status").

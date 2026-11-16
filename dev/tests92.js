@@ -168,6 +168,23 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
   let cancelled = 0; const stop = { cancelled: false }
   let r4 = null; try { r4 = await c.generateCantoneseTrack(targets.slice(0, 6), learned, (d) => { if (d >= 3) stop.cancelled = true }, () => {}, stop) } catch (e) { r4 = { err: e } }
   T('G12', 'cancelling stops the run without an error and without a half track being returned as complete', !r4.err && r4.pairs.length < 18, r4.err ? r4.err.message : r4.pairs.length)
+  // a learned word that no module can fill never blocks a Revision track: it is swapped for the next learned word
+  {
+    const noWord = learned.filter(w => !data.t[String(w.id)]).map(w => w.id)
+    const L2 = learned.map((w, i) => noWord.includes(w.id) ? { ...w, dueDate: '2020-01-01', status: 'learning', lastSeen: '2026-10-30', okStreak: 0 } : i < 120 ? w : { ...w, status: 'new', lastSeen: null, introducedAt: null, repCount: 0, dueDate: null, okStreak: 0 })
+    const rv = c.selectRevisionTargets('yue', L2)
+    const rawRv = c.ev('selectRevisionTrackTargets')({ vocab: c.ev('jazhWordsOnly')(L2), maxTargets: 30, language: 'yue' }).targets
+    T('G15', 'Revision never offers a word no module can fill (穿 睜 當 are the most overdue words here, so the plain selector would put them first): they are swapped for the next learned words and the track keeps its 30 words',
+      rawRv.some(w => noWord.includes(w.id)) && !rv.targets.some(w => noWord.includes(w.id)) && rv.targets.length === 30 && rv.targets.every(w => data.t[String(w.id)]), { raw: rawRv.map(w => w.chinese).slice(0, 5), got: rv.targets.length })
+  }
+  // the module-less words are out of every selection path, including a hand-queued word and the 30-target backfill
+  {
+    const noWord = V0.filter(w => !data.t[String(w.id)])
+    const fresh = V0.map(w => ({ ...w })), Q = fresh.map(w => noWord.some(x => x.id === w.id) ? { ...w, queuedNext: '2026-11-16T00:00:00Z' } : w)
+    const sel = c.selectTrackTargets({ vocab: c.ev('jazhWordsOnly')(Q), targetCap: 30, recentTrackWordIds: [], lang: 'yue', newSelector: v => c.cantoneseSelectTargets(v, []) })
+    const tg = c.jazhDailyTargets(sel.targets, Q, 'yue')
+    T('G16', 'a Daily for a new learner holds 30 words, none of 穿 睜 當 (not even hand-queued: they are not eligible targets); every target has a module', tg.length === 30 && !tg.some(w => noWord.some(x => x.id === w.id)) && tg.every(w => data.t[String(w.id)]) && noWord.every(w => !c.ev('jazhTargetEligible')(w, 'yue')) && c.ev('jazhTargetEligible')(V0[1], 'yue'))
+  }
   // ── nothing of Mandarin ──
   const body = SRC.slice(SRC.indexOf('function generateCantoneseTrack') - 20, SRC.indexOf('function cantoneseBuildTrack'))
   T('G13', 'the Cantonese writer never calls a Mandarin or model function (no mandarin*, no segmentMandarin, no validateMandarin*, no geminiGenerate / geminiRequest, no tone sandhi)', !/mandarin|Mandarin|segmentMandarin|validateMandarin|gemini|TONE3|v684Zh|zhModule/.test(body.replace(/\/\/[^\n]*/g, '')), body.match(/mandarin\w*|gemini\w*|zhModule\w*/g))

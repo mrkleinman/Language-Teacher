@@ -33,3 +33,16 @@ Single-file React app `dev/tt.jsx` (~58.5k lines). Mandarin (`zh`, fields `chine
 - No model identifiers in commits or code comments (tests13 scans for them). Plain words in reports; every report ends with a TL;DR.
 - Do not stash/checkout/reset on the shared tree; commit and push regularly to branch `claude/session-continuation-check-a19meq` with the two trailer lines the harness gives; do not open a PR; do not release (the owner's session releases).
 - Do not adjust tests to hide a defect.
+
+## Slice 1 status (16 Nov, done)
+Done: bank (`tools/build_yue_bank.py`, `YUE_BANK` block, `initCantoneseVocab` / `mergeCantoneseVocab`), module data (`tools/build_yue_modules.py`, `YUE_MODULES_DATA` block, `yueModules*`), Yale validator (`validateYale`, Python twin `validate_yale`),
+module-only Daily and Revision writer (`generateCantoneseTrack`, zero model requests), registries, Hong Kong voice choice, fonts, picker / dashboard / generator / learn-words / not-available screens, belt abilities, new-word limit 5 at Mukyu,
+multi-tab wiring, tests `tests91.js` `tests92.js` `tests93.js` (and the language loops of tests43 / 46 / 58 extended).
+Decisions that differ from the text above, with the reason:
+- `unlockOrder` / `curriculumIndex` = the list's rank order with its one gap (rank 753) closed (1 … 2470), not the raw rank: the app measures a belt against its required positions, so a belt with a gap could never be completed. Six words at a belt boundary
+  (一樣 方法 偷 告訴 速度 規矩) therefore sit one belt earlier than the list's `belt` column says. The last belt holds 295 of its 325 positions (the list is 30 words short of 2,500), so 1st Kyu / Shodan cannot be awarded yet.
+- Chunk format of the module data is `word \x1d Yale` pairs joined by `\x1e` (words, not whole-chunk romanisation), so the word-by-word view needs no segmenter; 呢 is read nī before a word and nē at the end of a clause (decided at build time).
+- Browser voice: zh-HK, then yue-HK (also zh_HK, zh-Hant-HK); zh-TW is NOT a fallback (it is a Mandarin voice). With no Hong Kong voice no voice is chosen and the Player / dashboard / learn-words screens say the audio may be read in Mandarin.
+- 穿 睜 當 have no module: they are not eligible targets (`jazhTargetEligible`, `YUE_NO_MODULE_IDS`), so their belts cannot be completed until they get modules (or a model path). The dashboard says so.
+Open (not in slice 1, each says so in the app): model-written Cantonese (prompts, scaffold, quality review), Listening, Topics, Gen2, a learner-specific closed-vocabulary check (modules are proved against the list at tier level at build time only),
+framing lines (opening / closing), 1,018 words with fewer than 3 modules (430 with one: the same three sentences every time).

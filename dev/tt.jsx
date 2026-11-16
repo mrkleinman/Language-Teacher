@@ -35829,6 +35829,7 @@ function jazhTargetEligible(w, lang) {
   // v654 §4 — the same activity preflight as Thai (metadata + corroborated evidence), before generation
   // (a Cantonese word needs no preflight: the word list was reviewed for spoken, colloquial use and every skipped word is already out of the bank)
   if (lang !== 'yue') try { if (!targetActivityPreflight(w, lang, { activity: 'spokenConversation', register: 'natural' }).suitable) return false } catch (e) {}
+  if (lang === 'yue' && !yueTargetHasModule(w)) return false          // the module-only Cantonese writer cannot write it: never a target (daily, queued, revision, backfill)
   return true
 }
 // UI helper: contract the list; the gate never blocks a track (a failure keeps the input list).
@@ -40631,6 +40632,13 @@ function selectRevisionTargets(lang, vocab) {
       g.deferred.forEach(d => { try { console.info('[zh] deferred ' + d.target.chinese + ' (not expressible with current vocabulary)' + (d.replacedBy ? ' → ' + d.replacedBy.chinese : '')) } catch (e) {} })
       gated = g.targets
     } catch (e) { gated = sel.targets }          // the gate can never block a track
+  }
+  // Cantonese: a learned word that no module can fill (穿 睜 當) is swapped for the next learned word, as a new word is in the Daily (the module-only writer could not write it)
+  if (lang === 'yue' && gated.length && V.length) {
+    try {
+      const pool = selectRevisionTrackTargets({ vocab: V, maxTargets: 100000, language: 'yue' }).targets
+      gated = gateTargetsByFeasibility(gated, pool, w => yueTargetHasModule(w), w => !hasBeenIntroduced(w)).targets
+    } catch (e) { gated = sel.targets }
   }
   const targets = gated.length ? jazhContractTargets(gated, lang, V, 'revision') : gated
   return { language: lang, rule: 'revision', selector: 'selectRevisionTargets(' + lang + ') = selectRevisionTrackTargets' + (lang === 'zh' ? ' → feasibility gate' : '') + ' → jazhContractTargets(revision)',
@@ -61719,6 +61727,8 @@ function CantoneseDashboard({ vocab, tracks, targets, trackTargets, onStartTrack
           {YUE_NOT_YET.map((r, i) => <span key={r[0]}>{i ? ' · ' : ''}<button onClick={() => onNotYet && onNotYet(r[0])} style={{ background:'none', border:'none', padding:0, color:'var(--muted)', cursor:'pointer', textDecoration:'underline', fontSize:11 }}>{r[0]}</button></span>)}
         </p>
         <p style={{ fontSize:10, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>Daily and Revision tracks are built from ready-made lesson modules (no AI request).</p>
+        <p data-yue-no-module-words="1" style={{ fontSize:10, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>
+          {YUE_NO_MODULE_IDS.length} words (<span className="yue" lang="zh-HK">穿 睜 當</span>) have no lesson module yet, so no track teaches them and their belts cannot be completed until they do.</p>
       </Card>
       {recent.length > 0 && (
         <div>

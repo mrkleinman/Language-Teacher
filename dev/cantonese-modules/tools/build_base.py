@@ -46,6 +46,10 @@ def main():
     live.sort(key=lambda r: (CR.get(r['use_class'], 3), th(r), int(r['key'])))
     skipped.sort(key=lambda r: (CR.get(r['use_class'], 3), int(r['key'])))
     order = live + skipped
+    # slot English that cannot stand in 'this {E}' / '{Es}': (word, english_slot, english_plural)
+    SLOT_FIX = {'衫': ('top', 'tops'), '牛仔褲': ('jeans', 'jeans'), '物理': ('physics', 'physics')}
+    for r in order:
+        if r['word'] in SLOT_FIX and r['english_slot'] in ('clothes', 'jeans', 'physics'): r['english_slot'], r['english_plural'] = SLOT_FIX[r['word']]
     base, tags = [], []
     for i, r in enumerate(order, 1):
         c = cells.get(r['key'])

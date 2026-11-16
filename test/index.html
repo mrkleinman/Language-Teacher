@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v750"/>
+<meta name="app-version" content="v751"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v750';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v750').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v751';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v751').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -12340,8 +12340,10 @@ function jaNewProgressRecord(type, id) {
   return { key: jaProgressKeyOf(type, id), type, itemId: id, status: 'new', interval: 0, dueDate: null,
            lastSeen: null, introducedAt: null, okStreak: 0, lapses: 0, exposures: 0, productiveExposures: 0 }
 }
-async function jaGrammarLoad() { try { return (await stGet(JA_GRAMMAR_KEY)) || {} } catch (e) { return {} } }
-async function jaGrammarSave(store) { await stSet(JA_GRAMMAR_KEY, store); return store }
+// v750: the progress is loaded when a generation starts and saved when it ends — minutes later, possibly after another tab saved its own. Saving merges (by record), so a tab never
+// undoes what another tab introduced or practised meanwhile; the base for the merge is what this tab loaded last.
+async function jaGrammarLoad() { try { const st = (await stGet(JA_GRAMMAR_KEY)) || {}; stSyncMarkObject(JA_GRAMMAR_KEY, st); return st } catch (e) { return {} } }
+async function jaGrammarSave(store) { try { return await stSyncSaveObject(JA_GRAMMAR_KEY, store, ST_PROGRESS_OPTS) } catch (e) { await stSet(JA_GRAMMAR_KEY, store); return store } }
 function jaGrammarGet(store, type, id) { return (store || {})[jaProgressKeyOf(type, id)] || jaNewProgressRecord(type, id) }
 // Introduction is an explicit event: nothing is "due" before the learner has met it.
 function jaGrammarIntroduce(store, type, id, when) {
@@ -13236,6 +13238,22 @@ async function stSyncSave(key, mine, idOf, o) {
     return { merged, other }
   })
 }
+// a stored OBJECT (id → record), merged the same way: the object's keys are the ids
+const stObjList = o => Object.entries(o && typeof o === 'object' && !Array.isArray(o) ? o : {}).map(([k, v]) => ({ k, v }))
+function stSyncMarkObject(key, obj) { ST_SYNC.base.set(key, stSyncSnapshot(stObjList(obj), x => x.k)) }
+async function stSyncSaveObject(key, mine, o) {
+  const opt = o ? { ...o, newer: o.newer ? (t, m) => o.newer(t.v, m.v) : undefined } : undefined
+  return stWithLock('tt-store:' + key, async () => {
+    const stored = await stGet(key)
+    const merged = stMerge3(ST_SYNC.base.get(key) || new Map(), stObjList(mine), stObjList(stored), x => x.k, opt)
+    const obj = {}; merged.forEach(x => { obj[x.k] = x.v })
+    await stSet(key, obj)
+    ST_SYNC.base.set(key, stSyncSnapshot(merged, x => x.k))
+    return obj
+  })
+}
+// a record that has moved forward (more exposures, or the same number seen later) is newer than an older copy of itself
+const ST_PROGRESS_OPTS = Object.freeze({ newer: (t, m) => (t && t.exposures || 0) > (m && m.exposures || 0) || ((t && t.exposures || 0) === (m && m.exposures || 0) && String(t && t.lastSeen || '') > String(m && m.lastSeen || '')) })
 // save and fold what other tabs did into this tab's state (setList is the React setter; the update is pure)
 async function stSyncCommit(key, mine, setList, idOf, o) {
   const snapMine = stSyncSnapshot(mine, idOf)
@@ -25491,7 +25509,8 @@ const CUE_JUDGE_CLASS_RULE = 'CUE CLASSES — for every item also return "cls": 
 // Japanese / Mandarin cues follow the Thai habit: the track has one man (A) and one woman (B), so the other person is always "her" (when A speaks) or "him" (when B speaks)
 const JA_ZH_CUE_ADDRESSEE_RULE = 'CUE WORDING: the other speaker is ALWAYS "him" or "her" (A is a man and speaks to a woman: "Ask her …", "Tell her …"; B is a woman and speaks to a man: "Ask him …", "Tell him …"). ' +
   'Never use the characters\' names and never "they" / "them" for the other person. One speech act per cue (Ask / Tell / Say / Suggest / Thank / Check), at most two short parts. ' +
-  'Do not start with "Ask Name:" and do not copy the English sentence into the cue.'
+  'Do not start with "Ask Name:" and do not copy the English sentence into the cue. ' +
+  'A line is ONE speaker\'s turn: never ask a question and then answer it in the same line. The answer words (はい / いいえ / うん / ううん) open the OTHER speaker\'s reply to a question just asked.'
 const CC_STOP = new Set(('a an the this that these those it its it\'s is are am was were be been being do does did done to of in on at for with from by as and or ' +
   'but if whether so then too also just only really very much more most less some any no not never there here now what where when who whom whose why how which ' +
   'you your yours yourself he him his himself she her hers herself they them their theirs themselves we us our ours i me my mine myself one ones please can could ' +
@@ -28839,14 +28858,17 @@ function listeningCoverageExportLines(lt) {
 async function listeningLoadAll() { try { return (await stGet(LISTENING_STORE_KEY)) || {} } catch (e) { return {} } }
 async function listeningVersionsFor(lang, mainTrackId) { const all = await listeningLoadAll(); return ((all[lang] || {})[mainTrackId]) || [] }
 async function listeningSave(lt) {
-  const all = await listeningLoadAll()
-  all[lt.language] = all[lt.language] || {}
-  const list = all[lt.language][lt.sourceMainTrackId] || []
-  const i = list.findIndex(x => x.listeningTrackId === lt.listeningTrackId)
-  if (i >= 0) list[i] = lt; else list.push(lt)
-  all[lt.language][lt.sourceMainTrackId] = list.slice(-5)
-  await stSet(LISTENING_STORE_KEY, all)
-  return lt
+  // v750: read-modify-write inside one lock, so two tabs saving Listening versions at the same moment cannot overwrite each other
+  return stWithLock('tt-store:' + LISTENING_STORE_KEY, async () => {
+    const all = await listeningLoadAll()
+    all[lt.language] = all[lt.language] || {}
+    const list = all[lt.language][lt.sourceMainTrackId] || []
+    const i = list.findIndex(x => x.listeningTrackId === lt.listeningTrackId)
+    if (i >= 0) list[i] = lt; else list.push(lt)
+    all[lt.language][lt.sourceMainTrackId] = list.slice(-5)
+    await stSet(LISTENING_STORE_KEY, all)
+    return lt
+  })
 }
 async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, status }) }
 
@@ -41324,10 +41346,12 @@ async function loadListeningAttempts(lang) {
   try { const v = await stGet(listeningAttemptsKey(lang)); return Array.isArray(v) ? v : [] } catch (e) { return [] }
 }
 async function saveListeningAttempt(lang, rec) {
-  const all = await loadListeningAttempts(lang)
-  const next = [rec].concat(all.filter(a => a && a.attemptId !== rec.attemptId)).slice(0, LISTENING_ATTEMPTS_MAX)
-  await stSet(listeningAttemptsKey(lang), next)
-  return next
+  return stWithLock('tt-store:' + listeningAttemptsKey(lang), async () => {       // v750: one lock around read-modify-write (two tabs)
+    const all = await loadListeningAttempts(lang)
+    const next = [rec].concat(all.filter(a => a && a.attemptId !== rec.attemptId)).slice(0, LISTENING_ATTEMPTS_MAX)
+    await stSet(listeningAttemptsKey(lang), next)
+    return next
+  })
 }
 // One History row per generation attempt (READY, NOT_READY, building, cancelled) — same facts as a track export.
 function listeningAttemptRecord(o) {
@@ -56518,6 +56542,10 @@ function createJaCostGuard(recallsRequested, cfg, o) {
 const JA_TIME_NOUN_RE = /^(\u4ECA\u65E5|\u660E\u65E5|\u6628\u65E5|\u4ECA|\u671D|\u591C|\u4ECA\u5EA6)$/
 function jaPragmaticProblems(jp, target) {
   const s = String(jp || '').trim(), t = String(target && target.japanese || ''), out = []
+  // 16 Nov (owner's 15 Nov Japanese export, pairs 16, 21 and 57: "昼、もう食べた？いいえ、まだだよ。" — a speaker asks a question and ANSWERS it in the same line): a line is one speaker's
+  // turn; the answer (はい / いいえ / うん / ううん) belongs to the OTHER speaker's line. The cue for such a line has to describe a question and its answer together, which is
+  // what makes the prompts read as scatter-brained.
+  { const sa = /[？?]\s*[」』]?\s*(はい|いいえ|うん|ううん|ええ|いや|そうだね)[、，。！!\s]/.exec(s); if (sa) out.push('SELF_ANSWER: the line asks a question and then answers it itself ("' + s.slice(Math.max(0, sa.index - 6), sa.index + sa[0].length + 3) + '") — the answer belongs to the other speaker\'s line; write ONE speech act per line') }
   if (t && s.includes(t + '\u306E' + t)) out.push('PRAGMATIC_INCOMPLETE: "' + t + '\u306E' + t + '" repeats the word with itself')
   const topic = /^(.{1,4})\u306F[\uFF1F?]$/.exec(s)
   if (topic && JA_TIME_NOUN_RE.test(topic[1])) out.push('PRAGMATIC_INCOMPLETE: "' + s + '" has no context to be about (a bare time-word topic question)')

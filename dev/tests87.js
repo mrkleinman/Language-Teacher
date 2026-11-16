@@ -50,5 +50,14 @@ for (const r of regs) {
   T('D1', 'a line that asks a question and answers it itself is refused (the lines of pairs 16, 21 and 57 of the owner\'s 15 Nov export)', ['昼、もう食べた？いいえ、まだだよ。一緒に食べよう。', '今日、大丈夫？いいえ、まだ分からない。', 'そうなの？うん、そう。'].every(bad))
   T('D2', 'a reply that opens with the answer, a question that follows an answer, and two questions in a row are all fine', ['いいえ、車で来たよ。', 'うん、いいよ。どこ行く？', 'えっ、行かないの？なんで？', 'はい、じゃあ一緒に食べよう。'].every(x => !bad(x)))
 }
+{
+  // from the owner's 16 Nov export
+  const f = c.ev('cueAddresseeForm'), ctx = { nameOf: { A: 'Ryo', B: 'Mika' }, genders: { A: 'm', B: 'f' } }, au = c.ev('auditJapaneseReading')
+  T('E1', '"they have a car" becomes "she has a car", never "she\'s a car" (a regression of the first him / her pass: "Ask if she\'s a car today.")', f('Ask if they have a car today.', { speaker: 'A' }, ctx) === 'Ask if she has a car today.' && f('Ask whether they have finished.', { speaker: 'A' }, ctx) === 'Ask whether she has finished.' && f("Say they've been busy.", { speaker: 'B' }, ctx) === "Say he's been busy.")
+  const wa = au({ japanese: 'バスで行くのはどう？', reading: 'バスでいくのはどう？', romaji: 'basu de iku no wa dou?', segments: [] })
+  T('E2', 'the pronunciation audit accepts は as the particle wa when the segments cannot be matched ("basu de iku no wa dou?") — the line that made the 16 Nov track NOT_READY — and still accepts ha; a wrong syllable is still reported',
+    wa.ok && au({ japanese: 'x', reading: 'バスでいくのはどう？', romaji: 'basu de iku no ha dou?', segments: [] }).ok && !au({ japanese: 'x', reading: 'バスでいくのはどう？', romaji: 'basu de iku no ka dou?', segments: [] }).ok, wa)
+  T('E3', 'へ as the particle (e) and を (o) are accepted together in one sentence', au({ japanese: 'x', reading: 'がっこうへほんをもっていく。', romaji: 'gakkou e hon o motte iku.', segments: [] }).ok)
+}
 console.log((fails ? 'FAIL ' : 'ALL PASS ') + (n - fails) + '/' + n)
 process.exit(fails ? 1 : 0)

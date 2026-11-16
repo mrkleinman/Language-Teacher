@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v752"/>
+<meta name="app-version" content="v753"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v752';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v752').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v753';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v753').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -27865,6 +27865,17 @@ function ttsTextForPair(pair) {
   if (pair.japanese) {
     const rd = (pair.reading || '').trim()
     if (rd && !/[\u4E00-\u9FFF]/.test(rd) && !/[\/\uFF5C|]/.test(rd)) return stripModelMarkup(rd)
+    // 16 Nov: a reading that still lists alternatives (なに / なん) or holds a kanji is rebuilt from the word segments (each one's own kana reading, first alternative), so the voice
+    // is still given kana; only when no kana reading can be made does it get the written text
+    try {
+      const segs = Array.isArray(pair.segments) ? pair.segments.filter(Boolean) : []
+      if (segs.length) {
+        const built = segs.map(sg => { const r0 = String(sg.reading || '').split(/\s*[\/\uFF5C|]\s*/)[0].trim(); return r0 || String(sg.surface || '') }).join('')
+        if (built && !/[\u4E00-\u9FFF]/.test(built)) return stripModelMarkup(built)
+      }
+      const first = rd.split(/\s*[\/\uFF5C|]\s*/)[0].trim()
+      if (first && !/[\u4E00-\u9FFF]/.test(first) && !/[\/\uFF5C|]/.test(rd.replace(/[^\/\uFF5C|]/g, '').slice(1))) return stripModelMarkup(first)
+    } catch (e) {}
     return stripModelMarkup(pair.japanese)
   }
   // Mandarin and Thai are read from their own script.
@@ -43355,6 +43366,8 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
   // speech here (history itself is not rewritten).
   const targetTextOf = p => (!p ? '' : stripModelMarkup(_tl === 'zh' ? (p.chinese || p.thai || '')
                                       : _tl === 'ja' ? (p.japanese || p.thai || '') : (p.thai || '')))
+  // 16 Nov: the voice is given the KANA reading for Japanese (the engine used to be handed the kanji and guess the reading); what is shown stays the written text
+  const speechTextOf = p => (!p ? '' : _tl === 'ja' ? ttsTextForPair(p) : targetTextOf(p))
   const phoneticOf   = p => (!p ? '' : (_tl === 'zh' ? (p.pinyin || p.phonetic || '')
                                       : _tl === 'ja' ? (p.romaji || p.phonetic || '') : (p.phonetic || '')))
   const readingOf    = p => (!p ? '' : (p.reading || ''))
@@ -43503,7 +43516,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
         return () => clearTimeout(t)
       }) || (() => {})
     } else {
-      cleanup = speakOrWait(targetTextOf(pair), _tlCode, revealDur, () => {
+      cleanup = speakOrWait(speechTextOf(pair), _tlCode, revealDur, () => {
         startCountdown(2500)
         const t = setTimeout(() => {
           if (cancelledRef.current) return

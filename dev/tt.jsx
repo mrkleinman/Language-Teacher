@@ -31399,6 +31399,60 @@ function withPipelineFailure(track, code, detail, stage) {
 }
 // Generator tail shared by JA and ZH: QC → FINAL_TRACK → Listening (built from FINAL_TRACK only)
 // → usage summary. Returns the track the "Study track" button hands to the app.
+
+// ══ CUES FROM THE MEANING (Japanese / Mandarin, 16 Nov) ═══════════════════════════════════════════════════════════════════════════════
+// The model wrote each cue together with its sentence, and QC repairs later changed the sentence without the cue ("Say you are sorry because the train was late" for ありがとう。ごめんね、
+// 電車が遅くて。; "Thank him for calling you" for 電話、ありがとう。). The English MEANING is the verified statement of what the line says, so the cue is now written from it, one batched
+// request per 20 lines, and kept only if it passes local checks (every content word of the meaning is in the cue, him / her, no names, one question per question, nothing in Japanese or
+// Chinese); otherwise the earlier cue stays. Module lines carry hand-written cues and are not touched. Switch off: JAZH_CUE_REWRITE.on = false.
+const JAZH_CUE_REWRITE = { on: true, batch: 20 }
+const JAZH_CUE_SCHEMA = { type: 'OBJECT', properties: { cues: { type: 'ARRAY', items: { type: 'OBJECT', properties: { i: { type: 'INTEGER' }, cue: { type: 'STRING' } }, required: ['i', 'cue'] } } }, required: ['cues'] }
+const JAZH_CUE_RULES = 'You write the English instruction (the CUE) a learner sees before speaking ONE line of a conversation in {LANG}. From the cue alone the learner must be able to say exactly this line.\n' +
+  'RULES. 1) State what the line says, no more, no less: keep every important word of the English meaning (a noun the line names stays that noun: "thanks for the phone call" is "Thank him for the phone call", never "for calling you"), keep negation, question vs statement, time, numbers, comparison, "also / too / still / already / only". 2) Add nothing: no reason, background, earlier line or feeling that the line does not say. 3) A line can have several sentences: give each a short part, joined with ", then" or "and" (at most three parts). 4) Start with one of: Say, Ask, Tell, Suggest, Thank, Agree, Offer, Invite, Apologise, Check. Questions start with Ask. 5) Speaker A is a man talking to a woman: the other person is "her". Speaker B is a woman talking to a man: the other person is "him". Never use a name, "they", "them", "the other person", "A" or "B". 6) Maximum 22 words. 7) Do not copy the English meaning word for word as a quotation; instruct instead. 8) Never write {LANG} text in the cue.\n' +
+  'Return ONLY JSON {"cues":[{"i":1,"cue":"..."}]} with one cue per numbered line.'
+function jazhCueAccept(cue, p, names) {
+  const c = String(cue || '').trim()
+  if (!c || c.length > 190 || /[\u3040-\u30FF\u4E00-\u9FFF]/.test(c)) return false
+  if (!/^(Say|Ask|Tell|Suggest|Thank|Agree|Offer|Invite|Apologi[sz]e|Check|Wish|Greet|Answer|Reply|Remind|Warn|Congratulate)\b/.test(c)) return false
+  if (/\b(they|them|their|the other person|A's|B's)\b/i.test(c) || /\b[AB]\b(?!\.)/.test(c.replace(/\ba\b/gi, ''))) return false
+  if ((names || []).some(n => n && new RegExp('\\b' + n + '\\b').test(c))) return false
+  const en = String(p.english || ''), isQ = /[?？]\s*$/.test(en.trim().replace(/[.!\s]+$/, '')) || /[?？]/.test(en)
+  if (/[?？]\s*$/.test(en.trim()) && !/^(Ask|Check)\b/.test(c) && !/\bask\b/i.test(c)) return false
+  if (!/[?？]/.test(en) && /^Ask\b/.test(c) && !/\b(and|then)\b/i.test(c)) return false
+  // a line of two real sentences needs a cue of two parts ("Say it is cheap, then ask if she wants it."), not one
+  const sents = en.split(/(?<=[.?!])\s+/).filter(x => ccWords(x).length >= 3)
+  if (sents.length >= 2 && !/(,|;| and | then )/i.test(c)) return false
+  const cs = new Set(ccWords(c).map(ccStem))
+  const need = ccWords(en).filter(w => w.length > 2).map(ccStem).filter(w => !CC_STOP.has(w) && !/^(yeah|well|hey|oh|okay|sure|then)$/.test(w))
+  if (need.length >= 2) { const hit = need.filter(w => cs.has(w)).length; if (hit / need.length < 0.6) return false }
+  return true
+}
+async function jazhCuesFromMeaning(pairs, lang, o) {
+  const stats = { sent: 0, changed: 0, kept: 0, failedBatches: 0 }
+  const sentOf = p => String(p.japanese || p.chinese || '')
+  const idx = (pairs || []).map((p, i) => ({ p, i })).filter(({ p }) => p && p.english && sentOf(p) && p.pairType !== 'framing' && !p._framing && !p._module && !p._moduleId)
+  const out = (pairs || []).slice()
+  for (let b = 0; b < idx.length; b += JAZH_CUE_REWRITE.batch) {
+    const chunk = idx.slice(b, b + JAZH_CUE_REWRITE.batch)
+    const numbered = chunk.map(({ p }, k) => (k + 1) + '. Speaker ' + (p.speaker === 'B' ? 'B (woman, talking to a man)' : 'A (man, talking to a woman)') + '\n   ' + (lang === 'zh' ? 'Chinese' : 'Japanese') + ': ' + sentOf(p) + '\n   English meaning: ' + p.english).join('\n')
+    let raw = ''
+    try {
+      raw = await geminiGenerate(o.apiKey, o.model, [{ role: 'user', content: JAZH_CUE_RULES.split('{LANG}').join(lang === 'zh' ? 'Mandarin' : 'Japanese') + '\n\nLINES:\n' + numbered }], 1400)
+    } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; stats.failedBatches++; continue }
+    let arr = []
+    try { const j = JSON.parse(String(raw).replace(/```json|```/g, '').trim()); arr = Array.isArray(j) ? j : (j && j.cues) || [] } catch (e) { stats.failedBatches++; continue }
+    stats.sent += chunk.length
+    chunk.forEach(({ p, i }, k) => {
+      const r = arr.find(x => x && +x.i === k + 1)
+      if (r && jazhCueAccept(r.cue, p, o.names)) {
+        out[i] = { ...p, prompt: String(r.cue).trim().replace(/\s+/g, ' '), _cueFromMeaning: true, _cueBefore: p._cueBefore || p.prompt }
+        stats.changed++
+      } else stats.kept++
+    })
+  }
+  o.log && o.log('  ✂ CUE_FROM_MEANING (' + lang + '): ' + stats.changed + ' of ' + stats.sent + ' cues rebuilt from the verified English meaning · ' + stats.kept + ' kept (the new cue failed a local check) · failed batches ' + stats.failedBatches)
+  return { pairs: out, stats }
+}
 async function jazhQcFinaliseAndListen(track, lang, o) {
   const push = o.push || (() => {})
   // v651 §9 — the TrackContext is authoritative; a bad language stops the pipeline here, before
@@ -31433,6 +31487,12 @@ async function jazhQcFinaliseAndListen(track, lang, o) {
       o.onFinal && o.onFinal(out)
       return { track: out, res: null }
     }
+  }
+  // 16 Nov — the cue of every model-written line is rebuilt FROM THE VERIFIED ENGLISH MEANING (one batched request per 20 lines): the learner must be able to produce exactly this line from it
+  // (owner: "Thanks for calling me — how would I know it's a phone call?": the cue said "calling you", the line says 電話)
+  if (cueClarityOn() && (lang === 'ja' || lang === 'zh') && o.apiKey && JAZH_CUE_REWRITE.on) {
+    try { const rc = await jazhCuesFromMeaning(track.pairs, lang, { apiKey: o.apiKey, model: o.model, names: (cueClarityCtx(lang, track).names || []), log: push }); track = { ...track, pairs: rc.pairs } }
+    catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; push('  ⚠ cue rewrite from the meaning skipped: ' + String(e && e.message || e).slice(0, 80)) }
   }
   // v696 — Japanese / Mandarin cues are clarified before QC judges them (deterministic, cue only)
   if (cueClarityOn() && (lang === 'ja' || lang === 'zh')) { const cc = cueClarityPass(lang, track.pairs, cueClarityCtx(lang, track)); track = { ...track, pairs: cc.pairs }; cueClarityLog(push, lang, 'before QC', cc.stats) }

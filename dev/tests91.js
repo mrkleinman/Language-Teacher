@@ -43,6 +43,17 @@ T('B5', 'a word\'s belt is the list\'s belt column (no gap, so no word is moved 
 // TEST CHANGED (beginner teaching order): the first 200 positions are no longer the 80/20 usage order (嘅 我 想 你 係) but the beginner order of cantonese-modules/beginner-order.csv, whose day 1 is
 // 你好 我 你 係 唔 (a learner can greet, say who they are and negate on day 1). The pin follows the list: the first five words, and the locked ids (你好 is the core word 3048, 唔 is id 7: ids are NOT positions).
 T('B6', 'the first words are the beginner order\'s: 你好 我 你 係 唔, with the locked ids (你好 is the core word 3048: ids are NOT positions)', V.slice(0, 5).map(w => w.chinese).join('') === '你好我你係唔' && V[0].id === 3048 && V[0].unlockOrder === 1 && V[4].id === 7 && V[4].unlockOrder === 5)
+// NEW (beginner teaching order): the first 200 positions of the bank ARE cantonese-modules/beginner-order.csv (position = unlockOrder, same id and written form), five new words a day for White and
+// Orange; the order's own proof (every day's sentences use only that day's and earlier words plus the free words, Yale valid) is re-run by its tool; ids and tiers of the locked list never move.
+const bo = csv('cantonese-modules/beginner-order.csv')
+T('B6b', 'the first 200 words of the bank are the beginner order: position, id and written form equal beginner-order.csv, five new words a day (White = days 1-20, Orange = days 21-40), no word twice',
+  bo.length === 200 && bo.every((r, i) => +r.position === i + 1 && V[i].id === +r.id && V[i].chinese === r.word && V[i].unlockOrder === i + 1 && +r.day === Math.floor(i / 5) + 1 && V[i].belt === (i < 100 ? 'White' : 'Orange')) && new Set(bo.map(r => r.id)).size === 200,
+  bo.filter((r, i) => V[i].id !== +r.id).slice(0, 5).map(r => [r.position, r.word]))
+T('B6c', 'the beginner order is proved: tools/yue_beginner_order.py --check passes (every sentence of every day uses only words taught by that day or free words, at least 4 distinct sentences a day, Yale valid)',
+  (() => { try { cp.execFileSync('python3', ['cantonese-modules/tools/yue_beginner_order.py', '--check'], { stdio: 'pipe' }); return true } catch (e) { return String(e.stdout || e.message).slice(0, 300) } })() === true)
+const lock = csv('cantonese-modules/id-lock.csv')
+T('B6d', 'the id lock is untouched by the reorder: every locked word keeps its id and its tier (only the position moves)', lock.length > 2000 && lock.every(r => { const t = tags.find(x => x.key === r.key); return t && +t.id === +r.id && t.tier === r.tier }),
+  lock.filter(r => { const t = tags.find(x => x.key === r.key); return !(t && +t.id === +r.id && t.tier === r.tier) }).slice(0, 5))
 const zeroDup = V.filter(w => w.chinese === '好')
 T('B7', 'two words may share a written form (好 adjective and 好 adverb): both are kept with their own id', zeroDup.length === 2 && zeroDup[0].id !== zeroDup[1].id, zeroDup.map(w => w.id))
 T('B8', 'every row is a word (no phrase entries exist for Cantonese): jazhWordsOnly keeps all, the phrase id set is empty / absent, no row has a home belt', V.every(w => w.entryType === 'word') && c.ev('jazhWordsOnly')(V).length === V.length && !c.ev('jazhPhraseIdSet')('yue') && c.ev('typeof YUE_PHRASE_DATA') === 'undefined')

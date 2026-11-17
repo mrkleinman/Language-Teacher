@@ -145,7 +145,7 @@ function mkFixture() {
     // every switch in the tests carries the comment that says it is temporary
     const lines = fs.readdirSync('.').filter(f => /^tests\d+\.js$/.test(f)).flatMap(f => fs.readFileSync(f, 'utf8').split('\n').map((l, i) => ({ f, i: i + 1, l })).filter(x => /yueStrictVocabSetEnabled\(false\)/.test(x.l) && !/^\s*\/\//.test(x.l)))
     const uncommented = lines.filter(x => !/starter modules not merged yet: remove this switch when they are/.test(x.l) && x.f !== 'tests97.js')
-    T('S2', 'every test that switches the rule OFF says "starter modules not merged yet: remove this switch when they are" on that line (' + lines.filter(x => x.f !== 'tests97.js').map(x => x.f + ':' + x.i).join(' ') + ')', uncommented.length === 0 && lines.some(x => x.f !== 'tests97.js'), uncommented)
+    T('S2', 'every test that switches the rule OFF says "starter modules not merged yet: remove this switch when they are" on that line (now: ' + (lines.filter(x => x.f !== 'tests97.js').map(x => x.f + ':' + x.i).join(' ') || 'none') + ')', uncommented.length === 0, uncommented)    // after the starter modules are merged the switch lines are deleted and this list is empty: that is the goal
     // the app itself never switches the rule off
     const calls = SRC.split('\n').filter(l => /yueStrictVocabSetEnabled\(/.test(l) && !/^\s*\/\//.test(l) && !/^function yueStrictVocabSetEnabled/.test(l) && !/vocabulary rule OFF/.test(l))
     T('S3', 'the app code never switches the rule off by itself: tt.jsx holds the function, its default (ON), comments and a log sentence, and no call', calls.length === 0 && /const YUE_STRICT = \{ on: true \}/.test(SRC) && /^function yueStrictVocabSetEnabled\(on\) \{ YUE_STRICT.on = !!on \}/m.test(SRC), calls)

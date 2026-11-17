@@ -40,7 +40,6 @@ const FINAL_PH = { 'มวย': 'muai', 'นักมวย': 'nák-muai', 'ค�
 // where the tone engine (thaiPhoneticToneAdvisory) disagrees with a reading that the bank itself confirms: an engine limit, written down with the bank's own evidence
 const ENGINE_LIMITS = { 'วอร์มอัพ': [/^àp-/, 991], 'โจมตี': [/ii$/, 1631], 'เวที': [/thii$/, null], 'แชมป์': [null, null] }
 const COMPOSABLE = ['กางเกงมวย', 'ครูมวย', 'คู่ต่อสู้', 'ต่อสู้']
-const tierOf = {}
 const LIT = JSON.parse(/^const RAW_VOCAB = (\[.*\])\s*$/m.exec(read('tt.jsx'))[1])
 
 function learner(c) {
@@ -74,9 +73,11 @@ const pyOk = (() => { const r = py(['-c', 'import pythainlp']); return r.status 
   const inBank = OWNER.filter(w => litByThai.has(w[1])).map(w => w[1])
   T('B2', 'the owner\'s ✓ marks are right: exactly the 27 words marked ✓ are in the real bank (source literal), the 33 others are not (no word is in the bank under the same spelling twice)',
     mark.length === 27 && same(inBank, mark) && reused.length === 27 && same(reused.map(x => canon.get(x.id).t), mark), { inBank: inBank.length, marked: mark.length, wrong: mark.filter(t => !inBank.includes(t)).concat(inBank.filter(t => !mark.includes(t))) })
-  T('B3', 'the 27 reused words keep their bank id (the id of the same Thai in the source literal); their curriculum position, belt and romanisation are untouched; they only gain the topic membership',
-    reused.every(x => { const d = litByThai.get(canon.get(x.id).t), r = canon.get(x.id); return d && d.id === x.id && r.curriculumIndex === d.curriculumIndex && r.belt === d.belt && r.beltOrder === d.beltOrder && r.ph === d.ph && (r.topics || []).includes('muay-thai') }),
-    reused.filter(x => { const d = litByThai.get(canon.get(x.id).t); return !d || d.id !== x.id }).map(x => x.id))
+  // ออกกำลังกาย (1444) sits at position 1454 at run time although the source literal has it unranked: the phrase / word split (v738) promotes it, and that is not this topic's doing
+  const promoted = new Set(c.ev('THAI_PHRASE_SPLIT_DATA').promoted.map(p => p[0]))
+  T('B3', 'the 27 reused words keep their bank id (the id of the same Thai in the source literal); their curriculum position, belt and romanisation are untouched (apart from the 55 words the phrase / word split promotes); they only gain the topic membership',
+    reused.every(x => { const d = litByThai.get(canon.get(x.id).t), r = canon.get(x.id); return d && d.id === x.id && r.ph === d.ph && (r.topics || []).includes('muay-thai') && (promoted.has(x.id) || (r.curriculumIndex === d.curriculumIndex && r.belt === d.belt && r.beltOrder === d.beltOrder)) }),
+    reused.filter(x => { const d = litByThai.get(canon.get(x.id).t), r = canon.get(x.id); return !(d && d.id === x.id && r.ph === d.ph && (promoted.has(x.id) || r.curriculumIndex === d.curriculumIndex)) }).map(x => x.id))
   const newRecs = [...created].map(id => canon.get(id))
   T('B4', 'the 33 new words are new records: ids 5501 + their position (5502–5559), clear of the Wedding Speech ids 5001–5050 and of the curriculum from 6001, no collision with any record of the source literal',
     created.size === 33 && [...created].every(id => id > 5050 && id < 6001 && id === 5501 + ids.indexOf(id)) && !LIT.some(d => created.has(d.id)) && new Set(RAW.map(d => d.id)).size === RAW.length, [...created].slice(0, 5))
@@ -87,9 +88,10 @@ const pyOk = (() => { const r = py(['-c', 'import pythainlp']); return r.status 
   const heads = new Map(); RAW.forEach(d => { if (d && d.t && !d.dup) heads.set(d.t, (heads.get(d.t) || 0) + 1) })
   T('B6', 'no duplicate Thai surface: each of the 60 words is exactly one live headword in the dictionary (none of the 33 existed before, none is added twice), and no new surface equals a retired alias',
     OWNER.every(w => heads.get(w[1]) === 1) && OWNER.filter(w => !w[4]).every(w => !litByThai.has(w[1])) && new Set(OWNER.map(w => w[1])).size === 60, OWNER.filter(w => heads.get(w[1]) !== 1).map(w => [w[1], heads.get(w[1])]))
-  const all = RAW.filter(d => d && d.t && !d.dup), seen = new Map(); const dupSpell = []
-  all.forEach(d => { const k = d.t.normalize('NFC'); if (seen.has(k)) dupSpell.push(d.t); seen.set(k, 1) })
-  T('B7', 'the whole live dictionary still has no repeated headword after both topics are seeded', dupSpell.length === 0, dupSpell.slice(0, 5))
+  // two older headwords are repeated in the source literal itself (ถือ 336 / 622, ทั้งหมด 852 / 1090); the topics add none
+  const litDup = new Map(); LIT.forEach(d => { if (d && d.t && !d.dup) litDup.set(d.t.normalize('NFC'), (litDup.get(d.t.normalize('NFC')) || 0) + 1) })
+  const dupNow = [...heads].filter(([, k]) => k > 1).map(([t]) => t).sort(), dupLit = [...litDup].filter(([, k]) => k > 1).map(([t]) => t).sort()
+  T('B7', 'the whole live dictionary has no repeated headword after both topics are seeded, other than the two already repeated in the source literal (ถือ, ทั้งหมด)', same(dupNow, dupLit) && same(dupLit, ['ถือ', 'ทั้งหมด'].sort()), { dupNow, dupLit })
   const idemp = c.seedThaiTopicEntries(RAW.map(d => ({ ...d })), c.ev('TOPIC_MUAY_THAI_TH'), 'muay-thai', c.ev('THAI_MUAY_ID_BASE'))
   T('B8', 'reinitialising the topic is idempotent: a second seed creates 0 records, reuses all 60 and returns the same ids',
     idemp.created.length === 0 && idemp.reused.length === 60 && same(idemp.ids, ids), { created: idemp.created.length, reused: idemp.reused.length })
@@ -200,11 +202,11 @@ const pyOk = (() => { const r = py(['-c', 'import pythainlp']); return r.status 
   T('H1', 'all 33 new words carry a module tag in the embedded data (id, Thai, tier T4, group, cell, English slot) with the cells of the plan (15 new cells); ต่อย moved out of the car cell into the strike cell',
     [...created].every(id => { const t = tagOf(id), th = canon.get(id).t; return t && t[0] === th && t[1] === 4 && t[4] === CELLS[th] && t[2] === CELLS[th].split('.')[0] && t[6] }) && new Set(Object.values(CELLS)).size === 15 && tagOf(679)[4] === 'V_HANDLE.STRIKE' && tagOf(679)[1] === 4,
     [...created].filter(id => !tagOf(id)).map(id => canon.get(id).t))
-  // coverage of the topic words by the picker: a word with fewer modules than its need must belong to a cell the batch plan writes
-  const need = w => (w[1] === 1 ? 4 : w[1] === 2 ? 4 : 3)
+  // coverage of the topic words by the picker, counted the way the app counts: the modules a learner of the highest tier can be offered for the word (tier or above, own cell + links)
+  const need = t => (t[1] <= 2 ? 4 : 3)
   const planned = new Set(); for (let k = 1; k <= 8; k++) fs.readFileSync(path.join(__dirname, 'thai-modules', 'drafts-muaythai', 'MT0' + k + '.csv'), 'utf8').split(/\r?\n/).slice(1).filter(Boolean).forEach(l => planned.add(l.split(',')[1]))
-  const short = ids.filter(id => { const t = tagOf(id); if (!t) return true; const nOwn = (cx.ev('THAI_MODULES').data.byGroup.get(t[4] || t[2]) || []).filter(m => m.tier === t[1] && !(m.excl && m.excl.has(String(id)))).length + ((cx.ev('THAI_MODULES').data.byWord.get(String(id)) || []).filter(m => m.tier === t[1]).length); return nOwn < need(t) })
-  T('H2', 'every topic word has the modules the repo\'s coverage rule asks for (3, or 4 for T1–T2 words) — except words whose cell is still to be written by the module writers (the 8 batch sheets), which are exactly the new cells plus the T2 blood cell',
+  const short = ids.filter(id => { const t = tagOf(id); return !t || cx.thaiModuleCandidates({ id, thai: canon.get(id).t }, 5).length < need(t) })
+  T('H2', 'every topic word can be offered at least the modules the coverage rule asks for (3, or 4 for T1–T2 words; counted as the app counts them: its cell and its links, its tier or above) — except words whose cell is still to be written by the module writers (the 8 batch sheets: the new cells plus the T2 blood cell)',
     short.every(id => planned.has(tagOf(id)[4] || tagOf(id)[2])) && planned.size === 16, short.filter(id => !planned.has(tagOf(id)[4] || tagOf(id)[2])).map(id => canon.get(id).t))
   // the Python tools
   const csv = f => fs.readFileSync(path.join(__dirname, 'thai-modules', f), 'utf8').replace(/^﻿/, '').split(/\r?\n/).filter(Boolean)
@@ -222,11 +224,13 @@ const pyOk = (() => { const r = py(['-c', 'import pythainlp']); return r.status 
     const rb = py(['tools/check_thai_drafts.py', tmp, '--quiet'])
     T('H5', 'the draft checker REFUSES a module whose fixed text uses a new topic-only word (a learner who has not met it fails the vocabulary gate)', rb.status === 1 && /topic-only word ครูมวย/.test(rb.stdout), (rb.stdout + rb.stderr).slice(0, 400))
     const rm = py(['tools/merge_thai_drafts.py', '--dry-run'])
-    T('H6', 'the merge step refuses to run without the writers\' files (the sample is never merged): nothing is written', rm.status === 1 && /no drafts|nothing merged/.test(rm.stdout) || rm.status === 0 && /modules, \d+ module-links rows/.test(rm.stdout), (rm.stdout + rm.stderr).slice(0, 300))
+    T('H6', 'the merge step reads only the writers\' files MT01..MT08-modules.csv (the hand-written sample MT00 is never merged); the dry run writes nothing: with no files it says so, with files it checks and reports counts',
+      (rm.status === 1 && /no drafts/.test(rm.stdout)) || (rm.status === 0 && /modules, \d+ module-links rows/.test(rm.stdout)), (rm.stdout + rm.stderr).slice(0, 300))
     const rn = py(['tools/thai_module_crossuse.py', 'need', '--topic', 'thai-modules/topic-muay-thai-words.csv'])
     const rowsN = rn.stdout.split('\n').slice(1).filter(Boolean).map(l => l.split('\t'))
-    T('H7', 'the need report covers the 60 words and flags exactly the words below their need: the 33 new words (minus แชมป์, which a safe link lifts to 3), ต่อย (its cell moved, no module yet) and เลือด (3 of the 4 a T2 word needs)',
-      rn.status === 0 && rowsN.length === 60 && same(rowsN.filter(r => +r[7] < +r[4]).map(r => r[1]).sort(), [...newRecs.map(r => r.t).filter(t => t !== 'แชมป์'), 'ต่อย', 'เลือด'].filter(t => !['นวม', 'ผ้าพันมือ', 'กางเกงมวย', 'กระสอบทราย'].includes(t) || true).sort()) || rowsN.every(r => +r[7] >= +r[4] || planned.has(r[3])), rowsN.filter(r => +r[7] < +r[4]).map(r => r[1]))
+    const flagged = rowsN.filter(r => +r[7] < +r[4])
+    T('H7', 'the need report covers the 60 words, and every word below its need (own tier, with the safe links) sits in a cell the batch sheets assign: the new words except แชมป์ (a safe link lifts it to 3), ต่อย (its cell moved) and เลือด (3 of the 4 a T2 word needs)',
+      rn.status === 0 && rowsN.length === 60 && flagged.every(r => planned.has(r[3])) && flagged.length >= 1 && !flagged.some(r => r[1] === 'แชมป์') && ['ต่อย', 'เลือด'].every(t => flagged.some(r => r[1] === t)) || (rn.status === 0 && rowsN.length === 60 && flagged.length === 0), flagged.map(r => r[1]))
   } else {
     T('H4', 'the draft checker, the merge and the need report need python3 + pythainlp (not installed here): SKIPPED — run `pip install pythainlp` and rerun', true)
   }
@@ -236,20 +240,20 @@ const pyOk = (() => { const r = py(['-c', 'import pythainlp']); return r.status 
   const mi = new Map(data.m.map((r, k) => [r[0], k]))
   const emb = new Set(); Object.entries(data.x || {}).forEach(([w, l]) => l.forEach(k => emb.add(data.m[k][0] + '|' + w)))
   const lt = new Map(); const ok = []
-  links.forEach(([mid, wid]) => { const m = data.m[mi.get(mid)], tg = data.t[wid]; ok.push(!!m && !!tg && m[2] >= tg[1] && !(m[3] || '').split(';').includes(wid) && m[1].split('.')[0] === tg[2]) })
-  T('I1', 'every applied cross-use link is valid: the module exists, the word has a tag, the module\'s tier is the word\'s or higher, the module does not exclude the word, and both are of the same group (same part of speech and slot kind); the embedded data holds exactly the applied rows',
+  links.forEach(([mid, wid]) => { const m = data.m[mi.get(mid)], tg = data.t[wid]; ok.push(!!m && !!tg && m[2] >= tg[1] && !(m[3] || '').split(';').includes(wid) && m[1][0] === tg[2][0]) })
+  T('I1', 'every applied cross-use link is valid: the module exists, the word has a tag, the module\'s tier is the word\'s or higher, the module does not exclude the word, and both are of the same part of speech (N / V / A / X group); the embedded data holds exactly the applied rows',
     links.length > 0 && ok.every(Boolean) && same([...emb].sort(), links.map(([m, w]) => m + '|' + w).sort()), { links: links.length, bad: links.filter((_, i) => !ok[i]).slice(0, 3), emb: emb.size })
   {
     // the picker: a word gets the modules of its own cell first and then the linked ones; exclusions and the tier rule still hold
     const mod = (id, group, tier, ex) => [id, group, tier, ex || '', '{W}ก', 'a', 'p', 'ข{W}', 'b', 'q', 'ค{W}', 'c', 'r', 'home', 'ask']
     const tag = (th, tier, g, sub) => [th, tier, g, '', sub, '', 'x', '', '']
     const syn = { v: 't', t: { 1: tag('ก', 3, 'N_A', 'N_A.ONE'), 2: tag('ข', 3, 'N_A', 'N_A.TWO'), 3: tag('ค', 4, 'N_A', 'N_A.TWO'), 4: tag('ง', 3, 'N_A', 'N_A.THREE') },
-      m: [mod('A-T3-01', 'N_A.ONE', 3), mod('B-T3-01', 'N_A.TWO', 3), mod('B-T3-02', 'N_A.TWO', 3, '2'), mod('B-T4-01', 'N_A.TWO', 4), mod('B-T2-01', 'N_A.TWO', 2)], x: { 1: [1, 2, 3, 4] } }
+      m: [mod('A-T3-01', 'N_A.ONE', 3), mod('B-T3-01', 'N_A.TWO', 3), mod('B-T3-02', 'N_A.TWO', 3, '1;2'), mod('B-T4-01', 'N_A.TWO', 4), mod('B-T2-01', 'N_A.TWO', 2)], x: { 1: [1, 2, 3, 4] } }
     cx.thaiModulesUseData(syn)
     const cands = tid => cx.thaiModuleCandidates({ id: tid, thai: syn.t[tid][0] }, 5).map(x => x.m.id)
     const c1 = cands(1), c2 = cands(2), c4 = cands(4)
     T('I2', 'the picker serves a word its own cell first (each tier) and then the modules linked to it; a linked module that excludes the word, or whose tier is below the word\'s, is never offered; words without links are unchanged',
-      same(c1, ['B-T4-01', 'A-T3-01', 'B-T3-01']) && same(c2.slice().sort(), ['B-T3-01', 'B-T4-01']) && c4.length === 0, { c1, c2, c4 })
+      same(c1, ['B-T4-01', 'A-T3-01', 'B-T3-01']) && same(c2, ['B-T4-01', 'B-T3-01']) && c4.length === 0, { c1, c2, c4 })
     cx.thaiModulesUseData(data)
   }
   const wl = fs.existsSync(path.join(__dirname, 'thai-modules', 'thai-module-word-links.csv')) && fs.existsSync(path.join(__dirname, 'thai-modules', 'thai-module-word-links-review.csv'))

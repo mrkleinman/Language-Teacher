@@ -124,7 +124,7 @@ npx playwright install chromium                                                 
 RUNNER_TOKEN=local-test-token RUNNER_PAGE=/tmp/runner-test/index.html RUNNER_PAGE_ORIGIN=https://mrkleinman.github.io \
   RUNNER_ALLOWED_ORIGINS=http://localhost:8000 node server.js
 ```
-Tests (build the page themselves, start stand-in models on 127.0.0.1, take about 10 minutes with the Thai flows; `RUNNER_TEST_SKIP_THAI=1` skips them):
+Tests (build the page themselves, start stand-in models on 127.0.0.1, take about 12 minutes with the Thai flows; `RUNNER_TEST_SKIP_THAI=1` skips them). With the stand-in a Cantonese job takes about 12 s and a Thai job about 3.5 minutes (about 200 requests, answered instantly: with a real model add its time per request):
 ```bash
 node dev/server-runner/test/run.js
 ```
@@ -147,7 +147,7 @@ You already run a small Cloud Run function for the model. This is a second, sepa
    gcloud run deploy language-teacher-runner --source . --region asia-southeast1 \
      --allow-unauthenticated \
      --no-cpu-throttling \
-     --cpu 2 --memory 2Gi \
+     --cpu 2 --memory 4Gi \
      --min-instances 1 --max-instances 1 --concurrency 20 \
      --timeout 300 \
      --set-secrets RUNNER_TOKEN=language-teacher-runner-token:latest \
@@ -156,7 +156,7 @@ You already run a small Cloud Run function for the model. This is a second, sepa
    What each setting is for:
    * `--no-cpu-throttling` (CPU always allocated): **required.** The job keeps running after `POST /jobs` has answered; without it Cloud Run takes the CPU away between requests and the job stalls, which is the very problem this service exists to remove.
    * `--min-instances 1 --max-instances 1`: keeps the one instance alive (and the only one, so the queue and the results are in one place). With `--min-instances 0` Cloud Run may stop the instance while the phone is away and nothing is polling; the job and its result are then lost (the app sees 404 or "the runner restarted… submit it again"). Cost: an always-on instance is billed all the time; check the Cloud Run pricing page for your region and put a **budget alert** on the project.
-   * `--cpu 2 --memory 2Gi`: Chromium compiles a 16 MB page in the browser (Babel) and then runs it; less memory risks the browser being killed. See "Measured" below, and raise to `4Gi` if a job fails with "the browser page crashed".
+   * `--cpu 2 --memory 4Gi`: Chromium compiles a 16 MB page in the browser (Babel) and then runs it. Measured here (Cantonese Daily and Thai Daily alike): the Chromium processes add up to about 2.4 GB of resident memory at the peak (pages shared between its processes are counted once per process, so the real figure is lower), which leaves no margin in 2 GiB. If a job fails with "the browser page crashed", raise it further.
    * `--timeout 300`: the longest a single HTTP request may take. Every request here is short (the job itself is not a request), so the default is plenty.
    * `--concurrency 20`: the service can answer polls while a job runs; only one job runs at a time whatever this is.
    * `--allow-unauthenticated`: the phone's browser calls the service directly, and the only lock is the token (like the model function's access code). Hence a long random token and HTTPS only.

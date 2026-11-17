@@ -125,3 +125,10 @@ Unzip `thai-modules-workbench.zip` (a folder `thai-workbench`; run everything fr
 - `THAI_NATURALNESS_GUIDE_V701` says "ใช่ค่ะ only answers a yes/no question", which contradicts the guide; remove it.
 - `THAI_ALWAYS_OK_WORDS` includes formal words that push Haiku toward written Thai (สามารถ, เมื่อ, อย่างไร, สถานที่, พบ, การ, ความ). Consider removing them.
 - The old exchange bank can be turned off with `thaiBankSetEnabled(false)` and then removed (0.75 MB).
+
+## 9. v761 additions (Muay Thai topic, cross-use links)
+
+- `TOPICS-HOWTO.md` is the recipe for a topic (code, ids, readings, tags, modules, tests). `BRIEF_MUAYTHAI.md` + `drafts-muaythai/` are the writers' brief and batch sheets for the 33 new Muay Thai words (15 new cells, T4).
+- `thai-allowed-words.csv` was never committed; `tools/build_thai_allowed_words.py` RECONSTRUCTS it (tagged words by tier + the glue words the reviewed modules use). `tools/thai_modules_lib.py` counts a word's modules the way the APP does (its cell, else its second group).
+- Cross-use: `thai-module-word-links.csv` (rows with status `applied` are embedded as `x` and added to the word's candidates), `thai-module-word-links-review.csv` (candidates with a note, not applied), `thai-module-peers.csv` (bank words a new word can stand in for); tool `tools/thai_module_crossuse.py`.
+- `ต่อย` (679) moved from V_HANDLE.COLLIDE to V_HANDLE.STRIKE (T4): its two COLLIDE modules were about cars ("do not let the car punch anyone").

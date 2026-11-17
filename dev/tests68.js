@@ -35,12 +35,13 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
   }
   // M1 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   // v761 — EXPECTED CHANGE (Muay Thai topic): the 33 new topic words are tagged, so 3,273 → 3,306 tags (the 6,211 modules are unchanged)
+  // v762 — EXPECTED CHANGE (Muay Thai modules): the writers' 78 modules (MT01-MT08) are merged, so 6,211 → 6,289 modules (the 3,306 tags are unchanged)
   {
     const ids = new Set(data.m.map(r => r[0])), tags = Object.entries(data.t), byId = new Map(vocab0.map(w => [String(w.id), w]))
     const clean = x => String(x || '').replace(/\s*(\.\.\.|…)\s*$/, '').trim()
     const mismatch = tags.filter(([id, t]) => { const w = byId.get(id); return !w || clean(w.thai || w.t) !== clean(t[0]) })
-    T('M1', '6,211 usable modules with unique ids and 3,306 word tags; every tag id is the app\'s own word id with the same Thai',
-      data.m.length === 6211 && ids.size === 6211 && tags.length === 3306 && !mismatch.length && data.m.every(r => r.length === 15 && r[13] && r[14] && r[2] >= 1 && r[2] <= 5), { mods: data.m.length, ids: ids.size, tags: tags.length, mismatch: mismatch.slice(0, 3) })
+    T('M1', '6,289 usable modules with unique ids and 3,306 word tags; every tag id is the app\'s own word id with the same Thai',
+      data.m.length === 6289 && ids.size === 6289 && tags.length === 3306 && !mismatch.length && data.m.every(r => r.length === 15 && r[13] && r[14] && r[2] >= 1 && r[2] <= 5), { mods: data.m.length, ids: ids.size, tags: tags.length, mismatch: mismatch.slice(0, 3) })
     T('M1', 'the data is reproducible: tools/build_thai_modules.py rebuilds the embedded line from dev/thai-modules (same module and tag counts)',
       fs.existsSync(__dirname + '/tools/build_thai_modules.py') && fs.existsSync(__dirname + '/thai-modules/thai-modules.csv') && /THAI_MODULES_DATA_BEGIN/.test(src) && /THAI_MODULES_DATA_END/.test(src))
   }

@@ -215,7 +215,9 @@ const pyOk = (() => { const r = py(['-c', 'import pythainlp']); return r.status 
     tw.length === 60 && tw.every((r, k) => +r[2] === ids[k] && r[4] === (created.has(ids[k]) ? 'new' : 'reused') && r[1].replace(/"/g, '') === GROUPS[OWNER[k][0] - 1]))
   if (pyOk) {
     const r = py(['tools/check_thai_drafts.py', 'thai-modules/drafts-muaythai/MT00-sample-modules.csv', '--quiet'])
-    T('H4', 'the draft checker passes the three hand-written sample modules (closed vocabulary at T4, line lengths, particles, slots, English filling for every word each fits, serves_ids mechanics)', r.status === 0 && /0 problem/.test(r.stdout), (r.stdout + r.stderr).slice(0, 400))
+    T('H4', 'the draft checker passes the three hand-written sample modules (closed vocabulary at T4, line lengths, particles, slots, English filling for every word each fits, serves_ids mechanics)', (r.status === 0 && /0 problem/.test(r.stdout)) || (r.status === 1 && /problem/.test(r.stdout) && r.stdout.split('\n').filter(l => /^PROBLEM/.test(l)).every(l => /module id already used in thai-modules\.csv|opens like the merged module/.test(l))), (r.stdout + r.stderr).slice(0, 400))
+    // 18 Nov: the writers' modules (MT01..MT08) are merged now, and the three sample modules carry the same ids as three real modules (N_BODY.COMBAT-T4-01 ...), so the checker's only complaints about
+    // the sample are that those ids are already used in thai-modules.csv and that its first words open like the merged module. Before the merge it reported 0 problems; every OTHER kind of problem would still fail this test.
     const bad = path.join(__dirname, 'thai-modules', 'drafts-muaythai', 'MT00-sample-modules.csv')
     const rows = fs.readFileSync(bad, 'utf8').replace(/^﻿/, '').split(/\r?\n/).filter(Boolean)
     const tmp = path.join(require('os').tmpdir(), 'tests99-bad-drafts.csv')
@@ -225,7 +227,8 @@ const pyOk = (() => { const r = py(['-c', 'import pythainlp']); return r.status 
     T('H5', 'the draft checker REFUSES a module whose fixed text uses a new topic-only word (a learner who has not met it fails the vocabulary gate)', rb.status === 1 && /topic-only word ครูมวย/.test(rb.stdout), (rb.stdout + rb.stderr).slice(0, 400))
     const rm = py(['tools/merge_thai_drafts.py', '--dry-run'])
     T('H6', 'the merge step reads only the writers\' files MT01..MT08-modules.csv (the hand-written sample MT00 is never merged); the dry run writes nothing: with no files it says so, with files it checks and reports counts',
-      (rm.status === 1 && /no drafts/.test(rm.stdout)) || (rm.status === 0 && /modules, \d+ module-links rows/.test(rm.stdout)), (rm.stdout + rm.stderr).slice(0, 300))
+      (rm.status === 1 && /no drafts/.test(rm.stdout)) || (rm.status === 0 && /modules, \d+ module-links rows/.test(rm.stdout)) || (rm.status === 1 && rm.stdout.split('\n').filter(l => /^PROBLEM/.test(l)).length > 0 && rm.stdout.split('\n').filter(l => /^PROBLEM/.test(l)).every(l => /module id already used in thai-modules\.csv|opens like the merged module/.test(l))), (rm.stdout + rm.stderr).slice(0, 300))
+    // 18 Nov: after the real merge, a second run refuses every draft ("module id already used": a draft can never be merged twice); that refusal (an id already used, an opening that clashes with the merged copy of the same module), and nothing else, is the third accepted answer
     const rn = py(['tools/thai_module_crossuse.py', 'need', '--topic', 'thai-modules/topic-muay-thai-words.csv'])
     const rowsN = rn.stdout.split('\n').slice(1).filter(Boolean).map(l => l.split('\t'))
     const flagged = rowsN.filter(r => +r[7] < +r[4])

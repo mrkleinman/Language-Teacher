@@ -62,6 +62,7 @@ N_PLACE.PHARMACY-T2-03,85,โรงแรม,N_PLACE.PHARMACY,N_PLACE.STAY,T2,T2
 N_PLACE.PHARMACY-T2-04,85,โรงแรม,N_PLACE.PHARMACY,N_PLACE.STAY,T2,T2,review,review,8,A1 ไป_ที่ ok; B ไป_นั้น ok; A2 ชื่อ_ให้ exact | same-group
 N_PLACE.SHOP-T2-01,85,โรงแรม,N_PLACE.SHOP,N_PLACE.STAY,T2,T2,review,review,8,A1 มี_ไหม ok; B มี_อยู่ ok; A2 ไป_กี่ exact | same-group
 N_PLACE.MARKET-T2-02,85,โรงแรม,N_PLACE.MARKET,N_PLACE.STAY,T2,T2,review,review,7,A1 ไป_ไหน ok; B ไป_ใกล้ ok; A2 ·_นั้น exact | same-group | scene words: ถูกๆ
+N_PLACE.FIGHT-T4-03,85,โรงแรม,N_PLACE.FIGHT,N_PLACE.STAY,T4,T2,review,review,6,A1 ไป_· ok; B ไป_ไหม ok; A2 ไป_ได้ exact | same-group
 T_TIME.NEXTSTEP-T2-01,89,เมื่อวาน,T_TIME.NEXTSTEP,T_TIME.PAST,T2,T1,review,review-strong,12,A1 ·_ไป exact; B ·_ไป exact; A2 ·_ต้อง exact | same-group
 N_TIMEUNIT.SHORT-T1-04,93,วัน,N_TIMEUNIT.SHORT,N_TIMEUNIT.CALENDAR,T1,T1,review,review-strong,14,A1 กี่_· exact; B สาม_· exact; A2 กี่_· exact | same-group
 N_TIMEUNIT.SHORT-T1-03,93,วัน,N_TIMEUNIT.SHORT,N_TIMEUNIT.CALENDAR,T1,T1,review,review-strong,11,A1 กี่_แล้ว exact; B กี่_· exact; A2 สาม_แล้ว ok | same-group
@@ -102,6 +103,7 @@ N_PLACE.HEALTH-T5-09,140,สนามบิน,N_PLACE.HEALTH,N_PLACE.STATION,T5
 N_PLACE.AWAY-T3-02,140,สนามบิน,N_PLACE.AWAY,N_PLACE.STATION,T3,T2,review,review,6,A1 ไป_· ok; B ไป_ก็ ok; A2 ที่_ได้ exact | same-group
 N_PLACE.SPOT-T2-04,140,สนามบิน,N_PLACE.SPOT,N_PLACE.STATION,T2,T2,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group
 N_PLACE.SPOT-T3-02,140,สนามบิน,N_PLACE.SPOT,N_PLACE.STATION,T3,T2,review,review,5,A1 ·_นี้ exact; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: กลับรถ เย อะนะ
+N_PLACE.FIGHT-T4-03,140,สนามบิน,N_PLACE.FIGHT,N_PLACE.STATION,T4,T2,review,review,3,A1 ไป_· ok; B ไป_ไหม ok; A2 ไป_ได้ ok | same-group
 N_PLACE.REGION-T3-05,140,สนามบิน,N_PLACE.REGION,N_PLACE.STATION,T3,T2,review,review,3,A1 ใน_นี้ ok; B ใน_นี้ ok; A2 ใน_นี้ ok | same-group
 N_PLACE.SPOT-T4-02,140,สนามบิน,N_PLACE.SPOT,N_PLACE.STATION,T4,T2,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
 N_PLACE.WORK-T5-01,140,สนามบิน,N_PLACE.WORK,N_PLACE.STATION,T5,T2,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
@@ -151,13 +153,13 @@ V_CHANGE.OUTCOME-T5-05,211,หัก,V_CHANGE.OUTCOME,V_CHANGE.BREAK,T5,T5,revie
 N_PERSONROLE.PERSON-T2-02,213,ตำรวจ,N_PERSONROLE.PERSON,N_PERSONROLE.LAW,T2,T2,review,review,5,A1 ·_ที่ ok; B เห็น_นั้น ok; A2 ถาม_นั้น ok | same-group
 A_PERSONSTATE.SAD-T2-04,221,เกรงใจ,A_PERSONSTATE.SAD,A_PERSONSTATE.KRENGJAI,T2,T2,review,review,8,A1 เลย_อยู่ ok; B ฉัน_ที่ ok; A2 ไม่_· exact | same-group
 A_PERSONSTATE.EMBARRASSED-T5-03,221,เกรงใจ,A_PERSONSTATE.EMBARRASSED,A_PERSONSTATE.KRENGJAI,T5,T2,review,review,6,A1 เลย_· exact; B ไม่ต้อง_· ok; A2 ไม่_แล้ว ok | same-group
-A_PERSONSTATE.SURPRISE-T3-02,221,เกรงใจ,A_PERSONSTATE.SURPRISE,A_PERSONSTATE.KRENGJAI,T3,T2,review,review,3,A1 คุณ_ไหม ok; B ไม่_เลย ok; A2 ก็_· ok | same-group | scene words: เที่ยงคืน ตอนแรก
+A_PERSONSTATE.SURPRISE-T3-02,221,เกรงใจ,A_PERSONSTATE.SURPRISE,A_PERSONSTATE.KRENGJAI,T3,T2,review,review,3,A1 คุณ_ไหม ok; B ไม่_เลย ok; A2 ก็_· ok | same-group | scene words: เที่ยงคืน
 A_PERSONSTATE.SURPRISE-T5-03,221,เกรงใจ,A_PERSONSTATE.SURPRISE,A_PERSONSTATE.KRENGJAI,T5,T2,review,review,3,A1 คุณ_ไหม ok; B ไม่_เลย ok; A2 เลย_ที่ ok | same-group | scene words: คนต่างชาติ เต็มไปหมด
 V_MOVE.DRIVE-T5-01,231,เดินทาง,V_MOVE.DRIVE,V_MOVE.JOURNEY,T5,T2,review,review-strong,12,A1 ต้อง_ไป exact; B ต้อง_ทุกวัน exact; A2 ชอบ_ตอน exact | same-group
 V_MOVE.HOUSE-T3-01,231,เดินทาง,V_MOVE.HOUSE,V_MOVE.JOURNEY,T3,T2,review,review,3,A1 จะ_ไป ok; B ควร_· ok; A2 จะ_ไหม ok | same-group
 A_PERSONSTATE.ANGRY-T4-02,266,หิว,A_PERSONSTATE.ANGRY,A_PERSONSTATE.HUNGER,T4,T1,review,review,12,A1 ผม_มาก exact; B ยัง_อยู่ exact; A2 ไม่_แล้ว exact | same-group | scene words: พอได้
 A_PERSONSTATE.BUSY-T2-02,266,หิว,A_PERSONSTATE.BUSY,A_PERSONSTATE.HUNGER,T2,T1,review,review-strong,12,A1 ผม_มาก exact; B ยัง_อยู่ exact; A2 ไม่_แล้ว exact | same-group
-A_PERSONSTATE.SURPRISE-T3-02,266,หิว,A_PERSONSTATE.SURPRISE,A_PERSONSTATE.HUNGER,T3,T1,review,review,12,A1 คุณ_ไหม exact; B ไม่_เลย exact; A2 ก็_· exact | same-group | scene words: เที่ยงคืน ตอนแรก
+A_PERSONSTATE.SURPRISE-T3-02,266,หิว,A_PERSONSTATE.SURPRISE,A_PERSONSTATE.HUNGER,T3,T1,review,review,12,A1 คุณ_ไหม exact; B ไม่_เลย exact; A2 ก็_· exact | same-group | scene words: เที่ยงคืน
 A_PERSONSTATE.FULL-T1-01,266,หิว,A_PERSONSTATE.FULL,A_PERSONSTATE.HUNGER,T1,T1,review,review-strong,10,A1 ·_หรือยัง ok; B ·_มาก exact; A2 ไม่_เลย exact | same-group
 A_PERSONSTATE.BORED-T5-03,266,หิว,A_PERSONSTATE.BORED,A_PERSONSTATE.HUNGER,T5,T1,review,review,6,A1 ก็_แล้ว ok; B ไม่_· ok; A2 ยัง_อยู่ exact | same-group
 A_PERSONSTATE.TOUCHED-T5-02,267,ดีใจ,A_PERSONSTATE.TOUCHED,A_PERSONSTATE.HAPPY,T5,T2,review,review,9,A1 แล้ว_มาก exact; B แล้ว_จน ok; A2 คง_เหมือนกัน exact | same-group | scene words: ตอนจบ
@@ -191,13 +193,13 @@ N_ABSTRACT.CAUSE-T5-14,280,รุ่น,N_ABSTRACT.CAUSE,N_ABSTRACT.KIND,T5,T5,r
 A_PERSONSTATE.ANGRY-T4-02,282,หิวน้ำ,A_PERSONSTATE.ANGRY,A_PERSONSTATE.HUNGER,T4,T1,review,review,12,A1 ผม_มาก exact; B ยัง_อยู่ exact; A2 ไม่_แล้ว exact | same-group | scene words: พอได้
 A_PERSONSTATE.BUSY-T2-02,282,หิวน้ำ,A_PERSONSTATE.BUSY,A_PERSONSTATE.HUNGER,T2,T1,review,review-strong,12,A1 ผม_มาก exact; B ยัง_อยู่ exact; A2 ไม่_แล้ว exact | same-group
 A_PERSONSTATE.FULL-T1-03,282,หิวน้ำ,A_PERSONSTATE.FULL,A_PERSONSTATE.HUNGER,T1,T1,review,review-strong,10,A1 ·_ไหม exact; B ไม่_ขอ ok; A2 ผม_มาก exact | same-group
-A_PERSONSTATE.SURPRISE-T3-02,282,หิวน้ำ,A_PERSONSTATE.SURPRISE,A_PERSONSTATE.HUNGER,T3,T1,review,review,9,A1 คุณ_ไหม exact; B ไม่_เลย ok; A2 ก็_· exact | same-group | scene words: เที่ยงคืน ตอนแรก
+A_PERSONSTATE.SURPRISE-T3-02,282,หิวน้ำ,A_PERSONSTATE.SURPRISE,A_PERSONSTATE.HUNGER,T3,T1,review,review,9,A1 คุณ_ไหม exact; B ไม่_เลย ok; A2 ก็_· exact | same-group | scene words: เที่ยงคืน
 A_PERSONSTATE.FULL-T1-01,282,หิวน้ำ,A_PERSONSTATE.FULL,A_PERSONSTATE.HUNGER,T1,T1,review,review,7,A1 ·_หรือยัง ok; B ·_มาก exact; A2 ไม่_เลย ok | same-group
 A_PERSONSTATE.BORED-T5-03,282,หิวน้ำ,A_PERSONSTATE.BORED,A_PERSONSTATE.HUNGER,T5,T1,review,review,6,A1 ก็_แล้ว ok; B ไม่_· ok; A2 ยัง_อยู่ exact | same-group
 A_PERSONSTATE.HUNGER-T1-01,283,อิ่ม,A_PERSONSTATE.HUNGER,A_PERSONSTATE.FULL,T1,T1,review,review-strong,10,A1 ·_ไหม exact; B ·_มาก exact; A2 ก็_· ok | same-group
 A_PERSONSTATE.ANGRY-T2-02,283,อิ่ม,A_PERSONSTATE.ANGRY,A_PERSONSTATE.FULL,T2,T1,review,review-strong,9,A1 ผม_มาก exact; B ·_ขนาด exact; A2 ก็_· ok | same-group
 A_PERSONSTATE.HUNGER-T1-06,283,อิ่ม,A_PERSONSTATE.HUNGER,A_PERSONSTATE.FULL,T1,T1,review,review,7,A1 ·_เหรอ ok; B ·_มาก exact; A2 ก็_ขอ ok | same-group
-A_PERSONSTATE.BREATH-T5-01,283,อิ่ม,A_PERSONSTATE.BREATH,A_PERSONSTATE.FULL,T5,T1,review,review,6,A1 ผม_เลย ok; B ·_ขนาด exact; A2 ก็_แล้ว ok | same-group | scene words: กีฬา
+A_PERSONSTATE.BREATH-T5-01,283,อิ่ม,A_PERSONSTATE.BREATH,A_PERSONSTATE.FULL,T5,T1,review,review,6,A1 ผม_เลย ok; B ·_ขนาด exact; A2 ก็_แล้ว ok | same-group
 A_THING.SUIT-T2-01,284,สำคัญ,A_THING.SUIT,A_THING.PRIORITY,T2,T2,review,review,8,A1 นี้_ไหม exact; B ถ้า_ก็ ok; A2 นี้_เลย ok | same-group | scene words: เอาเลย
 N_TIMEUNIT.SHORT-T1-04,286,เดือน,N_TIMEUNIT.SHORT,N_TIMEUNIT.CALENDAR,T1,T1,review,review-strong,14,A1 กี่_· exact; B สาม_· exact; A2 กี่_· exact | same-group
 N_TIMEUNIT.SHORT-T1-03,286,เดือน,N_TIMEUNIT.SHORT,N_TIMEUNIT.CALENDAR,T1,T1,review,review-strong,11,A1 กี่_แล้ว exact; B กี่_· exact; A2 สาม_แล้ว ok | same-group
@@ -218,8 +220,8 @@ A_PERSONSTATE.WORRY-T2-02,306,เสียใจ,A_PERSONSTATE.WORRY,A_PERSONSTA
 A_PERSONSTATE.EMBARRASSED-T5-03,306,เสียใจ,A_PERSONSTATE.EMBARRASSED,A_PERSONSTATE.SAD,T5,T2,review,review,3,A1 เลย_· ok; B ไม่ต้อง_· ok; A2 ไม่_แล้ว ok | same-group
 A_PERSONSTATE.BUSY-T2-02,307,โกรธ,A_PERSONSTATE.BUSY,A_PERSONSTATE.ANGRY,T2,T2,review,review-strong,11,A1 ผม_มาก exact; B ยัง_อยู่ exact; A2 ไม่_แล้ว ok | same-group
 A_PERSONSTATE.BORED-T5-03,307,โกรธ,A_PERSONSTATE.BORED,A_PERSONSTATE.ANGRY,T5,T2,review,review-strong,9,A1 ก็_แล้ว ok; B ไม่_· exact; A2 ยัง_อยู่ exact | same-group
-A_PERSONSTATE.BREATH-T5-01,307,โกรธ,A_PERSONSTATE.BREATH,A_PERSONSTATE.ANGRY,T5,T2,review,review,6,A1 ผม_เลย ok; B ·_ขนาด exact; A2 ก็_แล้ว ok | same-group | scene words: กีฬา
-A_PERSONSTATE.SURPRISE-T3-02,307,โกรธ,A_PERSONSTATE.SURPRISE,A_PERSONSTATE.ANGRY,T3,T2,review,review,6,A1 คุณ_ไหม ok; B ไม่_เลย ok; A2 ก็_· exact | same-group | scene words: เที่ยงคืน ตอนแรก
+A_PERSONSTATE.BREATH-T5-01,307,โกรธ,A_PERSONSTATE.BREATH,A_PERSONSTATE.ANGRY,T5,T2,review,review,6,A1 ผม_เลย ok; B ·_ขนาด exact; A2 ก็_แล้ว ok | same-group
+A_PERSONSTATE.SURPRISE-T3-02,307,โกรธ,A_PERSONSTATE.SURPRISE,A_PERSONSTATE.ANGRY,T3,T2,review,review,6,A1 คุณ_ไหม ok; B ไม่_เลย ok; A2 ก็_· exact | same-group | scene words: เที่ยงคืน
 N_ABSTRACT.PROBLEM-T2-02,311,ชีวิต,N_ABSTRACT.PROBLEM,N_ABSTRACT.SITUATION,T2,T2,review,review,5,A1 มี_เลย ok; B มี_ก็ ok; A2 มี_ผม ok | same-group
 A_PERSONSTATE.ANGRY-T4-02,314,ยุ่ง,A_PERSONSTATE.ANGRY,A_PERSONSTATE.BUSY,T4,T2,review,review,12,A1 ผม_มาก exact; B ยัง_อยู่ exact; A2 ไม่_แล้ว exact | same-group | scene words: พอได้
 A_PERSONSTATE.BORED-T2-01,314,ยุ่ง,A_PERSONSTATE.BORED,A_PERSONSTATE.BUSY,T2,T2,review,review,11,A1 ผม_มาก exact; B ถ้า_ก็ ok; A2 ยัง_อยู่ exact | same-group | scene words: เดินตลาด
@@ -228,6 +230,7 @@ A_PERSONSTATE.SAD-T3-03,314,ยุ่ง,A_PERSONSTATE.SAD,A_PERSONSTATE.BUSY,T3
 A_PERSONSTATE.BORED-T2-03,314,ยุ่ง,A_PERSONSTATE.BORED,A_PERSONSTATE.BUSY,T2,T2,review,review,8,A1 ผม_แล้ว ok; B ถ้า_แล้ว ok; A2 ไม่_· exact | same-group
 A_PERSONSTATE.LONELY-T3-01,314,ยุ่ง,A_PERSONSTATE.LONELY,A_PERSONSTATE.BUSY,T3,T2,review,review,6,A1 ผม_มาก exact; B ถ้า_ก็ ok; A2 ยัง_· ok | same-group
 N_PLACE.SPOT-T2-01,316,ต่างจังหวัด,N_PLACE.SPOT,N_PLACE.AWAY,T2,T2,review,review-strong,11,A1 ที่_ได้ exact; B ที่_ไม่ ok; A2 ไป_· exact | same-group
+N_PLACE.FIGHT-T4-03,316,ต่างจังหวัด,N_PLACE.FIGHT,N_PLACE.AWAY,T4,T2,review,review,6,A1 ไป_· exact; B ไป_ไหม ok; A2 ไป_ได้ ok | same-group
 N_PLACE.SPOT-T2-04,316,ต่างจังหวัด,N_PLACE.SPOT,N_PLACE.AWAY,T2,T2,review,review,5,"A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | English ""{E} is"" frame with a pair / mass word"
 N_PLACE.SPOT-T4-02,316,ต่างจังหวัด,N_PLACE.SPOT,N_PLACE.AWAY,T4,T2,review,review,3,"A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | English ""{E} is"" frame with a pair / mass word; scene words: ค่าปรับ เป็นพิเศษ"
 N_PLACE.WORK-T5-01,316,ต่างจังหวัด,N_PLACE.WORK,N_PLACE.AWAY,T5,T2,review,review,3,"A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | English ""{E} is"" frame with a pair / mass word; scene words: เข้าทำงาน ขึ้นเงินเดือน"
@@ -269,6 +272,7 @@ N_PLACE.AWAY-T3-02,373,สี่แยก,N_PLACE.AWAY,N_PLACE.SPOT,T3,T2,review
 N_PLACE.SHOP-T3-03,373,สี่แยก,N_PLACE.SHOP,N_PLACE.SPOT,T3,T2,review,review-strong,9,A1 ที่_ไม่ exact; B ที่_ได้ exact; A2 ที่_มี ok | same-group
 N_PLACE.STATION-T2-05,373,สี่แยก,N_PLACE.STATION,N_PLACE.SPOT,T2,T2,review,review,8,A1 ถึง_แล้ว ok; B ถึง_เลย ok; A2 ที่_ได้ exact | same-group
 N_PLACE.WAY-T2-04,373,สี่แยก,N_PLACE.WAY,N_PLACE.SPOT,T2,T2,review,review,8,A1 ใกล้_ได้ ok; B ใกล้_ได้ ok; A2 ที่_· exact | same-group
+N_PLACE.FIGHT-T4-03,373,สี่แยก,N_PLACE.FIGHT,N_PLACE.SPOT,T4,T2,review,review,6,A1 ไป_· exact; B ไป_ไหม ok; A2 ไป_ได้ ok | same-group
 N_PLACE.SHOP-T5-02,373,สี่แยก,N_PLACE.SHOP,N_PLACE.SPOT,T5,T2,review,review,6,A1 จาก_นี้ ok; B ที่_นี้ exact; A2 แต่_นี้ ok | same-group
 N_PLACE.LIVE-T2-02,373,สี่แยก,N_PLACE.LIVE,N_PLACE.SPOT,T2,T2,review,review,4,A1 ·_นี้ ok; B แต่_นี้ ok; A2 จาก_นี้ ok | same-group
 N_PLACE.MARKET-T2-02,373,สี่แยก,N_PLACE.MARKET,N_PLACE.SPOT,T2,T2,review,review,4,A1 ไป_ไหน ok; B ไป_ใกล้ ok; A2 ·_นั้น ok | same-group | scene words: ถูกๆ
@@ -313,6 +317,7 @@ V_CHANGE.DEADLINE-T5-01,465,ลด,V_CHANGE.DEADLINE,V_CHANGE.ADJUST,T5,T2,revie
 V_CHANGE.DEADLINE-T5-06,465,ลด,V_CHANGE.DEADLINE,V_CHANGE.ADJUST,T5,T2,review,review,3,A1 จะ_· ok; B จะ_แล้ว ok; A2 จะ_· ok | same-group | scene words: ผ่อน หาเงิน ให้ยืม
 V_CHANGE.OUTCOME-T5-01,465,ลด,V_CHANGE.OUTCOME,V_CHANGE.ADJUST,T5,T2,review,review,3,A1 จะ_หรือเปล่า ok; B จะ_หรือเปล่า ok; A2 จะ_หรือเปล่า ok | same-group
 V_HANDLE.BALL-T4-02,471,ปิด,V_HANDLE.BALL,V_HANDLE.DOOR,T4,T1,review,review-strong,9,A1 คุณ_ได้ ok; B ลอง_ดู exact; A2 ถ้า_ไม่ exact | same-group
+V_HANDLE.STRIKE-T4-02,471,ปิด,V_HANDLE.STRIKE,V_HANDLE.DOOR,T4,T1,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
 V_CHANGE.BREAK-T2-01,474,หมด,V_CHANGE.BREAK,V_CHANGE.STOCK,T2,T2,review,review-strong,14,A1 อาจ_ก็ได้ exact; B ไม่_นะคะ exact; A2 ให้_· exact | same-group
 V_CHANGE.LOST-T2-04,474,หมด,V_CHANGE.LOST,V_CHANGE.STOCK,T2,T2,review,review-strong,14,A1 อาจ_ก็ได้ exact; B ไม่_นะคะ exact; A2 ให้_· exact | same-group
 V_CHANGE.BREAK-T5-09,474,หมด,V_CHANGE.BREAK,V_CHANGE.STOCK,T5,T2,review,review,12,A1 จะ_· exact; B จะ_· exact; A2 ให้_· exact | same-group | scene words: ตะเกียบ
@@ -348,7 +353,7 @@ A_THING.METHOD-T5-08,494,ใส,A_THING.METHOD,A_THING.CLEAN,T5,T5,review,review
 A_THING.FUN-T5-02,494,ใส,A_THING.FUN,A_THING.CLEAN,T5,T5,review,review,8,A1 เมื่อวาน_มาก ok; B ที่_แบบนี้ exact; A2 ที่_· ok | same-group
 N_HOME.CUTLERY-T4-05,499,นาฬิกา,N_HOME.CUTLERY,N_HOME.CLOCK,T4,T1,review,review,6,A1 ใช้_มา ok; B ใช้_ไม่ exact; A2 ใช้_ดู ok | same-group
 A_PERSONSTATE.EMBARRASSED-T5-02,502,ตื่นเต้น,A_PERSONSTATE.EMBARRASSED,A_PERSONSTATE.NERVES,T5,T3,review,review,12,A1 ผม_มาก exact; B ไม่ต้อง_ขนาด exact; A2 ผม_จน exact | same-group | scene words: ภรรยา
-A_PERSONSTATE.BREATH-T5-01,502,ตื่นเต้น,A_PERSONSTATE.BREATH,A_PERSONSTATE.NERVES,T5,T3,review,review,9,A1 ผม_เลย exact; B ·_ขนาด exact; A2 ก็_แล้ว ok | same-group | scene words: กีฬา
+A_PERSONSTATE.BREATH-T5-01,502,ตื่นเต้น,A_PERSONSTATE.BREATH,A_PERSONSTATE.NERVES,T5,T3,review,review-strong,9,A1 ผม_เลย exact; B ·_ขนาด exact; A2 ก็_แล้ว ok | same-group
 N_MEDIA.READ-T2-01,504,หนัง,N_MEDIA.READ,N_MEDIA.FILM,T2,T2,review,review,7,A1 แนะนำ_สนุก ok; B ลอง_นี้ exact; A2 ·_นี้ ok | same-group
 A_THING.PRICE-T2-01,507,ช้า,A_THING.PRICE,A_THING.SPEED,T2,T2,review,review,8,A1 นี้_ไหม ok; B ·_มาก ok; A2 ·_แบบนี้ exact | same-group
 A_THING.SUIT-T2-01,507,ช้า,A_THING.SUIT,A_THING.SPEED,T2,T2,review,review,5,A1 นี้_ไหม ok; B ถ้า_ก็ ok; A2 นี้_เลย ok | same-group | scene words: เอาเลย
@@ -397,7 +402,7 @@ V_CHANGE.OUTCOME-T5-05,595,ตั้งรกราก,V_CHANGE.OUTCOME,V_CHANGE
 V_CHANGE.OUTCOME-T5-01,595,ตั้งรกราก,V_CHANGE.OUTCOME,V_CHANGE.LIVING,T5,T5,review,review,5,A1 จะ_หรือเปล่า ok; B จะ_หรือเปล่า ok; A2 จะ_หรือเปล่า ok | same-group
 V_MOVE.GO-T1-02,600,ยืน,V_MOVE.GO,V_MOVE.POSTURE,T1,T1,review,review,5,A1 ไม่_· ok; B ไม่_เหรอ ok; A2 อยาก_· ok | same-group
 A_PERSONSTATE.SAD-T5-04,601,กลัว,A_PERSONSTATE.SAD,A_PERSONSTATE.FEAR,T5,T2,review,review,3,A1 ผม_· ok; B ไม่ต้อง_ไป ok; A2 ก็_อีก ok | same-group
-A_PERSONSTATE.SURPRISE-T3-02,601,กลัว,A_PERSONSTATE.SURPRISE,A_PERSONSTATE.FEAR,T3,T2,review,review,3,A1 คุณ_ไหม ok; B ไม่_เลย ok; A2 ก็_· ok | same-group | scene words: เที่ยงคืน ตอนแรก
+A_PERSONSTATE.SURPRISE-T3-02,601,กลัว,A_PERSONSTATE.SURPRISE,A_PERSONSTATE.FEAR,T3,T2,review,review,3,A1 คุณ_ไหม ok; B ไม่_เลย ok; A2 ก็_· ok | same-group | scene words: เที่ยงคืน
 V_CHANGE.BREAK-T5-06,606,ตาย,V_CHANGE.BREAK,V_CHANGE.LIVING,T5,T5,review,review-strong,11,A1 อาจ_ก็ได้ exact; B จะ_ไป exact; A2 ให้_· ok | same-group
 V_CHANGE.BREAK-T5-09,606,ตาย,V_CHANGE.BREAK,V_CHANGE.LIVING,T5,T5,review,review,11,A1 จะ_· exact; B จะ_· exact; A2 ให้_· ok | same-group | scene words: ตะเกียบ
 V_CHANGE.DEADLINE-T5-06,606,ตาย,V_CHANGE.DEADLINE,V_CHANGE.LIVING,T5,T5,review,review,11,A1 จะ_· exact; B จะ_แล้ว ok; A2 จะ_· exact | same-group | scene words: ผ่อน หาเงิน ให้ยืม
@@ -502,6 +507,7 @@ N_PLACE.MARKET-T2-02,825,วัด,N_PLACE.MARKET,N_PLACE.TEMPLE,T2,T2,review,re
 N_PLACE.STUDY-T4-04,825,วัด,N_PLACE.STUDY,N_PLACE.TEMPLE,T4,T2,review,review-strong,12,A1 เข้า_ได้ exact; B ที่_· exact; A2 ที่_· exact | same-group
 N_PLACE.HEALTH-T4-01,825,วัด,N_PLACE.HEALTH,N_PLACE.TEMPLE,T4,T2,review,review,9,A1 ที่_ต้อง exact; B ที่_ต้อง exact; A2 ไป_เลย ok | same-group | scene words: ทอง มีชื่อ ทะเบียนบ้าน
 N_PLACE.AWAY-T3-02,825,วัด,N_PLACE.AWAY,N_PLACE.TEMPLE,T3,T2,review,review,6,A1 ไป_· exact; B ไป_ก็ ok; A2 ที่_ได้ ok | same-group
+N_PLACE.FIGHT-T4-03,825,วัด,N_PLACE.FIGHT,N_PLACE.TEMPLE,T4,T2,review,review,6,A1 ไป_· exact; B ไป_ไหม ok; A2 ไป_ได้ ok | same-group
 N_PLACE.OFFICE-T3-01,825,วัด,N_PLACE.OFFICE,N_PLACE.TEMPLE,T3,T2,review,review,6,A1 ไป_ต้อง exact; B ที่_เลย ok; A2 ที่_บ้าง ok | same-group
 N_PLACE.SPOT-T2-04,825,วัด,N_PLACE.SPOT,N_PLACE.TEMPLE,T2,T2,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group
 N_PLACE.SPOT-T3-02,825,วัด,N_PLACE.SPOT,N_PLACE.TEMPLE,T3,T2,review,review,5,A1 ·_นี้ exact; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: กลับรถ เย อะนะ
@@ -524,9 +530,11 @@ N_PLACE.REGION-T2-03,847,ร้านอาหาร,N_PLACE.REGION,N_PLACE.EAT,
 N_PLACE.LIVE-T2-01,847,ร้านอาหาร,N_PLACE.LIVE,N_PLACE.EAT,T2,T2,review,review,8,A1 อยู่_เหรอ ok; B อยู่_ใกล้ ok; A2 ·_ใกล้ exact | same-group
 N_PLACE.STATION-T2-05,847,ร้านอาหาร,N_PLACE.STATION,N_PLACE.EAT,T2,T2,review,review,8,A1 ถึง_แล้ว exact; B ถึง_เลย ok; A2 ที่_ได้ ok | same-group
 N_PLACE.SERVICE-T2-01,847,ร้านอาหาร,N_PLACE.SERVICE,N_PLACE.EAT,T2,T2,review,review,7,A1 มี_ไหม ok; B มี_ข้างๆ exact; A2 ·_นั้น ok | same-group
+N_PLACE.FIGHT-T4-03,847,ร้านอาหาร,N_PLACE.FIGHT,N_PLACE.EAT,T4,T2,review,review,6,A1 ไป_· ok; B ไป_ไหม ok; A2 ไป_ได้ exact | same-group
 N_PLACE.REGION-T2-02,847,ร้านอาหาร,N_PLACE.REGION,N_PLACE.EAT,T2,T2,review,review,5,A1 ไป_ใหม่ ok; B ไป_ที่ ok; A2 ไป_นั้น ok | same-group
 N_PLACE.MARKET-T2-02,847,ร้านอาหาร,N_PLACE.MARKET,N_PLACE.EAT,T2,T2,review,review,4,A1 ไป_ไหน ok; B ไป_ใกล้ ok; A2 ·_นั้น ok | same-group | scene words: ถูกๆ
 N_PLACE.AWAY-T3-02,847,ร้านอาหาร,N_PLACE.AWAY,N_PLACE.EAT,T3,T2,review,review,3,A1 ไป_· ok; B ไป_ก็ ok; A2 ที่_ได้ ok | same-group
+N_PLACE.FIGHT-T4-02,847,ร้านอาหาร,N_PLACE.FIGHT,N_PLACE.EAT,T4,T2,review,review,3,A1 มี_ใหม่ ok; B ที่_ด้วย ok; A2 ที่_· ok | same-group
 N_PLACE.OFFICE-T3-06,847,ร้านอาหาร,N_PLACE.OFFICE,N_PLACE.EAT,T3,T2,review,review,3,A1 ไป_ไหม ok; B ไป_ก่อน ok; A2 ไป_ที่ ok | same-group
 V_MOVE.TRIP-T5-03,848,ลง,V_MOVE.TRIP,V_MOVE.RIDE,T5,T2,review,review,6,A1 ผม_ที่ exact; B จะ_· ok; A2 อยาก_ให้ ok | same-group | scene words: เย อะนะ
 V_COMMUNICATE.TOPIC-T1-03,850,ขอ,V_COMMUNICATE.TOPIC,V_COMMUNICATE.REQUEST,T1,T1,review,review,4,A1 อยาก_· ok; B อยาก_· ok; A2 ·_แล้ว ok | same-group
@@ -627,6 +635,7 @@ N_PLACE.SPOT-T3-02,989,ศูนย์อาหาร,N_PLACE.SPOT,N_PLACE.EAT,T
 N_PLACE.REGION-T2-03,989,ศูนย์อาหาร,N_PLACE.REGION,N_PLACE.EAT,T2,T2,review,review,10,A1 ·_นี้ exact; B แต่_นี้ exact; A2 อยู่_นี้ ok | same-group | scene words: ทั้งปี
 N_PLACE.LIVE-T2-01,989,ศูนย์อาหาร,N_PLACE.LIVE,N_PLACE.EAT,T2,T2,review,review,8,A1 อยู่_เหรอ ok; B อยู่_ใกล้ ok; A2 ·_ใกล้ exact | same-group
 N_PLACE.SERVICE-T2-01,989,ศูนย์อาหาร,N_PLACE.SERVICE,N_PLACE.EAT,T2,T2,review,review,7,A1 มี_ไหม ok; B มี_ข้างๆ exact; A2 ·_นั้น ok | same-group
+N_PLACE.FIGHT-T4-02,989,ศูนย์อาหาร,N_PLACE.FIGHT,N_PLACE.EAT,T4,T2,review,review,3,A1 มี_ใหม่ ok; B ที่_ด้วย ok; A2 ที่_· ok | same-group
 V_CHANGE.WIN-T2-04,992,หยุด,V_CHANGE.WIN,V_CHANGE.START,T2,T2,review,review-strong,14,A1 คง_· exact; B คง_· exact; A2 คง_· exact | same-group
 V_CHANGE.HABIT-T2-04,992,หยุด,V_CHANGE.HABIT,V_CHANGE.START,T2,T2,review,review,5,A1 จะ_งาน ok; B ·_งาน ok; A2 ·_งาน ok | same-group
 V_CHANGE.DEADLINE-T5-06,992,หยุด,V_CHANGE.DEADLINE,V_CHANGE.START,T5,T2,review,review,3,A1 จะ_· ok; B จะ_แล้ว ok; A2 จะ_· ok | same-group | scene words: ผ่อน หาเงิน ให้ยืม
@@ -660,7 +669,7 @@ N_PLACE.WORK-T5-01,1040,สำนักงาน,N_PLACE.WORK,N_PLACE.OFFICE,T5,
 A_PERSONSTATE.EMBARRASSED-T5-02,1044,หึง,A_PERSONSTATE.EMBARRASSED,A_PERSONSTATE.JEALOUS,T5,T5,review,review,11,A1 ผม_มาก ok; B ไม่ต้อง_ขนาด exact; A2 ผม_จน exact | same-group | scene words: ภรรยา
 A_PERSONSTATE.NERVES-T5-02,1044,หึง,A_PERSONSTATE.NERVES,A_PERSONSTATE.JEALOUS,T5,T5,review,review-strong,11,A1 ผม_มาก ok; B ไม่ต้อง_ขนาด exact; A2 ผม_จน exact | same-group
 A_PERSONSTATE.ANGRY-T5-02,1044,หึง,A_PERSONSTATE.ANGRY,A_PERSONSTATE.JEALOUS,T5,T5,review,review,8,A1 คน_ง่าย ok; B ก็_มาก ok; A2 ไม่_· exact | same-group | scene words: ติดตัว
-A_PERSONSTATE.BREATH-T5-01,1044,หึง,A_PERSONSTATE.BREATH,A_PERSONSTATE.JEALOUS,T5,T5,review,review,5,A1 ผม_เลย ok; B ·_ขนาด ok; A2 ก็_แล้ว ok | same-group | scene words: กีฬา
+A_PERSONSTATE.BREATH-T5-01,1044,หึง,A_PERSONSTATE.BREATH,A_PERSONSTATE.JEALOUS,T5,T5,review,review,5,A1 ผม_เลย ok; B ·_ขนาด ok; A2 ก็_แล้ว ok | same-group
 V_HANDLE.DEVICE-T5-04,1046,ปิดบัง,V_HANDLE.DEVICE,V_HANDLE.HIDE,T5,T5,review,review,5,A1 อยาก_มือถือ ok; B ลอง_มือถือ ok; A2 จะ_มือถือ ok | same-group
 N_PLACE.WORK-T5-01,1050,ร้านขายดอกไม้,N_PLACE.WORK,N_PLACE.SHOP,T5,T5,review,review,14,A1 ที่_นี้ exact; B ที่_นี้ exact; A2 ที่_นี้ exact | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
 V_CHANGE.OUTCOME-T5-05,1051,ค้าง,V_CHANGE.OUTCOME,V_CHANGE.DEADLINE,T5,T5,review,review,11,A1 จะ_อีก exact; B ไม่_· ok; A2 ไม่_อีก exact | same-group | scene words: ลาออก
@@ -693,8 +702,8 @@ V_CHANGE.OUTCOME-T5-05,1105,พลาด,V_CHANGE.OUTCOME,V_CHANGE.MISS,T5,T5,re
 N_ABSTRACT.PROBLEM-T2-02,1108,โอกาส,N_ABSTRACT.PROBLEM,N_ABSTRACT.POINT,T2,T2,review,review,8,A1 มี_เลย exact; B มี_ก็ ok; A2 มี_ผม ok | same-group
 V_ROUTINE.LEARN-T5-04,1114,เดินเล่น,V_ROUTINE.LEARN,V_ROUTINE.FITNESS,T5,T5,review,review,5,A1 ชอบ_ที่ ok; B ลอง_ที่นั่น ok; A2 ลอง_ที่นั่น ok | same-group
 V_ROUTINE.LEISURE-T5-01,1114,เดินเล่น,V_ROUTINE.LEISURE,V_ROUTINE.FITNESS,T5,T5,review,review,5,A1 ชอบ_ที่ ok; B ชอบ_ด้วยกัน ok; A2 มา_ที่ ok | same-group | scene words: เวลาว่าง
-A_PERSONSTATE.BREATH-T5-01,1115,ปวดอึ,A_PERSONSTATE.BREATH,A_PERSONSTATE.TOILET,T5,T5,review,review,5,A1 ผม_เลย ok; B ·_ขนาด ok; A2 ก็_แล้ว ok | same-group | scene words: กีฬา
-A_PERSONSTATE.BREATH-T5-01,1116,ปวดฉี่,A_PERSONSTATE.BREATH,A_PERSONSTATE.TOILET,T5,T5,review,review,5,A1 ผม_เลย ok; B ·_ขนาด ok; A2 ก็_แล้ว ok | same-group | scene words: กีฬา
+A_PERSONSTATE.BREATH-T5-01,1115,ปวดอึ,A_PERSONSTATE.BREATH,A_PERSONSTATE.TOILET,T5,T5,review,review,5,A1 ผม_เลย ok; B ·_ขนาด ok; A2 ก็_แล้ว ok | same-group
+A_PERSONSTATE.BREATH-T5-01,1116,ปวดฉี่,A_PERSONSTATE.BREATH,A_PERSONSTATE.TOILET,T5,T5,review,review,5,A1 ผม_เลย ok; B ·_ขนาด ok; A2 ก็_แล้ว ok | same-group
 V_HANDLE.TRANSFER-T3-03,1123,ถอด,V_HANDLE.TRANSFER,V_HANDLE.DRESS,T3,T2,review,review-strong,9,A1 ช่วย_รองเท้า ok; B เขา_รองเท้า exact; A2 เขา_รองเท้า exact | same-group
 N_ABSTRACT.SCOPE-T5-03,1124,ความงาม,N_ABSTRACT.SCOPE,N_ABSTRACT.QUALITY,T5,T5,review,review,5,A1 มี_เลย ok; B มี_ก็ ok; A2 มี_มากกว่า ok | same-group
 A_THING.METHOD-T5-05,1127,เฉิดฉาย,A_THING.METHOD,A_THING.LOOKS,T5,T5,review,review,14,A1 นี้_มาก exact; B ที่_แบบนี้ exact; A2 ที่_แบบนี้ exact | same-group | scene words: แบบฟอร์ม กรอก
@@ -769,7 +778,7 @@ V_CHANGE.OUTCOME-T5-01,1230,กลายเป็น,V_CHANGE.OUTCOME,V_CHANGE.B
 A_THING.SPEED-T2-01,1233,คุ้ม,A_THING.SPEED,A_THING.PRICE,T2,T2,review,review-strong,14,A1 สนามบิน_ไหม exact; B ·_มาก exact; A2 ·_แบบนี้ exact | same-group
 A_THING.SUIT-T2-01,1233,คุ้ม,A_THING.SUIT,A_THING.PRICE,T2,T2,review,review,8,A1 นี้_ไหม exact; B ถ้า_ก็ ok; A2 นี้_เลย ok | same-group | scene words: เอาเลย
 A_THING.NORMAL-T3-01,1233,คุ้ม,A_THING.NORMAL,A_THING.PRICE,T3,T2,review,review,6,A1 นี้_ไหม exact; B ไม่_มาก ok; A2 ไม่_มาก ok | same-group | scene words: เสื้อเชิ้ต แจ็กเก็ต
-A_PERSONSTATE.BREATH-T5-01,1242,น้อยใจ,A_PERSONSTATE.BREATH,A_PERSONSTATE.SAD,T5,T5,review,review,5,A1 ผม_เลย ok; B ·_ขนาด ok; A2 ก็_แล้ว ok | same-group | scene words: กีฬา
+A_PERSONSTATE.BREATH-T5-01,1242,น้อยใจ,A_PERSONSTATE.BREATH,A_PERSONSTATE.SAD,T5,T5,review,review,5,A1 ผม_เลย ok; B ·_ขนาด ok; A2 ก็_แล้ว ok | same-group
 V_ROUTINE.FORTUNE-T5-07,1244,ทำบุญ,V_ROUTINE.FORTUNE,V_ROUTINE.MERIT,T5,T2,review,review,6,A1 ไป_ที่วัด ok; B ไป_บ้าง ok; A2 ไป_· exact | same-group | scene words: ภาคเหนือ
 V_COMMUNICATE.ASSIGN-T4-02,1246,อธิบาย,V_COMMUNICATE.ASSIGN,V_COMMUNICATE.TOPIC,T4,T2,review,review-strong,9,A1 จะ_ให้ exact; B ไม่_ให้ ok; A2 จะ_ให้ exact | same-group
 V_COMMUNICATE.LANG-T4-02,1246,อธิบาย,V_COMMUNICATE.LANG,V_COMMUNICATE.TOPIC,T4,T2,review,review,9,A1 จะ_ให้ exact; B จะ_ก็ ok; A2 จะ_ให้ exact | same-group | scene words: เข้าใจง่าย
@@ -826,10 +835,16 @@ V_CHANGE.DEADLINE-T5-06,1383,ลาออก,V_CHANGE.DEADLINE,V_CHANGE.LEAVE,T5
 V_CHANGE.OUTCOME-T5-01,1383,ลาออก,V_CHANGE.OUTCOME,V_CHANGE.LEAVE,T5,T5,review,review,5,A1 จะ_หรือเปล่า ok; B จะ_หรือเปล่า ok; A2 จะ_หรือเปล่า ok | same-group
 N_ABSTRACT.MINE-T5-08,1390,ความสำคัญ,N_ABSTRACT.MINE,N_ABSTRACT.CAUSE,T5,T5,review,review,5,A1 เข้าใจ_เลย ok; B ·_ของ ok; A2 เข้าใจ_แล้ว ok | same-group | scene words: รับรอง
 V_HANDLE.LIQUID-T2-03,1427,ล้าง,V_HANDLE.LIQUID,V_HANDLE.CLEAN,T2,T2,review,review,5,A1 ช่วย_ให้ ok; B จะ_ก่อน ok; A2 จะ_อีก ok | same-group | scene words: หลังจากนั้น
+V_HANDLE.STRIKE-T4-02,1427,ล้าง,V_HANDLE.STRIKE,V_HANDLE.CLEAN,T4,T2,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
+V_HANDLE.STRIKE-T4-07,1432,ดึง,V_HANDLE.STRIKE,V_HANDLE.DOOR,T4,T2,review,review,6,A1 ลอง_ดู exact; B ลอง_ช้าๆ ok; A2 ลอง_ช้าๆ ok | same-group
+V_HANDLE.STRIKE-T4-02,1432,ดึง,V_HANDLE.STRIKE,V_HANDLE.DOOR,T4,T2,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
 V_HANDLE.PRESS-T4-03,1436,ตัด,V_HANDLE.PRESS,V_HANDLE.CUT,T4,T2,review,review,6,A1 ต้อง_ก่อน exact; B ลอง_แล้ว ok; A2 ลอง_ให้ ok | same-group | scene words: ตาก
 V_HANDLE.LIQUID-T2-03,1436,ตัด,V_HANDLE.LIQUID,V_HANDLE.CUT,T2,T2,review,review,5,A1 ช่วย_ให้ ok; B จะ_ก่อน ok; A2 จะ_อีก ok | same-group | scene words: หลังจากนั้น
+V_HANDLE.STRIKE-T4-02,1436,ตัด,V_HANDLE.STRIKE,V_HANDLE.CUT,T4,T2,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
 V_HANDLE.LIQUID-T2-03,1438,ทำความสะอาด,V_HANDLE.LIQUID,V_HANDLE.CLEAN,T2,T2,review,review,5,A1 ช่วย_ให้ ok; B จะ_ก่อน ok; A2 จะ_อีก ok | same-group | scene words: หลังจากนั้น
+V_HANDLE.STRIKE-T4-02,1438,ทำความสะอาด,V_HANDLE.STRIKE,V_HANDLE.CLEAN,T4,T2,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
 V_HANDLE.PAPER-T5-04,1440,รีด,V_HANDLE.PAPER,V_HANDLE.LAUNDRY,T5,T2,review,review,6,A1 ต้อง_ให้ ok; B จะ_ให้ exact; A2 เขา_ก่อน ok | same-group | scene words: วันก่อน
+V_HANDLE.STRIKE-T4-02,1440,รีด,V_HANDLE.STRIKE,V_HANDLE.LAUNDRY,T4,T2,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
 V_ROUTINE.VOTE-T5-03,1444,ออกกำลังกาย,V_ROUTINE.VOTE,V_ROUTINE.FITNESS,T5,T5,review,review,8,A1 ไป_กัน ok; B ไป_ก็ ok; A2 ไป_ด้วยกัน exact | same-group | scene words: พลาดโอกาส
 V_COMMUNICATE.EXPLAIN-T5-07,1445,พูดคุย,V_COMMUNICATE.EXPLAIN,V_COMMUNICATE.TALK,T5,T5,review,review,8,A1 อยาก_ก็ ok; B อยาก_เรื่อง exact; A2 คุณ_ได้ ok | same-group | scene words: แผนใหม่
 V_COMMUNICATE.PROPOSE-T5-02,1445,พูดคุย,V_COMMUNICATE.PROPOSE,V_COMMUNICATE.TALK,T5,T5,review,review,8,A1 ต้อง_แล้ว ok; B ต้อง_ให้ ok; A2 จะ_ให้ exact | same-group | scene words: รับรอง
@@ -885,6 +900,7 @@ N_ABSTRACT.CULTURE-T5-05,1525,สี,N_ABSTRACT.CULTURE,N_ABSTRACT.SENSE,T5,T2,r
 N_PLACE.HEALTH-T5-09,1537,ท่าเรือ,N_PLACE.HEALTH,N_PLACE.STATION,T5,T2,review,review,9,A1 ที่_ตอน ok; B ถึง_แล้ว exact; A2 ถึง_ก่อน exact | same-group | scene words: ชั้นสอง
 N_PLACE.AWAY-T3-02,1537,ท่าเรือ,N_PLACE.AWAY,N_PLACE.STATION,T3,T2,review,review,6,A1 ไป_· ok; B ไป_ก็ ok; A2 ที่_ได้ exact | same-group
 N_PLACE.SPOT-T2-04,1537,ท่าเรือ,N_PLACE.SPOT,N_PLACE.STATION,T2,T2,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group
+N_PLACE.FIGHT-T4-03,1537,ท่าเรือ,N_PLACE.FIGHT,N_PLACE.STATION,T4,T2,review,review,3,A1 ไป_· ok; B ไป_ไหม ok; A2 ไป_ได้ ok | same-group
 N_PLACE.SPOT-T4-02,1537,ท่าเรือ,N_PLACE.SPOT,N_PLACE.STATION,T4,T2,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
 N_PLACE.WORK-T5-01,1537,ท่าเรือ,N_PLACE.WORK,N_PLACE.STATION,T5,T2,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
 N_PLACE.SPOT-T3-02,1537,ท่าเรือ,N_PLACE.SPOT,N_PLACE.STATION,T3,T2,review,review,2,A1 ·_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: กลับรถ เย อะนะ
@@ -892,6 +908,7 @@ N_PLACE.HEALTH-T5-09,1538,สถานี,N_PLACE.HEALTH,N_PLACE.STATION,T5,T2,r
 N_PLACE.AWAY-T3-02,1538,สถานี,N_PLACE.AWAY,N_PLACE.STATION,T3,T2,review,review,6,A1 ไป_· ok; B ไป_ก็ ok; A2 ที่_ได้ exact | same-group
 N_PLACE.SPOT-T2-04,1538,สถานี,N_PLACE.SPOT,N_PLACE.STATION,T2,T2,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group
 N_PLACE.SPOT-T3-02,1538,สถานี,N_PLACE.SPOT,N_PLACE.STATION,T3,T2,review,review,5,A1 ·_นี้ exact; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: กลับรถ เย อะนะ
+N_PLACE.FIGHT-T4-03,1538,สถานี,N_PLACE.FIGHT,N_PLACE.STATION,T4,T2,review,review,3,A1 ไป_· ok; B ไป_ไหม ok; A2 ไป_ได้ ok | same-group
 N_PLACE.REGION-T3-05,1538,สถานี,N_PLACE.REGION,N_PLACE.STATION,T3,T2,review,review,3,A1 ใน_นี้ ok; B ใน_นี้ ok; A2 ใน_นี้ ok | same-group
 N_PLACE.SPOT-T4-02,1538,สถานี,N_PLACE.SPOT,N_PLACE.STATION,T4,T2,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
 N_PLACE.WORK-T5-01,1538,สถานี,N_PLACE.WORK,N_PLACE.STATION,T5,T2,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
@@ -940,6 +957,7 @@ A_PERSONSTATE.BORED-T2-03,1572,ป่วย,A_PERSONSTATE.BORED,A_PERSONSTATE.SI
 A_PERSONSTATE.LONELY-T3-01,1572,ป่วย,A_PERSONSTATE.LONELY,A_PERSONSTATE.SICK,T3,T2,review,review,3,A1 ผม_มาก ok; B ถ้า_ก็ ok; A2 ยัง_· ok | same-group
 V_HANDLE.BALL-T4-02,1588,เปิด,V_HANDLE.BALL,V_HANDLE.DOOR,T4,T1,review,review-strong,9,A1 คุณ_ได้ ok; B ลอง_ดู exact; A2 ถ้า_ไม่ exact | same-group
 V_HANDLE.TAKE-T2-17,1588,เปิด,V_HANDLE.TAKE,V_HANDLE.DOOR,T2,T1,review,review-strong,9,A1 ช่วย_ไหม exact; B ฉัน_ได้ ok; A2 ถ้า_ไม่ exact | same-group
+V_HANDLE.STRIKE-T4-02,1588,เปิด,V_HANDLE.STRIKE,V_HANDLE.DOOR,T4,T1,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
 N_PERSONROLE.CLIENT-T2-01,1592,เด็ก,N_PERSONROLE.CLIENT,N_PERSONROLE.PEOPLE,T2,T1,review,review-strong,11,A1 ·_นั้น exact; B ให้_นั้น exact; A2 ให้_นั้น exact | same-group
 V_MIND.AGREE-T2-04,1594,ได้ยิน,V_MIND.AGREE,V_MIND.SENSE,T2,T2,review,review,4,A1 คุณ_ไหม ok; B ·_เลย ok; A2 คุณ_· ok | same-group
 A_THING.SUIT-T2-01,1596,สั้น,A_THING.SUIT,A_THING.SIZE,T2,T2,review,review,5,A1 นี้_ไหม ok; B ถ้า_ก็ ok; A2 นี้_เลย ok | same-group | scene words: เอาเลย
@@ -988,18 +1006,23 @@ N_EVENT.SPORT-T4-01,5502,มวย,N_EVENT.SPORT,N_EVENT.BOXING,T4,T4,review,rev
 N_EVENT.SPORT-T4-02,5502,มวย,N_EVENT.SPORT,N_EVENT.BOXING,T4,T4,review,review,14,A1 ไปดู_ที่ exact; B ดู_ของจริง exact; A2 ดู_ตั้งแต่ exact | same-group | scene words: ของจริง
 N_EVENT.SPORT-T4-03,5502,มวย,N_EVENT.SPORT,N_EVENT.BOXING,T4,T4,review,review,14,A1 เรียน_กับ exact; B เวลาเรียน_· exact; A2 ลอง_กัน exact | same-group | scene words: เวลาเรียน
 N_EVENT.SPORT-T4-04,5502,มวย,N_EVENT.SPORT,N_EVENT.BOXING,T4,T4,review,review,14,A1 เรียน_ที่ไหน exact; B เรียน_เดือน exact; A2 ลอง_วัน exact | same-group | scene words: ศูนย์หน้า
-N_EVENT.WATCH-T4-02,5502,มวย,N_EVENT.WATCH,N_EVENT.BOXING,T4,T4,review,review,5,A1 ดู_ที่ ok; B ดู_กับ ok; A2 ดู_ที่ ok | same-group
+N_EVENT.WATCH-T4-02,5502,มวย,N_EVENT.WATCH,N_EVENT.BOXING,T4,T4,review,review-strong,14,A1 ดู_ที่ exact; B ดู_กับ exact; A2 ดู_ที่ exact | same-group
 N_PERSONROLE.STAR-T4-01,5503,นักมวย,N_PERSONROLE.STAR,N_PERSONROLE.FIGHT,T4,T4,review,review-strong,14,A1 เป็น_แต่ exact; B เป็น_ต้อง exact; A2 ดู_ออนไลน์ exact | same-group
 N_PERSONROLE.STAR-T4-02,5503,นักมวย,N_PERSONROLE.STAR,N_PERSONROLE.FIGHT,T4,T4,review,review,14,A1 เห็น_คน exact; B กับ_คน exact; A2 แล้ว_คน exact | same-group | scene words: ลายเซ็น
 N_PERSONROLE.STAR-T4-03,5503,นักมวย,N_PERSONROLE.STAR,N_PERSONROLE.FIGHT,T4,T4,review,review,14,A1 ·_คน exact; B เป็น_แบบนี้ exact; A2 ดู_คน exact | same-group | scene words: ตัวอย่าง
 N_PERSONROLE.STAR-T4-04,5503,นักมวย,N_PERSONROLE.STAR,N_PERSONROLE.FIGHT,T4,T4,review,review-strong,14,A1 ไปดู_เล่น exact; B ชอบ_คน exact; A2 ชอบ_คน exact | same-group
+N_PERSONROLE.WORKER-T5-01,5503,นักมวย,N_PERSONROLE.WORKER,N_PERSONROLE.FIGHT,T5,T4,review,review,3,A1 ว่า_ต้อง ok; B ·_ต้อง ok; A2 เพราะ_ก็ ok | same-group
 N_PERSONROLE.SCHOOL-T4-02,5504,ครูมวย,N_PERSONROLE.SCHOOL,N_PERSONROLE.FIGHT,T4,T4,review,review,14,A1 ·_นัด exact; B ให้_หรือยัง exact; A2 แต่_อาจ exact | same-group | scene words: พบ
 N_PERSONROLE.SCHOOL-T4-03,5504,ครูมวย,N_PERSONROLE.SCHOOL,N_PERSONROLE.FIGHT,T4,T4,review,review,14,A1 ขอให้_ช่วย exact; B เลย_ช่วย exact; A2 กับ_ใน exact | same-group | scene words: เรียนต่อ
 N_PERSONROLE.SCHOOL-T4-01,5504,ครูมวย,N_PERSONROLE.SCHOOL,N_PERSONROLE.FIGHT,T4,T4,review,review-strong,13,A1 กับ_นี้ exact; B ·_นี้ exact; A2 ภาษาไทย_นี้ exact | same-group
+N_PERSONROLE.WORKER-T5-03,5504,ครูมวย,N_PERSONROLE.WORKER,N_PERSONROLE.FIGHT,T5,T4,review,review,3,A1 เป็น_ที่ ok; B เป็น_อยู่ ok; A2 เป็น_ที่ ok | same-group
 N_PLACE.LEISURE-T4-01,5506,ค่ายมวย,N_PLACE.LEISURE,N_PLACE.FIGHT,T4,T4,review,review,14,A1 ที่_กัน exact; B เข้า_คนละ exact; A2 บัตร_ลด exact | same-group | scene words: เตะ
 N_PLACE.LEISURE-T4-02,5506,ค่ายมวย,N_PLACE.LEISURE,N_PLACE.FIGHT,T4,T4,review,review,14,A1 เช่า_ให้ exact; B ที่_นั้น exact; A2 ใน_มี exact | same-group | scene words: เตะ คนดู
 N_PLACE.LEISURE-T4-03,5506,ค่ายมวย,N_PLACE.LEISURE,N_PLACE.FIGHT,T4,T4,review,review-strong,14,A1 ถึง_แล้ว exact; B ที่_ดู exact; A2 ว่าที่_ปิด exact | same-group
+N_PLACE.CHECK-T4-02,5506,ค่ายมวย,N_PLACE.CHECK,N_PLACE.FIGHT,T4,T4,review,review,11,A1 ที่_ให้ ok; B ที่_นั้น exact; A2 ที่_ไม่ exact | same-group | scene words: ข้างทาง
+N_PLACE.STUDY-T4-04,5506,ค่ายมวย,N_PLACE.STUDY,N_PLACE.FIGHT,T4,T4,review,review-strong,11,A1 เข้า_ได้ ok; B ที่_· exact; A2 ที่_· exact | same-group
 N_PLACE.SPOT-T4-02,5506,ค่ายมวย,N_PLACE.SPOT,N_PLACE.FIGHT,T4,T4,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
+N_PLACE.HEALTH-T5-06,5506,ค่ายมวย,N_PLACE.HEALTH,N_PLACE.FIGHT,T5,T4,review,review,3,A1 ที่_ปิด ok; B ไป_ไม่ ok; A2 ที่_ให้ ok | same-group
 N_PLACE.WORK-T5-01,5506,ค่ายมวย,N_PLACE.WORK,N_PLACE.FIGHT,T5,T4,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
 N_CLOTHES-T4-01,5507,นวม,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review-strong,14,A1 ซื้อ_ไป exact; B กับ_ก่อน exact; A2 ใบเสร็จ_ยัง exact | via peer group
 N_CLOTHES-T4-05,5507,นวม,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review-strong,14,A1 ลด_ครึ่ง exact; B อยากได้_พอดี exact; A2 ไปดู_กัน exact | via peer group
@@ -1008,21 +1031,28 @@ N_CLOTHES-T4-07,5507,นวม,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review,14,"A1 
 N_CLOTHES-T4-08,5507,นวม,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review-strong,14,A1 ใส่_เก่า exact; B ใส่_ต่อ exact; A2 เอา_ใส่ exact | via peer group
 N_CLOTHES-T4-09,5507,นวม,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review,14,A1 ใส่_ไป exact; B ใส่_แล้ว exact; A2 ใส่_ไป exact | via peer group | scene words: เสื้อยืด
 N_CLOTHES-T4-10,5507,นวม,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review,14,A1 ส่ง_ไป exact; B เรื่อง_ให้ exact; A2 ใส่_ไป exact | via peer group | scene words: ได้คืน แผนก ซักรีด
+N_CLOTHES-T5-01,5507,นวม,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review-strong,12,A1 ใส่_ไป exact; B ใส่_ไป exact; A2 เก็บ_ไว้ exact | via peer group
 N_CLOTHES-T5-03,5507,นวม,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review,12,A1 สั่ง_ออนไลน์ exact; B ซื้อ_ต้อง exact; A2 ลอง_ที่ exact | via peer group | scene words: ขนาดที่ ถูกๆ
 N_CLOTHES-T5-05,5507,นวม,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review-strong,12,A1 ถอด_ทิ้ง exact; B เก็บ_เอง exact; A2 เก็บ_ให้ exact | via peer group
 N_CLOTHES-T5-08,5507,นวม,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review,12,A1 ขอยืม_ของ exact; B ใช้_เหมือนกัน exact; A2 ใช้_ผม exact | via peer group | scene words: คืนให้
 N_CLOTHES-T5-09,5507,นวม,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review-strong,12,A1 ·_ที่ exact; B ซื้อ_เอง exact; A2 ซื้อ_แบบนี้ exact | via peer group
 N_CLOTHES-T5-10,5507,นวม,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review,12,A1 ·_หน้า exact; B ซื้อ_คู่ exact; A2 เอา_กับ exact | via peer group | scene words: ส่วนลด ถุงเท้า
+N_ITEM-T5-02,5507,นวม,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,12,A1 ซื้อ_ใหม่ exact; B ซื้อ_ที่ exact; A2 ไปดู_ที่ exact | same-group | scene words: ของเก่า
+N_ITEM-T4-07,5507,นวม,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,11,"A1 ลอง_นี้ ok; B ใช้_ของ exact; A2 ใช้_ของ exact | same-group | English ""{E} is"" frame with a pair / mass word; scene words: เซ็นชื่อ"
 N_ITEM-T4-53,5507,นวม,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,11,A1 ซื้อ_ให้ exact; B ซื้อ_ให้ exact; A2 เลือก_ที่ ok | same-group | scene words: บวช
 N_ITEM-T5-07,5507,นวม,N_ITEM,N_ITEM.GEAR,T5,T4,review,review-strong,9,A1 ·_ของ exact; B ใส่_ใหม่ ok; A2 เอา_ไป exact | same-group
+N_ITEM-T5-23,5507,นวม,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,9,A1 หา_ไม่ exact; B เก็บ_ไว้ exact; A2 หา_· ok | same-group | scene words: ยังอยู่ กระเป๋าเสื้อ
 N_ITEM-T5-35,5507,นวม,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,9,A1 ซื้อ_ให้ exact; B ซื้อ_ให้ exact; A2 ชอบ_ที่ ok | same-group | scene words: วันแม่ แม่คุณ หอม อ่อน
 N_ITEM-T5-38,5507,นวม,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,9,"A1 เก็บ_นี้ ok; B เอา_ไป exact; A2 เอา_ไป exact | same-group | English ""{E} is"" frame with a pair / mass word"
+N_ITEM-T4-10,5507,นวม,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,8,A1 มี_เลย ok; B มี_ใน ok; A2 ใช้_ของ exact | same-group
+N_ITEM-T4-24,5507,นวม,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,8,A1 เปลี่ยน_ใหม่ ok; B เปลี่ยน_เก่า ok; A2 ใช่_เก่า exact | same-group
+N_ITEM-T4-49,5507,นวม,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,8,A1 ซื้อ_ไป exact; B วาง_ที่ ok; A2 วาง_ไว้ ok | same-group | scene words: ที่สูง ชั้นสูง
 N_ITEM-T4-54,5507,นวม,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,8,"A1 ขอ_จาก ok; B เอา_ใส่ exact; A2 ขอ_ครึ่ง ok | same-group | English ""{E} is"" frame with a pair / mass word"
-N_ITEM-T5-02,5507,นวม,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,6,A1 ซื้อ_ใหม่ ok; B ซื้อ_ที่ exact; A2 ไปดู_ที่ ok | same-group | scene words: ของเก่า
-N_ITEM-T4-07,5507,นวม,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,5,"A1 ลอง_นี้ ok; B ใช้_ของ ok; A2 ใช้_ของ ok | same-group | English ""{E} is"" frame with a pair / mass word; scene words: เซ็นชื่อ"
-N_ITEM-T4-10,5507,นวม,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,5,A1 มี_เลย ok; B มี_ใน ok; A2 ใช้_ของ ok | same-group
+N_ITEM-T4-03,5507,นวม,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,5,A1 ขาย_ไหม ok; B มี_หลาย ok; A2 ขอ_ที่ ok | same-group
 N_ITEM-T4-12,5507,นวม,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,5,A1 ซื้อ_แล้ว ok; B ซื้อ_ออนไลน์ ok; A2 ซื้อ_ใน ok | same-group
 N_ITEM-T4-63,5507,นวม,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,5,"A1 ส่ง_นี้ ok; B ส่ง_แบบ ok; A2 ส่ง_นี้ ok | same-group | English ""{E} is"" frame with a pair / mass word"
+N_ITEM-T5-06,5507,นวม,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,3,A1 ซื้อ_ไว้ ok; B เอา_ที่ ok; A2 ขอ_ที่ ok | same-group
+N_ITEM-T5-46,5507,นวม,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,3,"A1 ขาย_ใน ok; B ขาย_ที่นี่ ok; A2 ขาย_อยู่ ok | same-group | English ""{E} is"" frame with a pair / mass word; scene words: ตรวจหา"
 N_CLOTHES-T4-01,5508,ผ้าพันมือ,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review-strong,14,A1 ซื้อ_ไป exact; B กับ_ก่อน exact; A2 ใบเสร็จ_ยัง exact | via peer group
 N_CLOTHES-T4-05,5508,ผ้าพันมือ,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review-strong,14,A1 ลด_ครึ่ง exact; B อยากได้_พอดี exact; A2 ไปดู_กัน exact | via peer group
 N_CLOTHES-T4-06,5508,ผ้าพันมือ,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review,14,A1 มาก_ผม exact; B ถอด_ออกมา exact; A2 มี_อื่น exact | via peer group | scene words: ตาก
@@ -1031,27 +1061,32 @@ N_CLOTHES-T4-10,5508,ผ้าพันมือ,N_CLOTHES,N_ITEM.GEAR,T4,T4,rev
 N_HEALTH.KIT-T4-01,5508,ผ้าพันมือ,N_HEALTH.KIT,N_ITEM.GEAR,T4,T4,review,review-strong,14,A1 มี_เลย exact; B ·_ที่นี่ exact; A2 เอา_แบบ exact | via peer group
 N_HEALTH.KIT-T4-02,5508,ผ้าพันมือ,N_HEALTH.KIT,N_ITEM.GEAR,T4,T4,review,review-strong,14,A1 มี_ไว้ exact; B ซื้อ_มา exact; A2 วาง_ไว้ exact | via peer group
 N_HEALTH.KIT-T4-03,5508,ผ้าพันมือ,N_HEALTH.KIT,N_ITEM.GEAR,T4,T4,review,review,14,A1 ·_ที่ exact; B เอา_ใส่ exact; A2 ใช้_แน่นอน exact | via peer group | scene words: กระเป๋าเดินทาง
+N_CLOTHES-T5-01,5508,ผ้าพันมือ,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review-strong,12,A1 ใส่_ไป exact; B ใส่_ไป exact; A2 เก็บ_ไว้ exact | via peer group
 N_CLOTHES-T5-05,5508,ผ้าพันมือ,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review-strong,12,A1 ถอด_ทิ้ง exact; B เก็บ_เอง exact; A2 เก็บ_ให้ exact | via peer group
 N_CLOTHES-T5-09,5508,ผ้าพันมือ,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review-strong,12,A1 ·_ที่ exact; B ซื้อ_เอง exact; A2 ซื้อ_แบบนี้ exact | via peer group
+N_ITEM-T5-02,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,12,A1 ซื้อ_ใหม่ exact; B ซื้อ_ที่ exact; A2 ไปดู_ที่ exact | same-group | scene words: ของเก่า
 N_CLOTHES-T4-09,5508,ผ้าพันมือ,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review,11,A1 ใส่_ไป exact; B ใส่_แล้ว ok; A2 ใส่_ไป exact | via peer group | scene words: เสื้อยืด
+N_ITEM-T4-10,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T4,T4,review,review-strong,11,A1 มี_เลย exact; B มี_ใน ok; A2 ใช้_ของ exact | same-group
 N_ITEM-T4-49,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,11,A1 ซื้อ_ไป exact; B วาง_ที่ ok; A2 วาง_ไว้ exact | same-group | scene words: ที่สูง ชั้นสูง
 N_ITEM-T4-53,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,11,A1 ซื้อ_ให้ exact; B ซื้อ_ให้ exact; A2 เลือก_ที่ ok | same-group | scene words: บวช
-N_CLOTHES-T5-01,5508,ผ้าพันมือ,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review-strong,9,A1 ใส่_ไป exact; B ใส่_ไป exact; A2 เก็บ_ไว้ ok | via peer group
 N_ITEM-T5-07,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T5,T4,review,review-strong,9,A1 ·_ของ exact; B ใส่_ใหม่ ok; A2 เอา_ไป exact | same-group
+N_ITEM-T5-23,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,9,A1 หา_ไม่ exact; B เก็บ_ไว้ exact; A2 หา_· ok | same-group | scene words: ยังอยู่ กระเป๋าเสื้อ
 N_ITEM-T5-35,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,9,A1 ซื้อ_ให้ exact; B ซื้อ_ให้ exact; A2 ชอบ_ที่ ok | same-group | scene words: วันแม่ แม่คุณ หอม อ่อน
 N_ITEM-T5-38,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,9,"A1 เก็บ_นี้ ok; B เอา_ไป exact; A2 เอา_ไป exact | same-group | English ""{E} is"" frame with a pair / mass word"
 N_HEALTH.COVER-T4-02,5508,ผ้าพันมือ,N_HEALTH.COVER,N_ITEM.GEAR,T4,T4,review,review,8,A1 มี_เลย exact; B ขอ_ที่ ok; A2 ได้_· ok | via peer group | scene words: สำนักงานเขต
 N_HEALTH.DOCS-T4-02,5508,ผ้าพันมือ,N_HEALTH.DOCS,N_ITEM.GEAR,T4,T4,review,review,8,A1 เก็บ_ของ ok; B เอา_มา ok; A2 เก็บ_เอง exact | via peer group
 N_HEALTH.DOCS-T4-03,5508,ผ้าพันมือ,N_HEALTH.DOCS,N_ITEM.GEAR,T4,T4,review,review,8,A1 เอา_ไป exact; B ขอ_จาก ok; A2 ขอ_ให้ ok | via peer group
-N_ITEM-T4-10,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,8,A1 มี_เลย exact; B มี_ใน ok; A2 ใช้_ของ ok | same-group
+N_ITEM-T4-24,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,8,A1 เปลี่ยน_ใหม่ ok; B เปลี่ยน_เก่า ok; A2 ใช่_เก่า exact | same-group
 N_ITEM-T4-54,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,8,"A1 ขอ_จาก ok; B เอา_ใส่ exact; A2 ขอ_ครึ่ง ok | same-group | English ""{E} is"" frame with a pair / mass word"
+N_CLOTHES-T5-08,5508,ผ้าพันมือ,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review,6,A1 ขอยืม_ของ exact; B ใช้_เหมือนกัน ok; A2 ใช้_ผม ok | via peer group | scene words: คืนให้
 N_HEALTH.ALLERGY-T5-03,5508,ผ้าพันมือ,N_HEALTH.ALLERGY,N_ITEM.GEAR,T5,T4,review,review,6,A1 เรื่อง_ไป ok; B เรื่อง_เป็น ok; A2 เรื่อง_ให้ exact | via peer group | scene words: ใบรับรอง
-N_ITEM-T5-02,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,6,A1 ซื้อ_ใหม่ ok; B ซื้อ_ที่ exact; A2 ไปดู_ที่ ok | same-group | scene words: ของเก่า
-N_ITEM-T5-23,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,6,A1 หา_ไม่ exact; B เก็บ_ไว้ ok; A2 หา_· ok | same-group | scene words: ยังอยู่ กระเป๋าเสื้อ
+N_HEALTH.DOCS-T5-02,5508,ผ้าพันมือ,N_HEALTH.DOCS,N_ITEM.GEAR,T5,T4,review,review,5,"A1 ใช้_นี้ ok; B ·_นี้ ok; A2 เก็บ_ไว้ exact | via peer group | English ""{E} is"" frame with a pair / mass word"
 N_HEALTH.MEDS-T4-01,5508,ผ้าพันมือ,N_HEALTH.MEDS,N_ITEM.GEAR,T4,T4,review,review,5,A1 มี_ยี่ห้อ ok; B ·_ยี่ห้อ ok; A2 ขอ_ยี่ห้อ ok | via peer group | scene words: ยี่ห้อ
+N_ITEM-T4-03,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,5,A1 ขาย_ไหม ok; B มี_หลาย ok; A2 ขอ_ที่ ok | same-group
+N_ITEM-T4-12,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,5,A1 ซื้อ_แล้ว ok; B ซื้อ_ออนไลน์ ok; A2 ซื้อ_ใน ok | same-group
 N_ITEM-T4-63,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,5,"A1 ส่ง_นี้ ok; B ส่ง_แบบ ok; A2 ส่ง_นี้ ok | same-group | English ""{E} is"" frame with a pair / mass word"
 N_ITEM-T5-06,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,3,A1 ซื้อ_ไว้ ok; B เอา_ที่ ok; A2 ขอ_ที่ ok | same-group
-N_HEALTH.DOCS-T5-02,5508,ผ้าพันมือ,N_HEALTH.DOCS,N_ITEM.GEAR,T5,T4,review,review,2,"A1 ใช้_นี้ ok; B ·_นี้ ok; A2 เก็บ_ไว้ ok | via peer group | English ""{E} is"" frame with a pair / mass word"
+N_ITEM-T5-46,5508,ผ้าพันมือ,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,3,"A1 ขาย_ใน ok; B ขาย_ที่นี่ ok; A2 ขาย_อยู่ ok | same-group | English ""{E} is"" frame with a pair / mass word; scene words: ตรวจหา"
 N_CLOTHES-T4-01,5509,กางเกงมวย,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review-strong,14,A1 ซื้อ_ไป exact; B กับ_ก่อน exact; A2 ใบเสร็จ_ยัง exact | via peer group
 N_CLOTHES-T4-04,5509,กางเกงมวย,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review,14,A1 แล้ว_เก่าๆ exact; B แต่_ที่ exact; A2 ใส่_ใหม่ exact | via peer group | scene words: ตู้เสื้อผ้า
 N_CLOTHES-T4-05,5509,กางเกงมวย,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review-strong,14,A1 ลด_ครึ่ง exact; B อยากได้_พอดี exact; A2 ไปดู_กัน exact | via peer group
@@ -1067,16 +1102,26 @@ N_CLOTHES-T5-06,5509,กางเกงมวย,N_CLOTHES,N_ITEM.GEAR,T5,T4,rev
 N_CLOTHES-T5-07,5509,กางเกงมวย,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review,12,A1 หาย_ที่จะ exact; B ซื้อ_ใหม่ exact; A2 ค่า_ให้ exact | via peer group | scene words: คืนเงิน
 N_CLOTHES-T5-09,5509,กางเกงมวย,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review-strong,12,A1 ·_ที่ exact; B ซื้อ_เอง exact; A2 ซื้อ_แบบนี้ exact | via peer group
 N_CLOTHES-T5-10,5509,กางเกงมวย,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review,12,A1 ·_หน้า exact; B ซื้อ_คู่ exact; A2 เอา_กับ exact | via peer group | scene words: ส่วนลด ถุงเท้า
+N_ITEM-T5-02,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,12,A1 ซื้อ_ใหม่ exact; B ซื้อ_ที่ exact; A2 ไปดู_ที่ exact | same-group | scene words: ของเก่า
 N_ITEM-T5-07,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T5,T4,review,review-strong,12,A1 ·_ของ exact; B ใส่_ใหม่ exact; A2 เอา_ไป exact | same-group
 N_CLOTHES-T4-09,5509,กางเกงมวย,N_CLOTHES,N_ITEM.GEAR,T4,T4,review,review,11,A1 ใส่_ไป exact; B ใส่_แล้ว ok; A2 ใส่_ไป exact | via peer group | scene words: เสื้อยืด
+N_ITEM-T4-07,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,11,"A1 ลอง_นี้ ok; B ใช้_ของ exact; A2 ใช้_ของ exact | same-group | English ""{E} is"" frame with a pair / mass word; scene words: เซ็นชื่อ"
 N_ITEM-T4-53,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,11,A1 ซื้อ_ให้ exact; B ซื้อ_ให้ exact; A2 เลือก_ที่ ok | same-group | scene words: บวช
-N_ITEM-T5-02,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,9,A1 ซื้อ_ใหม่ exact; B ซื้อ_ที่ exact; A2 ไปดู_ที่ ok | same-group | scene words: ของเก่า
 N_ITEM-T5-35,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,9,A1 ซื้อ_ให้ exact; B ซื้อ_ให้ exact; A2 ชอบ_ที่ ok | same-group | scene words: วันแม่ แม่คุณ หอม อ่อน
 N_ITEM-T5-38,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,9,"A1 เก็บ_นี้ ok; B เอา_ไป exact; A2 เอา_ไป exact | same-group | English ""{E} is"" frame with a pair / mass word"
+N_ITEM-T4-10,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,8,A1 มี_เลย ok; B มี_ใน ok; A2 ใช้_ของ exact | same-group
+N_ITEM-T4-24,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,8,A1 เปลี่ยน_ใหม่ ok; B เปลี่ยน_เก่า ok; A2 ใช่_เก่า exact | same-group
+N_ITEM-T4-40,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,8,A1 มี_ไหม ok; B เก็บ_ไว้ exact; A2 ขอยืม_สอง ok | same-group
 N_ITEM-T4-54,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,8,"A1 ขอ_จาก ok; B เอา_ใส่ exact; A2 ขอ_ครึ่ง ok | same-group | English ""{E} is"" frame with a pair / mass word"
+N_CLOTHES-T5-08,5509,กางเกงมวย,N_CLOTHES,N_ITEM.GEAR,T5,T4,review,review,6,A1 ขอยืม_ของ exact; B ใช้_เหมือนกัน ok; A2 ใช้_ผม ok | via peer group | scene words: คืนให้
+N_ITEM-T4-03,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,5,A1 ขาย_ไหม ok; B มี_หลาย ok; A2 ขอ_ที่ ok | same-group
+N_ITEM-T4-08,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,5,A1 ·_หมด ok; B มี_อยู่ ok; A2 ขอ_สอง ok | same-group
 N_ITEM-T4-12,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,5,A1 ซื้อ_แล้ว ok; B ซื้อ_ออนไลน์ ok; A2 ซื้อ_ใน ok | same-group
 N_ITEM-T4-63,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,5,"A1 ส่ง_นี้ ok; B ส่ง_แบบ ok; A2 ส่ง_นี้ ok | same-group | English ""{E} is"" frame with a pair / mass word"
 N_ITEM-T5-06,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,3,A1 ซื้อ_ไว้ ok; B เอา_ที่ ok; A2 ขอ_ที่ ok | same-group
+N_ITEM-T5-46,5509,กางเกงมวย,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,3,"A1 ขาย_ใน ok; B ขาย_ที่นี่ ok; A2 ขาย_อยู่ ok | same-group | English ""{E} is"" frame with a pair / mass word; scene words: ตรวจหา"
+N_ITEM-T5-02,5510,กระสอบทราย,N_ITEM,N_ITEM.GEAR,T5,T4,review,review,9,A1 ซื้อ_ใหม่ exact; B ซื้อ_ที่ ok; A2 ไปดู_ที่ exact | same-group | scene words: ของเก่า
+N_ITEM-T4-53,5510,กระสอบทราย,N_ITEM,N_ITEM.GEAR,T4,T4,review,review,5,A1 ซื้อ_ให้ ok; B ซื้อ_ให้ ok; A2 เลือก_ที่ ok | same-group | scene words: บวช
 V_ROUTINE.FITNESS-T5-01,5511,ฝึก,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 ผม_จะ exact; B ฉัน_บ่อยๆ exact; A2 ลอง_ตั้งแต่ exact | same-group
 V_ROUTINE.FITNESS-T5-02,5511,ฝึก,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 กัน_หลัง exact; B ขอ_แบบ exact; A2 จะ_กัน exact | same-group
 V_ROUTINE.FITNESS-T5-03,5511,ฝึก,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review,12,A1 พยายาม_มา exact; B แค่_อาจ exact; A2 ตั้งใจ_จริงๆ exact | same-group | scene words: เห็นผล
@@ -1084,9 +1129,14 @@ V_ROUTINE.FITNESS-T5-04,5511,ฝึก,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,r
 V_ROUTINE.LEARN-T5-01,5511,ฝึก,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 เวลา_เลย exact; B อยาก_จริงๆ exact; A2 แล้ว_ก่อน exact | same-group
 V_ROUTINE.LEARN-T5-05,5511,ฝึก,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 อยาก_พูด exact; B ไป_พูด exact; A2 ไป_พูด exact | same-group
 V_ROUTINE.LEARN-T5-07,5511,ฝึก,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T5,T4,review,review,12,A1 อยาก_ขับรถ exact; B ลอง_ที่ exact; A2 ไป_ที่นั่น exact | same-group | scene words: ถนนใหญ่ นั่นสิ
+V_ROUTINE.FORTUNE-T5-05,5511,ฝึก,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,9,A1 ไป_ที่ exact; B ไป_จะ ok; A2 ต้อง_· exact | same-group | scene words: ศาลเจ้า
 V_ROUTINE.VOTE-T5-03,5511,ฝึก,V_ROUTINE.VOTE,V_ROUTINE.TRAIN,T5,T4,review,review,9,A1 ไป_กัน exact; B ไป_ก็ ok; A2 ไป_ด้วยกัน exact | same-group | scene words: พลาดโอกาส
+V_ROUTINE.LEARN-T4-01,5511,ฝึก,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T4,T4,review,review,8,A1 ไป_ที่ exact; B ไป_· ok; A2 ได้_ด้วยกัน ok | same-group
 V_ROUTINE.MERIT-T4-01,5511,ฝึก,V_ROUTINE.MERIT,V_ROUTINE.TRAIN,T4,T4,review,review,8,A1 จะ_ที่ ok; B จะ_ที่ ok; A2 จะ_กัน exact | same-group
-V_ROUTINE.FORTUNE-T5-05,5511,ฝึก,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,6,A1 ไป_ที่ exact; B ไป_จะ ok; A2 ต้อง_· ok | same-group | scene words: ศาลเจ้า
+V_ROUTINE.FORTUNE-T5-08,5511,ฝึก,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,6,A1 ไป_ที่ exact; B ต้อง_ใน ok; A2 จะ_วัน ok | same-group | scene words: ศาลเจ้า
+V_ROUTINE.FORTUNE-T5-03,5511,ฝึก,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 ชอบ_ก่อน ok; B ชอบ_ก่อน ok; A2 ชอบ_จะ ok | same-group | scene words: เรื่องใหญ่
+V_ROUTINE.LEARN-T5-04,5511,ฝึก,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 ชอบ_ที่ ok; B ลอง_ที่นั่น ok; A2 ลอง_ที่นั่น ok | same-group
+V_ROUTINE.LEISURE-T5-01,5511,ฝึก,V_ROUTINE.LEISURE,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 ชอบ_ที่ ok; B ชอบ_ด้วยกัน ok; A2 มา_ที่ ok | same-group | scene words: เวลาว่าง
 V_ROUTINE.FITNESS-T5-01,5512,ซ้อม,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 ผม_จะ exact; B ฉัน_บ่อยๆ exact; A2 ลอง_ตั้งแต่ exact | same-group
 V_ROUTINE.FITNESS-T5-02,5512,ซ้อม,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 กัน_หลัง exact; B ขอ_แบบ exact; A2 จะ_กัน exact | same-group
 V_ROUTINE.FITNESS-T5-03,5512,ซ้อม,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review,12,A1 พยายาม_มา exact; B แค่_อาจ exact; A2 ตั้งใจ_จริงๆ exact | same-group | scene words: เห็นผล
@@ -1094,27 +1144,42 @@ V_ROUTINE.FITNESS-T5-04,5512,ซ้อม,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T
 V_ROUTINE.LEARN-T5-01,5512,ซ้อม,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 เวลา_เลย exact; B อยาก_จริงๆ exact; A2 แล้ว_ก่อน exact | same-group
 V_ROUTINE.LEARN-T5-05,5512,ซ้อม,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 อยาก_พูด exact; B ไป_พูด exact; A2 ไป_พูด exact | same-group
 V_ROUTINE.LEARN-T5-07,5512,ซ้อม,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T5,T4,review,review,12,A1 อยาก_ขับรถ exact; B ลอง_ที่ exact; A2 ไป_ที่นั่น exact | same-group | scene words: ถนนใหญ่ นั่นสิ
+V_ROUTINE.FORTUNE-T5-05,5512,ซ้อม,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,9,A1 ไป_ที่ exact; B ไป_จะ ok; A2 ต้อง_· exact | same-group | scene words: ศาลเจ้า
 V_ROUTINE.VOTE-T5-03,5512,ซ้อม,V_ROUTINE.VOTE,V_ROUTINE.TRAIN,T5,T4,review,review,9,A1 ไป_กัน exact; B ไป_ก็ ok; A2 ไป_ด้วยกัน exact | same-group | scene words: พลาดโอกาส
+V_ROUTINE.LEARN-T4-01,5512,ซ้อม,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T4,T4,review,review,8,A1 ไป_ที่ exact; B ไป_· ok; A2 ได้_ด้วยกัน ok | same-group
 V_ROUTINE.MERIT-T4-01,5512,ซ้อม,V_ROUTINE.MERIT,V_ROUTINE.TRAIN,T4,T4,review,review,8,A1 จะ_ที่ ok; B จะ_ที่ ok; A2 จะ_กัน exact | same-group
-V_ROUTINE.FORTUNE-T5-05,5512,ซ้อม,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,6,A1 ไป_ที่ exact; B ไป_จะ ok; A2 ต้อง_· ok | same-group | scene words: ศาลเจ้า
+V_ROUTINE.FORTUNE-T5-08,5512,ซ้อม,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,6,A1 ไป_ที่ exact; B ต้อง_ใน ok; A2 จะ_วัน ok | same-group | scene words: ศาลเจ้า
+V_ROUTINE.FORTUNE-T5-03,5512,ซ้อม,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 ชอบ_ก่อน ok; B ชอบ_ก่อน ok; A2 ชอบ_จะ ok | same-group | scene words: เรื่องใหญ่
+V_ROUTINE.LEARN-T5-04,5512,ซ้อม,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 ชอบ_ที่ ok; B ลอง_ที่นั่น ok; A2 ลอง_ที่นั่น ok | same-group
+V_ROUTINE.LEISURE-T5-01,5512,ซ้อม,V_ROUTINE.LEISURE,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 ชอบ_ที่ ok; B ชอบ_ด้วยกัน ok; A2 มา_ที่ ok | same-group | scene words: เวลาว่าง
 V_ROUTINE.FITNESS-T5-01,5513,วอร์มอัพ,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 ผม_จะ exact; B ฉัน_บ่อยๆ exact; A2 ลอง_ตั้งแต่ exact | same-group
 V_ROUTINE.FITNESS-T5-02,5513,วอร์มอัพ,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 กัน_หลัง exact; B ขอ_แบบ exact; A2 จะ_กัน exact | same-group
 V_ROUTINE.FITNESS-T5-03,5513,วอร์มอัพ,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review,12,A1 พยายาม_มา exact; B แค่_อาจ exact; A2 ตั้งใจ_จริงๆ exact | same-group | scene words: เห็นผล
 V_ROUTINE.FITNESS-T5-04,5513,วอร์มอัพ,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 ไป_ที่ exact; B มา_ที่นั่น exact; A2 ไป_ด้วยกัน exact | same-group
 V_ROUTINE.FITNESS-T5-08,5513,วอร์มอัพ,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review,12,A1 ชอบ_รอบ exact; B ไป_ตอนเย็น exact; A2 อยาก_กับ exact | same-group | scene words: ข้าวเย็น
+V_ROUTINE.FORTUNE-T5-05,5513,วอร์มอัพ,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,9,A1 ไป_ที่ exact; B ไป_จะ ok; A2 ต้อง_· exact | same-group | scene words: ศาลเจ้า
+V_ROUTINE.LEARN-T4-01,5513,วอร์มอัพ,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T4,T4,review,review,8,A1 ไป_ที่ exact; B ไป_· ok; A2 ได้_ด้วยกัน ok | same-group
 V_ROUTINE.MERIT-T4-01,5513,วอร์มอัพ,V_ROUTINE.MERIT,V_ROUTINE.TRAIN,T4,T4,review,review,8,A1 จะ_ที่ ok; B จะ_ที่ ok; A2 จะ_กัน exact | same-group
+V_ROUTINE.FORTUNE-T5-08,5513,วอร์มอัพ,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,6,A1 ไป_ที่ exact; B ต้อง_ใน ok; A2 จะ_วัน ok | same-group | scene words: ศาลเจ้า
 V_ROUTINE.VOTE-T5-03,5513,วอร์มอัพ,V_ROUTINE.VOTE,V_ROUTINE.TRAIN,T5,T4,review,review,6,A1 ไป_กัน ok; B ไป_ก็ ok; A2 ไป_ด้วยกัน exact | same-group | scene words: พลาดโอกาส
+V_ROUTINE.FORTUNE-T5-03,5513,วอร์มอัพ,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 ชอบ_ก่อน ok; B ชอบ_ก่อน ok; A2 ชอบ_จะ ok | same-group | scene words: เรื่องใหญ่
 V_ROUTINE.LEARN-T5-04,5513,วอร์มอัพ,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 ชอบ_ที่ ok; B ลอง_ที่นั่น ok; A2 ลอง_ที่นั่น ok | same-group
 V_ROUTINE.LEISURE-T5-01,5513,วอร์มอัพ,V_ROUTINE.LEISURE,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 ชอบ_ที่ ok; B ชอบ_ด้วยกัน ok; A2 มา_ที่ ok | same-group | scene words: เวลาว่าง
+V_ROUTINE.PLAY-T5-01,5513,วอร์มอัพ,V_ROUTINE.PLAY,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 อยาก_ที่ ok; B ขอ_ตอนเย็น ok; A2 ได้_กัน ok | same-group | scene words: ชายหาด อ่อน
 V_ROUTINE.FITNESS-T5-01,5514,กระโดดเชือก,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 ผม_จะ exact; B ฉัน_บ่อยๆ exact; A2 ลอง_ตั้งแต่ exact | same-group
 V_ROUTINE.FITNESS-T5-02,5514,กระโดดเชือก,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 กัน_หลัง exact; B ขอ_แบบ exact; A2 จะ_กัน exact | same-group
 V_ROUTINE.FITNESS-T5-03,5514,กระโดดเชือก,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review,12,A1 พยายาม_มา exact; B แค่_อาจ exact; A2 ตั้งใจ_จริงๆ exact | same-group | scene words: เห็นผล
 V_ROUTINE.FITNESS-T5-04,5514,กระโดดเชือก,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review-strong,12,A1 ไป_ที่ exact; B มา_ที่นั่น exact; A2 ไป_ด้วยกัน exact | same-group
 V_ROUTINE.FITNESS-T5-08,5514,กระโดดเชือก,V_ROUTINE.FITNESS,V_ROUTINE.TRAIN,T5,T4,review,review,12,A1 ชอบ_รอบ exact; B ไป_ตอนเย็น exact; A2 อยาก_กับ exact | same-group | scene words: ข้าวเย็น
+V_ROUTINE.FORTUNE-T5-05,5514,กระโดดเชือก,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,9,A1 ไป_ที่ exact; B ไป_จะ ok; A2 ต้อง_· exact | same-group | scene words: ศาลเจ้า
+V_ROUTINE.LEARN-T4-01,5514,กระโดดเชือก,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T4,T4,review,review,8,A1 ไป_ที่ exact; B ไป_· ok; A2 ได้_ด้วยกัน ok | same-group
 V_ROUTINE.MERIT-T4-01,5514,กระโดดเชือก,V_ROUTINE.MERIT,V_ROUTINE.TRAIN,T4,T4,review,review,8,A1 จะ_ที่ ok; B จะ_ที่ ok; A2 จะ_กัน exact | same-group
+V_ROUTINE.FORTUNE-T5-08,5514,กระโดดเชือก,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,6,A1 ไป_ที่ exact; B ต้อง_ใน ok; A2 จะ_วัน ok | same-group | scene words: ศาลเจ้า
 V_ROUTINE.VOTE-T5-03,5514,กระโดดเชือก,V_ROUTINE.VOTE,V_ROUTINE.TRAIN,T5,T4,review,review,6,A1 ไป_กัน ok; B ไป_ก็ ok; A2 ไป_ด้วยกัน exact | same-group | scene words: พลาดโอกาส
+V_ROUTINE.FORTUNE-T5-03,5514,กระโดดเชือก,V_ROUTINE.FORTUNE,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 ชอบ_ก่อน ok; B ชอบ_ก่อน ok; A2 ชอบ_จะ ok | same-group | scene words: เรื่องใหญ่
 V_ROUTINE.LEARN-T5-04,5514,กระโดดเชือก,V_ROUTINE.LEARN,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 ชอบ_ที่ ok; B ลอง_ที่นั่น ok; A2 ลอง_ที่นั่น ok | same-group
 V_ROUTINE.LEISURE-T5-01,5514,กระโดดเชือก,V_ROUTINE.LEISURE,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 ชอบ_ที่ ok; B ชอบ_ด้วยกัน ok; A2 มา_ที่ ok | same-group | scene words: เวลาว่าง
+V_ROUTINE.PLAY-T5-01,5514,กระโดดเชือก,V_ROUTINE.PLAY,V_ROUTINE.TRAIN,T5,T4,review,review,3,A1 อยาก_ที่ ok; B ขอ_ตอนเย็น ok; A2 ได้_กัน ok | same-group | scene words: ชายหาด อ่อน
 N_BODY.LOWER-T4-01,5526,หน้าแข้ง,N_BODY.LOWER,N_BODY.COMBAT,T4,T4,review,review,14,A1 ปวด_มาก exact; B กับ_ดี exact; A2 ใช้กับ_ดู exact | same-group | scene words: ปั่น จักรยาน ลูกประคบ ใช้กับ
 N_BODY.LOWER-T4-02,5526,หน้าแข้ง,N_BODY.LOWER,N_BODY.COMBAT,T4,T4,review,review,14,A1 เอ็กซ์เรย์_ผม exact; B ตรง_ไม่ exact; A2 ดู_อีกครั้ง exact | same-group | scene words: ภาพ เอ็กซ์เรย์
 N_BODY.LOWER-T4-03,5526,หน้าแข้ง,N_BODY.LOWER,N_BODY.COMBAT,T4,T4,review,review,14,A1 แล้ว_เป็นแผล exact; B ที่_ก่อน exact; A2 เพราะ_บวม exact | same-group | scene words: เป็นแผล พลาสเตอร์ บวม
@@ -1123,6 +1188,7 @@ N_BODY.LOWER-T4-06,5526,หน้าแข้ง,N_BODY.LOWER,N_BODY.COMBAT,T4,T
 N_BODY.LOWER-T4-07,5526,หน้าแข้ง,N_BODY.LOWER,N_BODY.COMBAT,T4,T4,review,review-strong,14,A1 ปวด_เลย exact; B ให้_ได้ exact; A2 แทน_จะ exact | same-group
 N_BODY.LOWER-T4-09,5526,หน้าแข้ง,N_BODY.LOWER,N_BODY.COMBAT,T4,T4,review,review-strong,14,A1 ปวด_มาก exact; B ปวด_ขนาด exact; A2 ดู_ก่อน exact | same-group
 N_BODY.BONE-T4-02,5526,หน้าแข้ง,N_BODY.BONE,N_BODY.COMBAT,T4,T4,review,review,11,A1 ปวด_มาก exact; B ดู_ก่อน exact; A2 ดู_แล้ว ok | same-group | scene words: พักฟื้น
+N_BODY.TASTE-T4-02,5526,หน้าแข้ง,N_BODY.TASTE,N_BODY.COMBAT,T4,T4,review,review,8,A1 วัน_ไม่ ok; B หมอดู_หน่อย ok; A2 หมอดู_แล้ว exact | same-group | scene words: รู้รส
 N_BODY.BONE-T5-05,5526,หน้าแข้ง,N_BODY.BONE,N_BODY.COMBAT,T5,T4,review,review,6,A1 ปวด_มาก exact; B ปวด_อีก ok; A2 กับ_ก่อน ok | same-group | scene words: ลูกประคบ
 N_BODY.ORGAN-T4-01,5526,หน้าแข้ง,N_BODY.ORGAN,N_BODY.COMBAT,T4,T4,review,review,5,A1 ดู_ผม ok; B กับ_จะ ok; A2 ถ้า_ไม่ ok | same-group | scene words: ตรวจเลือด
 N_BODY.BONE-T4-05,5530,ศอก,N_BODY.BONE,N_BODY.COMBAT,T4,T4,review,review,14,A1 ปวด_มาก exact; B ให้_ได้ exact; A2 ใช้_หนัก exact | same-group | scene words: ปีน
@@ -1130,26 +1196,38 @@ N_BODY.UPPER-T4-01,5530,ศอก,N_BODY.UPPER,N_BODY.COMBAT,T4,T4,review,review
 N_BODY.UPPER-T4-02,5530,ศอก,N_BODY.UPPER,N_BODY.COMBAT,T4,T4,review,review,14,A1 ตอนนี้_บวม exact; B บน_ดู exact; A2 แล้ว_เย็น exact | same-group | scene words: ฉีด ยามา บวม
 N_BODY.UPPER-T4-03,5530,ศอก,N_BODY.UPPER,N_BODY.COMBAT,T4,T4,review,review,14,A1 ปวด_เลย exact; B ดู_ไหม exact; A2 แต่_ยัง exact | same-group | scene words: หมอนวด ยาแก้ปวด แข็ง
 N_BODY.BONE-T4-04,5530,ศอก,N_BODY.BONE,N_BODY.COMBAT,T4,T4,review,review,11,A1 ปวด_· exact; B ดู_ดีกว่า ok; A2 ดู_· exact | same-group | scene words: หายใจ
+N_BODY.FINGER-T4-03,5530,ศอก,N_BODY.FINGER,N_BODY.COMBAT,T4,T4,review,review,5,A1 ทั้งวัน_ผม ok; B พัก_ด้วย ok; A2 แล้ว_จะ ok | same-group
+N_BODY.TASTE-T4-02,5530,ศอก,N_BODY.TASTE,N_BODY.COMBAT,T4,T4,review,review,5,A1 วัน_ไม่ ok; B หมอดู_หน่อย ok; A2 หมอดู_แล้ว ok | same-group | scene words: รู้รส
 N_BODY.UPPER-T4-01,5531,หมัด,N_BODY.UPPER,N_BODY.COMBAT,T4,T4,review,review,14,A1 ที่_· exact; B ที่_ให้ exact; A2 ที่_อยู่ exact | same-group | scene words: ผ้าพันแผล แผล ล้างแผล เลือด
 N_BODY.UPPER-T4-02,5531,หมัด,N_BODY.UPPER,N_BODY.COMBAT,T4,T4,review,review,14,A1 ตอนนี้_บวม exact; B บน_ดู exact; A2 แล้ว_เย็น exact | same-group | scene words: ฉีด ยามา บวม
 N_BODY.UPPER-T4-03,5531,หมัด,N_BODY.UPPER,N_BODY.COMBAT,T4,T4,review,review,14,A1 ปวด_เลย exact; B ดู_ไหม exact; A2 แต่_ยัง exact | same-group | scene words: หมอนวด ยาแก้ปวด แข็ง
+N_BODY.BONE-T4-05,5531,หมัด,N_BODY.BONE,N_BODY.COMBAT,T4,T4,review,review,11,A1 ปวด_มาก exact; B ให้_ได้ ok; A2 ใช้_หนัก exact | same-group | scene words: ปีน
+N_BODY.FINGER-T4-02,5531,หมัด,N_BODY.FINGER,N_BODY.COMBAT,T4,T4,review,review,11,A1 เพื่อน_บวม ok; B บน_ดู exact; A2 แต่_ยัง exact | same-group | scene words: บวม จับ
 V_HANDLE.HIDE-T5-01,5533,หลบ,V_HANDLE.HIDE,V_MOVE.DODGE,T5,T4,review,review-strong,12,A1 มา_มือถือ exact; B ชอบ_ของ exact; A2 ไม่_อีก exact | via peer group
 V_HANDLE.HIDE-T5-02,5533,หลบ,V_HANDLE.HIDE,V_MOVE.DODGE,T5,T4,review,review-strong,12,A1 ต้อง_ของขวัญ exact; B ลอง_ไว้ exact; A2 จะ_ไว้ exact | via peer group
 V_HANDLE.HIDE-T5-06,5533,หลบ,V_HANDLE.HIDE,V_MOVE.DODGE,T5,T4,review,review,12,A1 จะ_ของขวัญ exact; B ควร_ไว้ exact; A2 จะ_ไว้ exact | via peer group | scene words: ที่สูง ตู้เสื้อผ้า
 V_HANDLE.PROBLEM-T5-01,5533,หลบ,V_HANDLE.PROBLEM,V_MOVE.DODGE,T5,T4,review,review-strong,12,A1 จะ_ปัญหา exact; B เรา_ปัญหา exact; A2 เริ่ม_ปัญหา exact | via peer group
 V_HANDLE.PROBLEM-T5-02,5533,หลบ,V_HANDLE.PROBLEM,V_MOVE.DODGE,T5,T4,review,review,12,A1 วิธี_ปัญหา exact; B วิธี_· exact; A2 เพื่อ_ปัญหา exact | via peer group | scene words: เกิดขึ้น วางแผน
 V_HANDLE.PROBLEM-T5-03,5533,หลบ,V_HANDLE.PROBLEM,V_MOVE.DODGE,T5,T4,review,review-strong,12,A1 ไม่_ปัญหา exact; B ช่วยกัน_ปัญหา exact; A2 ทุกคน_ปัญหา exact | via peer group
+V_HANDLE.HIDE-T4-01,5533,หลบ,V_HANDLE.HIDE,V_MOVE.DODGE,T4,T4,review,review,11,A1 จะ_มือถือ ok; B ต้อง_จริงๆ exact; A2 ควร_ไว้ exact | via peer group | scene words: คืนให้ เลิกเรียน ข้ามคืน
+V_HANDLE.CARE-T4-05,5533,หลบ,V_HANDLE.CARE,V_MOVE.DODGE,T4,T4,review,review,8,A1 วิธี_ให้ ok; B ต้อง_ให้ ok; A2 จะ_ให้ exact | via peer group | scene words: ถูกวิธี
+V_HANDLE.PRESS-T4-03,5533,หลบ,V_HANDLE.PRESS,V_MOVE.DODGE,T4,T4,review,review,8,A1 ต้อง_ก่อน exact; B ลอง_แล้ว ok; A2 ลอง_ให้ ok | via peer group | scene words: ตาก
+V_HANDLE.STRIKE-T4-02,5533,หลบ,V_HANDLE.STRIKE,V_MOVE.DODGE,T4,T4,review,review,5,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | via peer group
 V_HANDLE.COLLIDE-T5-01,5534,โจมตี,V_HANDLE.COLLIDE,V_HANDLE.STRIKE,T5,T4,review,review-strong,12,A1 รถ_ใคร exact; B รถ_อะไร exact; A2 รถ_เขา exact | same-group
 V_HANDLE.COLLIDE-T5-02,5534,โจมตี,V_HANDLE.COLLIDE,V_HANDLE.STRIKE,T5,T4,review,review,12,A1 อาจจะ_กัน exact; B เขา_กัน exact; A2 จะ_โต๊ะ exact | same-group | scene words: วิ่งเล่น
+N_ABSTRACT.METHOD-T5-09,5536,ท่า,N_ABSTRACT.METHOD,N_ABSTRACT.MOVE,T5,T4,review,review,9,A1 ·_ง่าย exact; B ใช้_นี้ exact; A2 ว่า_นี้ ok | same-group | scene words: เลิกใช้
 N_ABSTRACT.CAUSE-T5-14,5536,ท่า,N_ABSTRACT.CAUSE,N_ABSTRACT.MOVE,T5,T4,review,review,3,A1 มี_ให้ ok; B มี_ให้ ok; A2 มี_ก็ ok | same-group | scene words: วิชา ขยัน ฉลอง
 N_ABSTRACT.CAUSE-T5-15,5536,ท่า,N_ABSTRACT.CAUSE,N_ABSTRACT.MOVE,T5,T4,review,review,3,A1 มี_ให้ ok; B มี_ให้ ok; A2 มี_ให้ ok | same-group
+N_ABSTRACT.SCOPE-T5-20,5536,ท่า,N_ABSTRACT.SCOPE,N_ABSTRACT.MOVE,T5,T4,review,review,3,A1 ·_ของ ok; B ว่า_ใหม่ ok; A2 ว่า_ใหม่ ok | same-group
 N_PERSONROLE.SCHOOL-T4-02,5537,เทรนเนอร์,N_PERSONROLE.SCHOOL,N_PERSONROLE.FIGHT,T4,T4,review,review,14,A1 ·_นัด exact; B ให้_หรือยัง exact; A2 แต่_อาจ exact | same-group | scene words: พบ
 N_PERSONROLE.SCHOOL-T4-03,5537,เทรนเนอร์,N_PERSONROLE.SCHOOL,N_PERSONROLE.FIGHT,T4,T4,review,review,14,A1 ขอให้_ช่วย exact; B เลย_ช่วย exact; A2 กับ_ใน exact | same-group | scene words: เรียนต่อ
 N_PERSONROLE.SERVICE-T4-01,5537,เทรนเนอร์,N_PERSONROLE.SERVICE,N_PERSONROLE.FIGHT,T4,T4,review,review-strong,14,A1 เมื่อเช้า_มา exact; B เหรอ_มา exact; A2 ให้_ดื่ม exact | same-group
 N_PERSONROLE.SERVICE-T4-08,5537,เทรนเนอร์,N_PERSONROLE.SERVICE,N_PERSONROLE.FIGHT,T4,T4,review,review-strong,14,A1 มี_ดูแล exact; B ไปหา_ใช่ไหม exact; A2 บอก_ก่อน exact | same-group
 N_PERSONROLE.SERVICE-T4-09,5537,เทรนเนอร์,N_PERSONROLE.SERVICE,N_PERSONROLE.FIGHT,T4,T4,review,review-strong,14,A1 หา_มา exact; B บอก_ก่อน exact; A2 บอก_ก่อน exact | same-group
 N_PERSONROLE.SCHOOL-T4-01,5537,เทรนเนอร์,N_PERSONROLE.SCHOOL,N_PERSONROLE.FIGHT,T4,T4,review,review-strong,13,A1 กับ_นี้ exact; B ·_นี้ exact; A2 ภาษาไทย_นี้ exact | same-group
+N_PERSONROLE.BOSS-T5-05,5537,เทรนเนอร์,N_PERSONROLE.BOSS,N_PERSONROLE.FIGHT,T5,T4,review,review,6,A1 หา_ที่ exact; B มี_ที่ ok; A2 มี_ที่ ok | same-group
 N_PERSONROLE.AIDE-T5-03,5537,เทรนเนอร์,N_PERSONROLE.AIDE,N_PERSONROLE.FIGHT,T5,T4,review,review,3,A1 ·_ของ ok; B มี_ช่วย ok; A2 ให้_ใน ok | same-group
+N_PERSONROLE.WORKER-T5-03,5537,เทรนเนอร์,N_PERSONROLE.WORKER,N_PERSONROLE.FIGHT,T5,T4,review,review,3,A1 เป็น_ที่ ok; B เป็น_อยู่ ok; A2 เป็น_ที่ ok | same-group
 N_PLACE.LEISURE-T4-01,5538,สนามมวย,N_PLACE.LEISURE,N_PLACE.FIGHT,T4,T4,review,review,14,A1 ที่_กัน exact; B เข้า_คนละ exact; A2 บัตร_ลด exact | same-group | scene words: เตะ
 N_PLACE.LEISURE-T4-02,5538,สนามมวย,N_PLACE.LEISURE,N_PLACE.FIGHT,T4,T4,review,review,14,A1 เช่า_ให้ exact; B ที่_นั้น exact; A2 ใน_มี exact | same-group | scene words: เตะ คนดู
 N_PLACE.LEISURE-T4-03,5538,สนามมวย,N_PLACE.LEISURE,N_PLACE.FIGHT,T4,T4,review,review-strong,14,A1 ถึง_แล้ว exact; B ที่_ดู exact; A2 ว่าที่_ปิด exact | same-group
@@ -1157,6 +1235,9 @@ N_PLACE.LEISURE-T5-01,5538,สนามมวย,N_PLACE.LEISURE,N_PLACE.FIGHT,T
 N_PLACE.LEISURE-T5-02,5538,สนามมวย,N_PLACE.LEISURE,N_PLACE.FIGHT,T5,T4,review,review-strong,12,A1 ไป_ใกล้ exact; B ที่_บ่อย exact; A2 ชอบ_ตรง exact | same-group
 N_PLACE.LEISURE-T5-03,5538,สนามมวย,N_PLACE.LEISURE,N_PLACE.FIGHT,T5,T4,review,review-strong,12,A1 หน้า_แล้ว exact; B ถึง_· exact; A2 ข้างๆ_ก็ได้ exact | same-group
 N_PLACE.LEISURE-T5-04,5538,สนามมวย,N_PLACE.LEISURE,N_PLACE.FIGHT,T5,T4,review,review-strong,12,A1 ที่_ใหม่ exact; B ว่าที่_ใหม่ exact; A2 ที่_ใน exact | same-group
+N_PLACE.CHECK-T4-02,5538,สนามมวย,N_PLACE.CHECK,N_PLACE.FIGHT,T4,T4,review,review,11,A1 ที่_ให้ ok; B ที่_นั้น exact; A2 ที่_ไม่ exact | same-group | scene words: ข้างทาง
+N_PLACE.STUDY-T4-04,5538,สนามมวย,N_PLACE.STUDY,N_PLACE.FIGHT,T4,T4,review,review-strong,11,A1 เข้า_ได้ ok; B ที่_· exact; A2 ที่_· exact | same-group
+N_PLACE.HEALTH-T5-06,5538,สนามมวย,N_PLACE.HEALTH,N_PLACE.FIGHT,T5,T4,review,review,6,A1 ที่_ปิด exact; B ไป_ไม่ ok; A2 ที่_ให้ ok | same-group
 N_PLACE.SPOT-T4-02,5538,สนามมวย,N_PLACE.SPOT,N_PLACE.FIGHT,T4,T4,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
 N_PLACE.WORK-T5-01,5538,สนามมวย,N_PLACE.WORK,N_PLACE.FIGHT,T5,T4,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
 N_MEDIA.SHOW-T4-02,5539,เวที,N_MEDIA.SHOW,N_PLACE.RING,T4,T4,review,review-strong,14,A1 ไปดู_ที่ไหน exact; B มี_ทุก exact; A2 ดู_ให้ exact | via peer group
@@ -1164,6 +1245,8 @@ N_MEDIA.SHOW-T4-03,5539,เวที,N_MEDIA.SHOW,N_PLACE.RING,T4,T4,review,revi
 N_PLACE.LEISURE-T4-01,5539,เวที,N_PLACE.LEISURE,N_PLACE.RING,T4,T4,review,review,14,A1 ที่_กัน exact; B เข้า_คนละ exact; A2 บัตร_ลด exact | same-group | scene words: เตะ
 N_PLACE.LEISURE-T4-02,5539,เวที,N_PLACE.LEISURE,N_PLACE.RING,T4,T4,review,review,14,A1 เช่า_ให้ exact; B ที่_นั้น exact; A2 ใน_มี exact | same-group | scene words: เตะ คนดู
 N_PLACE.LEISURE-T4-03,5539,เวที,N_PLACE.LEISURE,N_PLACE.RING,T4,T4,review,review-strong,14,A1 ถึง_แล้ว exact; B ที่_ดู exact; A2 ว่าที่_ปิด exact | same-group
+N_PLACE.FIGHT-T4-04,5539,เวที,N_PLACE.FIGHT,N_PLACE.RING,T4,T4,review,review,8,A1 ว่าที่_นั้น ok; B ที่_นั้น exact; A2 ที่_· ok | same-group
+N_PLACE.FIGHT-T4-02,5539,เวที,N_PLACE.FIGHT,N_PLACE.RING,T4,T4,review,review,5,A1 มี_ใหม่ ok; B ที่_ด้วย ok; A2 ที่_· ok | same-group
 N_PLACE.SPOT-T4-02,5539,เวที,N_PLACE.SPOT,N_PLACE.RING,T4,T4,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
 N_PLACE.WORK-T5-01,5539,เวที,N_PLACE.WORK,N_PLACE.RING,T5,T4,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
 N_MEDIA.SHOW-T4-02,5540,สังเวียน,N_MEDIA.SHOW,N_PLACE.RING,T4,T4,review,review-strong,14,A1 ไปดู_ที่ไหน exact; B มี_ทุก exact; A2 ดู_ให้ exact | via peer group
@@ -1171,22 +1254,31 @@ N_MEDIA.SHOW-T4-03,5540,สังเวียน,N_MEDIA.SHOW,N_PLACE.RING,T4,T4
 N_PLACE.LEISURE-T4-01,5540,สังเวียน,N_PLACE.LEISURE,N_PLACE.RING,T4,T4,review,review,14,A1 ที่_กัน exact; B เข้า_คนละ exact; A2 บัตร_ลด exact | same-group | scene words: เตะ
 N_PLACE.LEISURE-T4-02,5540,สังเวียน,N_PLACE.LEISURE,N_PLACE.RING,T4,T4,review,review,14,A1 เช่า_ให้ exact; B ที่_นั้น exact; A2 ใน_มี exact | same-group | scene words: เตะ คนดู
 N_PLACE.LEISURE-T4-03,5540,สังเวียน,N_PLACE.LEISURE,N_PLACE.RING,T4,T4,review,review-strong,14,A1 ถึง_แล้ว exact; B ที่_ดู exact; A2 ว่าที่_ปิด exact | same-group
+N_PLACE.FIGHT-T4-04,5540,สังเวียน,N_PLACE.FIGHT,N_PLACE.RING,T4,T4,review,review,8,A1 ว่าที่_นั้น ok; B ที่_นั้น exact; A2 ที่_· ok | same-group
+N_PLACE.FIGHT-T4-02,5540,สังเวียน,N_PLACE.FIGHT,N_PLACE.RING,T4,T4,review,review,5,A1 มี_ใหม่ ok; B ที่_ด้วย ok; A2 ที่_· ok | same-group
 N_PLACE.SPOT-T4-02,5540,สังเวียน,N_PLACE.SPOT,N_PLACE.RING,T4,T4,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
 N_PLACE.WORK-T5-01,5540,สังเวียน,N_PLACE.WORK,N_PLACE.RING,T5,T4,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
 N_PERSONROLE.SERVICE-T4-01,5541,กรรมการ,N_PERSONROLE.SERVICE,N_PERSONROLE.FIGHT,T4,T4,review,review-strong,14,A1 เมื่อเช้า_มา exact; B เหรอ_มา exact; A2 ให้_ดื่ม exact | same-group
 N_PERSONROLE.SERVICE-T4-08,5541,กรรมการ,N_PERSONROLE.SERVICE,N_PERSONROLE.FIGHT,T4,T4,review,review-strong,14,A1 มี_ดูแล exact; B ไปหา_ใช่ไหม exact; A2 บอก_ก่อน exact | same-group
 N_PERSONROLE.SERVICE-T4-09,5541,กรรมการ,N_PERSONROLE.SERVICE,N_PERSONROLE.FIGHT,T4,T4,review,review-strong,14,A1 หา_มา exact; B บอก_ก่อน exact; A2 บอก_ก่อน exact | same-group
+N_PERSONROLE.LAW-T5-04,5541,กรรมการ,N_PERSONROLE.LAW,N_PERSONROLE.FIGHT,T5,T4,review,review,12,A1 ·_ไม่ exact; B แล้ว_ให้ exact; A2 ·_บอก exact | same-group | scene words: ขายตรง ทางเดิน
 N_PERSONROLE.BOSS-T5-05,5541,กรรมการ,N_PERSONROLE.BOSS,N_PERSONROLE.FIGHT,T5,T4,review,review,3,A1 หา_ที่ ok; B มี_ที่ ok; A2 มี_ที่ ok | same-group
+N_PERSONROLE.WORKER-T5-03,5541,กรรมการ,N_PERSONROLE.WORKER,N_PERSONROLE.FIGHT,T5,T4,review,review,3,A1 เป็น_ที่ ok; B เป็น_อยู่ ok; A2 เป็น_ที่ ok | same-group
+N_PERSONROLE.PEOPLE-T5-01,5541,กรรมการ,N_PERSONROLE.PEOPLE,N_PERSONROLE.FIGHT,T5,T4,review,review,2,A1 เป็น_ที่ ok; B แล้ว_นั้น ok; A2 ·_นั้น ok | same-group
 V_ROUTINE.FITNESS-T5-05,5542,ชั่งน้ำหนัก,V_ROUTINE.FITNESS,V_HANDLE.WEIGH,T5,T4,review,review-strong,12,A1 อยาก_ให้ได้ exact; B ลอง_ช้าๆ exact; A2 ค่อย_ช้าๆ exact | via peer group
 V_ROUTINE.FITNESS-T5-06,5542,ชั่งน้ำหนัก,V_ROUTINE.FITNESS,V_HANDLE.WEIGH,T5,T4,review,review-strong,12,A1 ต้อง_· exact; B ตั้งใจ_ก็ exact; A2 ไม่_ตอนนี้ exact | via peer group
 V_ROUTINE.FITNESS-T5-07,5542,ชั่งน้ำหนัก,V_ROUTINE.FITNESS,V_HANDLE.WEIGH,T5,T4,review,review-strong,12,A1 ต้อง_· exact; B ใคร_ได้ exact; A2 เริ่ม_· exact | via peer group
+V_HANDLE.PRESS-T4-03,5542,ชั่งน้ำหนัก,V_HANDLE.PRESS,V_HANDLE.WEIGH,T4,T4,review,review,8,A1 ต้อง_ก่อน exact; B ลอง_แล้ว ok; A2 ลอง_ให้ ok | same-group | scene words: ตาก
+V_HANDLE.STRIKE-T4-02,5542,ชั่งน้ำหนัก,V_HANDLE.STRIKE,V_HANDLE.WEIGH,T4,T4,review,review,5,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
+V_HANDLE.PAPER-T5-08,5542,ชั่งน้ำหนัก,V_HANDLE.PAPER,V_HANDLE.WEIGH,T5,T4,review,review,3,A1 ต้อง_ให้ ok; B ไป_ก่อน ok; A2 ไป_พรุ่งนี้ ok | same-group | scene words: วีซ่า หมดอายุ
+V_ROUTINE.PREPARE-T5-02,5542,ชั่งน้ำหนัก,V_ROUTINE.PREPARE,V_HANDLE.WEIGH,T5,T4,review,review,3,A1 ได้_เลย ok; B เริ่ม_ตอนนี้ ok; A2 จะ_ให้ ok | via peer group
 N_ABSTRACT.AMOUNT-T5-01,5543,น้ำหนัก,N_ABSTRACT.AMOUNT,N_ABSTRACT.WEIGHT,T5,T4,review,review,12,A1 กว่า_น้ำ exact; B ว่า_ที่ exact; A2 เพิ่ม_น้ำ exact | same-group | scene words: คุณหมอ
 N_ABSTRACT.AMOUNT-T5-02,5543,น้ำหนัก,N_ABSTRACT.AMOUNT,N_ABSTRACT.WEIGHT,T5,T4,review,review,12,A1 เรื่อง_เกลือ exact; B ลด_เกลือ exact; A2 วัด_ให้ exact | same-group | scene words: เกลือ เค็ม ครึ่งหนึ่ง
 N_ABSTRACT.AMOUNT-T5-03,5543,น้ำหนัก,N_ABSTRACT.AMOUNT,N_ABSTRACT.WEIGHT,T5,T4,review,review,12,A1 ·_ของ exact; B เพิ่ม_อีก exact; A2 กล่อง_ก็ exact | same-group | scene words: ถ้าอย่างนั้น
 N_ABSTRACT.AMOUNT-T5-10,5543,น้ำหนัก,N_ABSTRACT.AMOUNT,N_ABSTRACT.WEIGHT,T5,T4,review,review,12,A1 อยู่_ไหน exact; B อยู่_ที่ exact; A2 ยังอยู่_ที่ exact | same-group | scene words: ยังอยู่
 N_ABSTRACT.AMOUNT-T5-11,5543,น้ำหนัก,N_ABSTRACT.AMOUNT,N_ABSTRACT.WEIGHT,T5,T4,review,review,12,A1 ·_น้ำ exact; B ถ้า_สูง exact; A2 ก่อนที่_จะ exact | same-group | scene words: แม่น้ำ ของขึ้น ชั้นสอง ก่อนที่
 N_ABSTRACT.AMOUNT-T5-12,5543,น้ำหนัก,N_ABSTRACT.AMOUNT,N_ABSTRACT.WEIGHT,T5,T4,review,review-strong,12,A1 พนักงาน_เดียว exact; B อยู่_สูง exact; A2 ขึ้น_· exact | same-group
-N_ABSTRACT.PUBLIC-T5-12,5543,น้ำหนัก,N_ABSTRACT.PUBLIC,N_ABSTRACT.WEIGHT,T5,T4,review,review,3,A1 เรื่อง_ของ ok; B เรื่อง_ที่ ok; A2 ว่า_ของ ok | same-group | scene words: แต่ละ ล้าน
+N_ABSTRACT.PUBLIC-T5-12,5543,น้ำหนัก,N_ABSTRACT.PUBLIC,N_ABSTRACT.WEIGHT,T5,T4,review,review,6,A1 เรื่อง_ของ exact; B เรื่อง_ที่ ok; A2 ว่า_ของ ok | same-group | scene words: แต่ละ ล้าน
 V_SOCIAL.CONFLICT-T5-07,5546,แข่ง,V_SOCIAL.CONFLICT,V_SOCIAL.COMPETE,T5,T4,review,review,12,A1 จะ_ต่อไป exact; B คุณ_ได้ exact; A2 อยาก_ต่อ exact | same-group | scene words: งานหนัก กำลังใจ
 V_SOCIAL.CONFLICT-T5-08,5546,แข่ง,V_SOCIAL.CONFLICT,V_SOCIAL.COMPETE,T5,T4,review,review-strong,12,A1 กำลังจะ_กัน exact; B เขา_กัน exact; A2 ต้อง_กัน exact | same-group
 V_SOCIAL.CONFLICT-T5-09,5546,แข่ง,V_SOCIAL.CONFLICT,V_SOCIAL.COMPETE,T5,T4,review,review,12,A1 ควร_แล้ว exact; B ควร_จริงๆ exact; A2 ควร_· exact | same-group | scene words: ความปลอดภัย
@@ -1207,15 +1299,16 @@ N_PERSONROLE.CONTEST-T4-06,5550,คู่ต่อสู้,N_PERSONROLE.CONTEST
 N_PERSONROLE.CONTEST-T4-07,5550,คู่ต่อสู้,N_PERSONROLE.CONTEST,N_PERSONROLE.FIGHT,T4,T4,review,review,14,A1 กัน_ต้อง exact; B เป็น_ขอ exact; A2 แล้ว_ต้อง exact | same-group | scene words: เตะ ข้าวมันไก่
 N_PERSONROLE.CONTEST-T4-08,5550,คู่ต่อสู้,N_PERSONROLE.CONTEST,N_PERSONROLE.FIGHT,T4,T4,review,review,14,A1 ลูกผม_ก็ได้ exact; B เลย_จะ exact; A2 เห็น_ได้ exact | same-group | scene words: ปีก่อน ถ้วย
 N_PERSONROLE.CONTEST-T4-09,5550,คู่ต่อสู้,N_PERSONROLE.CONTEST,N_PERSONROLE.FIGHT,T4,T4,review,review,14,A1 บ้าน_ต้อง exact; B เป็น_· exact; A2 เป็น_บ่อย exact | same-group | scene words: เกม ล้างจาน
+N_PERSONROLE.LAW-T5-01,5550,คู่ต่อสู้,N_PERSONROLE.LAW,N_PERSONROLE.FIGHT,T5,T4,review,review,3,A1 เป็น_ได้ ok; B ว่า_ต้อง ok; A2 เป็น_ก็ ok | same-group
 V_HANDLE.COLLIDE-T5-01,5551,น็อก,V_HANDLE.COLLIDE,V_HANDLE.STRIKE,T5,T4,review,review-strong,12,A1 รถ_ใคร exact; B รถ_อะไร exact; A2 รถ_เขา exact | same-group
 V_HANDLE.COLLIDE-T5-02,5551,น็อก,V_HANDLE.COLLIDE,V_HANDLE.STRIKE,T5,T4,review,review,12,A1 อาจจะ_กัน exact; B เขา_กัน exact; A2 จะ_โต๊ะ exact | same-group | scene words: วิ่งเล่น
 V_SOCIAL.HELP-T4-01,5555,เชียร์,V_SOCIAL.HELP,V_SOCIAL.CHEER,T4,T4,review,review,14,A1 ไป_เพื่อน exact; B ไป_ด้วย exact; A2 ไป_ก็ exact | same-group | scene words: เหงา
 V_SOCIAL.HELP-T4-02,5555,เชียร์,V_SOCIAL.HELP,V_SOCIAL.CHEER,T4,T4,review,review,14,A1 ควร_เขา exact; B ใคร_บ้าง exact; A2 จะ_คุณ exact | same-group | scene words: ผิดหวัง
 V_SOCIAL.HELP-T4-03,5555,เชียร์,V_SOCIAL.HELP,V_SOCIAL.CHEER,T4,T4,review,review-strong,14,A1 อยาก_กัน exact; B ลอง_เพื่อนร่วมงาน exact; A2 ใคร_บ้าง exact | same-group
+V_SOCIAL.MEET-T5-02,5555,เชียร์,V_SOCIAL.MEET,V_SOCIAL.CHEER,T5,T4,review,review-strong,9,A1 จะ_ลูก ok; B ไป_ลูก exact; A2 ไป_ลูก exact | same-group
+V_SOCIAL.HELP-T5-01,5555,เชียร์,V_SOCIAL.HELP,V_SOCIAL.CHEER,T5,T4,review,review,6,A1 อยาก_เขา ok; B ไป_เขา exact; A2 จะ_เขา ok | same-group
 V_SOCIAL.VISIT-T4-02,5555,เชียร์,V_SOCIAL.VISIT,V_SOCIAL.CHEER,T4,T4,review,review,5,A1 ไป_ไหม ok; B ไป_เลย ok; A2 ไป_บ้าง ok | same-group | scene words: คิดถึง
-V_SOCIAL.HELP-T5-01,5555,เชียร์,V_SOCIAL.HELP,V_SOCIAL.CHEER,T5,T4,review,review,3,A1 อยาก_เขา ok; B ไป_เขา ok; A2 จะ_เขา ok | same-group
 V_SOCIAL.MEET-T5-01,5555,เชียร์,V_SOCIAL.MEET,V_SOCIAL.CHEER,T5,T4,review,review,3,A1 จะ_เพื่อน ok; B คุณ_เพื่อน ok; A2 จะ_เพื่อน ok | same-group
-V_SOCIAL.MEET-T5-02,5555,เชียร์,V_SOCIAL.MEET,V_SOCIAL.CHEER,T5,T4,review,review,3,A1 จะ_ลูก ok; B ไป_ลูก ok; A2 ไป_ลูก ok | same-group
 N_BODY.FLUID-T4-03,5559,เหงื่อ,N_BODY.FLUID,N_BODY.SWEAT,T4,T4,review,review,14,A1 แล้ว_ออก exact; B เช็ด_ก่อน exact; A2 แต่_ยัง exact | same-group | scene words: เช็ด
 N_BODY.FLUID-T4-04,5559,เหงื่อ,N_BODY.FLUID,N_BODY.SWEAT,T4,T4,review,review,14,A1 อยู่_ออก exact; B ก่อน_จะ exact; A2 แต่_ยัง exact | same-group | scene words: หั่น หอม มีด
 N_BODY.FLUID-T4-05,5559,เหงื่อ,N_BODY.FLUID,N_BODY.SWEAT,T4,T4,review,review-strong,14,A1 สนามบิน_ผม exact; B ฉัน_ก็ exact; A2 แล้ว_ผม exact | same-group
@@ -1276,9 +1369,11 @@ N_PLACE.REGION-T2-03,6048,ร้านตามสั่ง,N_PLACE.REGION,N_PLA
 N_PLACE.LIVE-T2-01,6048,ร้านตามสั่ง,N_PLACE.LIVE,N_PLACE.EAT,T2,T2,review,review,8,A1 อยู่_เหรอ ok; B อยู่_ใกล้ ok; A2 ·_ใกล้ exact | same-group
 N_PLACE.STATION-T2-05,6048,ร้านตามสั่ง,N_PLACE.STATION,N_PLACE.EAT,T2,T2,review,review,8,A1 ถึง_แล้ว exact; B ถึง_เลย ok; A2 ที่_ได้ ok | same-group
 N_PLACE.SERVICE-T2-01,6048,ร้านตามสั่ง,N_PLACE.SERVICE,N_PLACE.EAT,T2,T2,review,review,7,A1 มี_ไหม ok; B มี_ข้างๆ exact; A2 ·_นั้น ok | same-group
+N_PLACE.FIGHT-T4-03,6048,ร้านตามสั่ง,N_PLACE.FIGHT,N_PLACE.EAT,T4,T2,review,review,6,A1 ไป_· ok; B ไป_ไหม ok; A2 ไป_ได้ exact | same-group
 N_PLACE.REGION-T2-02,6048,ร้านตามสั่ง,N_PLACE.REGION,N_PLACE.EAT,T2,T2,review,review,5,A1 ไป_ใหม่ ok; B ไป_ที่ ok; A2 ไป_นั้น ok | same-group
 N_PLACE.MARKET-T2-02,6048,ร้านตามสั่ง,N_PLACE.MARKET,N_PLACE.EAT,T2,T2,review,review,4,A1 ไป_ไหน ok; B ไป_ใกล้ ok; A2 ·_นั้น ok | same-group | scene words: ถูกๆ
 N_PLACE.AWAY-T3-02,6048,ร้านตามสั่ง,N_PLACE.AWAY,N_PLACE.EAT,T3,T2,review,review,3,A1 ไป_· ok; B ไป_ก็ ok; A2 ที่_ได้ ok | same-group
+N_PLACE.FIGHT-T4-02,6048,ร้านตามสั่ง,N_PLACE.FIGHT,N_PLACE.EAT,T4,T2,review,review,3,A1 มี_ใหม่ ok; B ที่_ด้วย ok; A2 ที่_· ok | same-group
 N_PLACE.OFFICE-T3-06,6048,ร้านตามสั่ง,N_PLACE.OFFICE,N_PLACE.EAT,T3,T2,review,review,3,A1 ไป_ไหม ok; B ไป_ก่อน ok; A2 ไป_ที่ ok | same-group
 A_THING.SUIT-T2-01,6051,จำเป็น,A_THING.SUIT,A_THING.PRIORITY,T2,T2,review,review,8,A1 นี้_ไหม exact; B ถ้า_ก็ ok; A2 นี้_เลย ok | same-group | scene words: เอาเลย
 A_THING.SIZE-T2-13,6055,ชัดเจน,A_THING.SIZE,A_THING.INFO,T2,T2,review,review-strong,10,A1 นี้_ไหม exact; B ·_แต่ exact; A2 ·_ก็ ok | same-group
@@ -1290,8 +1385,13 @@ A_THING.SIZE-T2-15,6069,แปลก,A_THING.SIZE,A_THING.FUN,T2,T2,review,revie
 A_THING.EASE-T2-06,6069,แปลก,A_THING.EASE,A_THING.FUN,T2,T2,review,review,8,A1 ที่นี่_ไหม ok; B ·_มาก ok; A2 ·_แบบนี้ exact | same-group
 V_TRADE.PAY-T3-04,6075,คืน,V_TRADE.PAY,V_TRADE.RETURN,T3,T2,review,review-strong,9,A1 ขอ_ได้ exact; B ต้อง_ก่อน ok; A2 จะ_ก่อน exact | same-group
 V_TRADE.PAY-T3-06,6075,คืน,V_TRADE.PAY,V_TRADE.RETURN,T3,T2,review,review,3,A1 ขอ_ด้วย ok; B ต้อง_ก่อน ok; A2 จะ_พรุ่งนี้ ok | same-group | scene words: ค่าน้ำ
+V_HANDLE.STRIKE-T4-02,6076,เท,V_HANDLE.STRIKE,V_HANDLE.LIQUID,T4,T2,review,review-strong,12,A1 จะ_อีก exact; B จะ_อีก exact; A2 จะ_ก่อน exact | same-group
 V_HANDLE.PRESS-T4-03,6077,หั่น,V_HANDLE.PRESS,V_HANDLE.CUT,T4,T2,review,review,6,A1 ต้อง_ก่อน exact; B ลอง_แล้ว ok; A2 ลอง_ให้ ok | same-group | scene words: ตาก
 V_HANDLE.LIQUID-T2-03,6077,หั่น,V_HANDLE.LIQUID,V_HANDLE.CUT,T2,T2,review,review,5,A1 ช่วย_ให้ ok; B จะ_ก่อน ok; A2 จะ_อีก ok | same-group | scene words: หลังจากนั้น
+V_HANDLE.STRIKE-T4-02,6077,หั่น,V_HANDLE.STRIKE,V_HANDLE.CUT,T4,T2,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
+V_HANDLE.STRIKE-T4-02,6083,เสิร์ฟ,V_HANDLE.STRIKE,V_HANDLE.LIQUID,T4,T2,review,review-strong,12,A1 จะ_อีก exact; B จะ_อีก exact; A2 จะ_ก่อน exact | same-group
+V_HANDLE.STRIKE-T4-07,6084,ผลัก,V_HANDLE.STRIKE,V_HANDLE.DOOR,T4,T2,review,review,6,A1 ลอง_ดู exact; B ลอง_ช้าๆ ok; A2 ลอง_ช้าๆ ok | same-group
+V_HANDLE.STRIKE-T4-02,6084,ผลัก,V_HANDLE.STRIKE,V_HANDLE.DOOR,T4,T2,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
 V_CHANGE.LOST-T2-04,6085,พัง,V_CHANGE.LOST,V_CHANGE.BREAK,T2,T2,review,review-strong,14,A1 อาจ_ก็ได้ exact; B ไม่_นะคะ exact; A2 ให้_· exact | same-group
 V_CHANGE.STOCK-T2-01,6085,พัง,V_CHANGE.STOCK,V_CHANGE.BREAK,T2,T2,review,review-strong,11,A1 จะ_แล้ว ok; B ให้_· exact; A2 จะ_อีก exact | same-group
 V_CHANGE.STOCK-T2-03,6085,พัง,V_CHANGE.STOCK,V_CHANGE.BREAK,T2,T2,review,review,11,A1 อาจ_ก็ได้ exact; B ให้_· exact; A2 จะ_· ok | same-group | scene words: ไข่
@@ -1307,6 +1407,7 @@ N_PLACE.OFFICE-T5-03,6086,ตลาดกลางคืน,N_PLACE.OFFICE,N_PLA
 N_PLACE.HEALTH-T4-01,6086,ตลาดกลางคืน,N_PLACE.HEALTH,N_PLACE.MARKET,T4,T2,review,review,9,A1 ที่_ต้อง exact; B ที่_ต้อง exact; A2 ไป_เลย ok | same-group | scene words: ทอง มีชื่อ ทะเบียนบ้าน
 N_PLACE.SHOP-T3-05,6086,ตลาดกลางคืน,N_PLACE.SHOP,N_PLACE.MARKET,T3,T2,review,review,9,A1 ไป_มา ok; B ที่_คน exact; A2 ที่_ไม่ exact | same-group | scene words: อย่างนี้
 N_PLACE.EAT-T5-01,6086,ตลาดกลางคืน,N_PLACE.EAT,N_PLACE.MARKET,T5,T2,review,review,8,A1 ที่_ใกล้ ok; B ·_นั้น exact; A2 ที่_คน exact | same-group | scene words: ไวไฟ ปลั๊กไฟ
+N_PLACE.FIGHT-T4-01,6086,ตลาดกลางคืน,N_PLACE.FIGHT,N_PLACE.MARKET,T4,T2,review,review,6,A1 ที่_กับ ok; B ไป_เลย ok; A2 ที่_ไม่ exact | same-group
 N_PLACE.OFFICE-T3-01,6086,ตลาดกลางคืน,N_PLACE.OFFICE,N_PLACE.MARKET,T3,T2,review,review,6,A1 ไป_ต้อง exact; B ที่_เลย ok; A2 ที่_บ้าง ok | same-group
 N_PLACE.EAT-T2-05,6086,ตลาดกลางคืน,N_PLACE.EAT,N_PLACE.MARKET,T2,T2,review,review,5,A1 ที่_นี้ ok; B แต่_นี้ ok; A2 ที่_นี้ ok | same-group
 N_PLACE.SPOT-T2-04,6086,ตลาดกลางคืน,N_PLACE.SPOT,N_PLACE.MARKET,T2,T2,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group
@@ -1317,8 +1418,11 @@ N_PLACE.WORK-T5-01,6086,ตลาดกลางคืน,N_PLACE.WORK,N_PLACE.M
 N_PLACE.SPOT-T3-02,6086,ตลาดกลางคืน,N_PLACE.SPOT,N_PLACE.MARKET,T3,T2,review,review,2,A1 ·_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: กลับรถ เย อะนะ
 V_HANDLE.TAKE-T2-12,6087,แบ่ง,V_HANDLE.TAKE,V_HANDLE.SORT,T2,T2,review,review,8,A1 ·_ใบเสร็จ ok; B จะ_ให้ exact; A2 ·_ใบเสร็จ ok | same-group
 V_HANDLE.LIQUID-T2-03,6088,เช็ด,V_HANDLE.LIQUID,V_HANDLE.CLEAN,T2,T2,review,review,5,A1 ช่วย_ให้ ok; B จะ_ก่อน ok; A2 จะ_อีก ok | same-group | scene words: หลังจากนั้น
+V_HANDLE.STRIKE-T4-02,6088,เช็ด,V_HANDLE.STRIKE,V_HANDLE.CLEAN,T4,T2,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
 V_HANDLE.LIQUID-T2-03,6090,ถู,V_HANDLE.LIQUID,V_HANDLE.CLEAN,T2,T2,review,review,5,A1 ช่วย_ให้ ok; B จะ_ก่อน ok; A2 จะ_อีก ok | same-group | scene words: หลังจากนั้น
+V_HANDLE.STRIKE-T4-02,6090,ถู,V_HANDLE.STRIKE,V_HANDLE.CLEAN,T4,T2,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
 V_HANDLE.REPAIR-T3-01,6093,ดาวน์โหลด,V_HANDLE.REPAIR,V_HANDLE.APP,T3,T2,review,review,6,A1 ต้อง_ก่อน ok; B ·_ได้ ok; A2 จะ_ให้ exact | same-group
+V_HANDLE.STRIKE-T4-02,6093,ดาวน์โหลด,V_HANDLE.STRIKE,V_HANDLE.APP,T4,T2,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
 V_COMMUNICATE.ASSIGN-T4-02,6094,ส่งข้อความ,V_COMMUNICATE.ASSIGN,V_COMMUNICATE.WRITE,T4,T2,review,review,3,A1 จะ_ให้ ok; B ไม่_ให้ ok; A2 จะ_ให้ ok | same-group
 V_COMMUNICATE.LANG-T4-02,6094,ส่งข้อความ,V_COMMUNICATE.LANG,V_COMMUNICATE.WRITE,T4,T2,review,review,3,A1 จะ_ให้ ok; B จะ_ก็ ok; A2 จะ_ให้ ok | same-group | scene words: เข้าใจง่าย
 V_COMMUNICATE.LANG-T4-06,6094,ส่งข้อความ,V_COMMUNICATE.LANG,V_COMMUNICATE.WRITE,T4,T2,review,review,3,A1 ต้อง_· ok; B ลอง_ให้ ok; A2 ต้อง_อีก ok | same-group
@@ -1329,6 +1433,7 @@ N_PLACE.AWAY-T3-02,6097,หน้าปากซอย,N_PLACE.AWAY,N_PLACE.SPOT
 N_PLACE.SHOP-T3-03,6097,หน้าปากซอย,N_PLACE.SHOP,N_PLACE.SPOT,T3,T2,review,review-strong,9,A1 ที่_ไม่ exact; B ที่_ได้ exact; A2 ที่_มี ok | same-group
 N_PLACE.STATION-T2-05,6097,หน้าปากซอย,N_PLACE.STATION,N_PLACE.SPOT,T2,T2,review,review,8,A1 ถึง_แล้ว ok; B ถึง_เลย ok; A2 ที่_ได้ exact | same-group
 N_PLACE.WAY-T2-04,6097,หน้าปากซอย,N_PLACE.WAY,N_PLACE.SPOT,T2,T2,review,review,8,A1 ใกล้_ได้ ok; B ใกล้_ได้ ok; A2 ที่_· exact | same-group
+N_PLACE.FIGHT-T4-03,6097,หน้าปากซอย,N_PLACE.FIGHT,N_PLACE.SPOT,T4,T2,review,review,6,A1 ไป_· exact; B ไป_ไหม ok; A2 ไป_ได้ ok | same-group
 N_PLACE.SHOP-T5-02,6097,หน้าปากซอย,N_PLACE.SHOP,N_PLACE.SPOT,T5,T2,review,review,6,A1 จาก_นี้ ok; B ที่_นี้ exact; A2 แต่_นี้ ok | same-group
 N_PLACE.LIVE-T2-02,6097,หน้าปากซอย,N_PLACE.LIVE,N_PLACE.SPOT,T2,T2,review,review,4,A1 ·_นี้ ok; B แต่_นี้ ok; A2 จาก_นี้ ok | same-group
 V_COMMUNICATE.ASSIGN-T4-02,6098,ยืนยัน,V_COMMUNICATE.ASSIGN,V_COMMUNICATE.TOPIC,T4,T2,review,review-strong,9,A1 จะ_ให้ exact; B ไม่_ให้ ok; A2 จะ_ให้ exact | same-group
@@ -1416,17 +1521,19 @@ N_MONEY.PAY-T2-02,6151,เหรียญ,N_MONEY.PAY,N_MONEY.CASH,T2,T2,review,
 N_MONEY.PAY-T2-04,6151,เหรียญ,N_MONEY.PAY,N_MONEY.CASH,T2,T2,review,review,8,A1 ใช้_ได้ ok; B ใช้_ได้ ok; A2 เอา_ไป exact | same-group | scene words: ตั๋วรถไฟ
 N_MONEY.PERKS-T3-02,6151,เหรียญ,N_MONEY.PERKS,N_MONEY.CASH,T3,T2,review,review,3,A1 ใช้_ที่ ok; B ใช้_ได้ ok; A2 ใช้_· ok | same-group
 N_MONEY.TAXINV-T4-02,6151,เหรียญ,N_MONEY.TAXINV,N_MONEY.CASH,T4,T2,review,review,3,A1 ขอ_ที่ ok; B ขอ_ที่ ok; A2 ขอ_· ok | same-group
+N_PLACE.FIGHT-T4-03,6157,ที่อื่น,N_PLACE.FIGHT,N_PLACE.AWAY,T4,T3,review,review,6,A1 ไป_· exact; B ไป_ไหม ok; A2 ไป_ได้ ok | same-group
 N_PLACE.SPOT-T4-02,6157,ที่อื่น,N_PLACE.SPOT,N_PLACE.AWAY,T4,T3,review,review,3,"A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | English ""{E} is"" frame with a pair / mass word; scene words: ค่าปรับ เป็นพิเศษ"
 N_PLACE.WORK-T5-01,6157,ที่อื่น,N_PLACE.WORK,N_PLACE.AWAY,T5,T3,review,review,3,"A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | English ""{E} is"" frame with a pair / mass word; scene words: เข้าทำงาน ขึ้นเงินเดือน"
 N_ABSTRACT.HEART-T3-01,6160,ความรู้,N_ABSTRACT.HEART,N_ABSTRACT.SKILL,T3,T3,review,review-strong,11,A1 มี_มาก exact; B เพราะ_ของ exact; A2 มี_ให้ ok | same-group
 N_ABSTRACT.CAUSE-T5-14,6160,ความรู้,N_ABSTRACT.CAUSE,N_ABSTRACT.SKILL,T5,T3,review,review,3,A1 มี_ให้ ok; B มี_ให้ ok; A2 มี_ก็ ok | same-group | scene words: วิชา ขยัน ฉลอง
 N_ABSTRACT.CAUSE-T5-15,6160,ความรู้,N_ABSTRACT.CAUSE,N_ABSTRACT.SKILL,T5,T3,review,review,3,A1 มี_ให้ ok; B มี_ให้ ok; A2 มี_ให้ ok | same-group
 N_ABSTRACT.METHOD-T5-02,6163,ความแตกต่าง,N_ABSTRACT.METHOD,N_ABSTRACT.INFO,T5,T3,review,review,6,A1 เข้าใจ_ทั้งหมด exact; B อธิบาย_ทั้งหมด ok; A2 เข้าใจ_แล้ว ok | same-group
+V_HANDLE.STRIKE-T4-02,6166,แก้ไข,V_HANDLE.STRIKE,V_HANDLE.REPAIR,T4,T3,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
 V_COMMUNICATE.COMPLAIN-T5-05,6171,เสนอ,V_COMMUNICATE.COMPLAIN,V_COMMUNICATE.PROPOSE,T5,T3,review,review,9,A1 จะ_· ok; B จะ_ต้อง exact; A2 จะ_ดี exact | same-group | scene words: มีเหตุผล
 V_COMMUNICATE.LANG-T4-02,6171,เสนอ,V_COMMUNICATE.LANG,V_COMMUNICATE.PROPOSE,T4,T3,review,review,9,A1 จะ_ให้ exact; B จะ_ก็ ok; A2 จะ_ให้ exact | same-group | scene words: เข้าใจง่าย
 A_PERSONSTATE.SAD-T5-02,6179,ตกใจ,A_PERSONSTATE.SAD,A_PERSONSTATE.SURPRISE,T5,T3,review,review,6,A1 ผม_· exact; B ก็_เหมือนกัน ok; A2 ไม่_แล้ว ok | same-group | scene words: ตั๋วหนัง
 A_PERSONSTATE.SAD-T3-03,6180,เหงา,A_PERSONSTATE.SAD,A_PERSONSTATE.LONELY,T3,T3,review,review,5,A1 ผม_· ok; B ถ้า_มาก ok; A2 ไม่_แล้ว ok | same-group | scene words: คืนเงิน
-A_PERSONSTATE.SURPRISE-T3-02,6180,เหงา,A_PERSONSTATE.SURPRISE,A_PERSONSTATE.LONELY,T3,T3,review,review,5,A1 คุณ_ไหม ok; B ไม่_เลย ok; A2 ก็_· ok | same-group | scene words: เที่ยงคืน ตอนแรก
+A_PERSONSTATE.SURPRISE-T3-02,6180,เหงา,A_PERSONSTATE.SURPRISE,A_PERSONSTATE.LONELY,T3,T3,review,review,5,A1 คุณ_ไหม ok; B ไม่_เลย ok; A2 ก็_· ok | same-group | scene words: เที่ยงคืน
 V_ROUTINE.FORTUNE-T5-07,6182,ใส่บาตร,V_ROUTINE.FORTUNE,V_ROUTINE.MERIT,T5,T3,review,review,3,A1 ไป_ที่วัด ok; B ไป_บ้าง ok; A2 ไป_· ok | same-group | scene words: ภาคเหนือ
 V_SOCIAL.LOVE-T5-03,6186,ทะเลาะ,V_SOCIAL.LOVE,V_SOCIAL.CONFLICT,T5,T3,review,review,3,A1 ชอบ_กัน ok; B ชอบ_กัน ok; A2 จะ_กัน ok | same-group | scene words: วัยรุ่น
 V_SOCIAL.LOVE-T5-01,6187,คืนดี,V_SOCIAL.LOVE,V_SOCIAL.CONFLICT,T5,T3,review,review,9,A1 น่าจะ_กัน exact; B จะ_กัน exact; A2 อยาก_กัน ok | same-group | scene words: สนิท
@@ -1514,6 +1621,7 @@ N_PLACE.SPOT-T4-02,6360,โฮมสเตย์,N_PLACE.SPOT,N_PLACE.STAY,T4,T3
 N_PLACE.WORK-T5-01,6360,โฮมสเตย์,N_PLACE.WORK,N_PLACE.STAY,T5,T3,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
 N_EVENT.CEREMONY-T4-04,6365,นัดหมอ,N_EVENT.CEREMONY,N_EVENT.APPT,T4,T3,review,review,6,A1 มี_ต้อง ok; B ไป_แต่เช้า exact; A2 ไป_· ok | same-group | scene words: พวงมาลัย
 N_EVENT.GATHERING-T5-01,6365,นัดหมอ,N_EVENT.GATHERING,N_EVENT.APPT,T5,T3,review,review,6,A1 มี_ผม exact; B ไป_ด้วย ok; A2 ไป_ตั้ง ok | same-group | scene words: ธูป
+V_HANDLE.STRIKE-T4-02,6369,วัดไข้,V_HANDLE.STRIKE,V_HANDLE.CARE,T4,T3,review,review,3,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
 N_PLACE.CHECK-T4-02,6370,โรงพยาบาลเอกชน,N_PLACE.CHECK,N_PLACE.HEALTH,T4,T3,review,review,6,A1 ที่_ให้ exact; B ที่_นั้น ok; A2 ที่_ไม่ ok | same-group | scene words: ข้างทาง
 N_PLACE.OFFICE-T3-01,6370,โรงพยาบาลเอกชน,N_PLACE.OFFICE,N_PLACE.HEALTH,T3,T3,review,review,5,A1 ไป_ต้อง ok; B ที่_เลย ok; A2 ที่_บ้าง ok | same-group
 N_PLACE.OFFICE-T3-06,6370,โรงพยาบาลเอกชน,N_PLACE.OFFICE,N_PLACE.HEALTH,T3,T3,review,review,5,A1 ไป_ไหม ok; B ไป_ก่อน ok; A2 ไป_ที่ ok | same-group
@@ -1525,6 +1633,7 @@ N_PLACE.OFFICE-T3-06,6371,คลินิกชุมชน,N_PLACE.OFFICE,N_PLA
 N_PLACE.SPOT-T3-02,6371,คลินิกชุมชน,N_PLACE.SPOT,N_PLACE.HEALTH,T3,T3,review,review,4,A1 ·_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: กลับรถ เย อะนะ
 N_PLACE.SPOT-T4-02,6371,คลินิกชุมชน,N_PLACE.SPOT,N_PLACE.HEALTH,T4,T3,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
 N_PLACE.WORK-T5-01,6371,คลินิกชุมชน,N_PLACE.WORK,N_PLACE.HEALTH,T5,T3,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
+N_PLACE.FIGHT-T4-03,6380,ร้านข้าวต้ม,N_PLACE.FIGHT,N_PLACE.EAT,T4,T3,review,review,6,A1 ไป_· ok; B ไป_ไหม ok; A2 ไป_ได้ exact | same-group
 N_PLACE.AWAY-T3-02,6380,ร้านข้าวต้ม,N_PLACE.AWAY,N_PLACE.EAT,T3,T3,review,review,5,A1 ไป_· ok; B ไป_ก็ ok; A2 ที่_ได้ ok | same-group
 N_PLACE.SPOT-T3-02,6380,ร้านข้าวต้ม,N_PLACE.SPOT,N_PLACE.EAT,T3,T3,review,review,4,A1 ·_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: กลับรถ เย อะนะ
 N_PLACE.SPOT-T4-02,6380,ร้านข้าวต้ม,N_PLACE.SPOT,N_PLACE.EAT,T4,T3,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
@@ -1592,6 +1701,7 @@ A_PERSONSTATE.MISFORTUNE-T5-02,6434,เพลิดเพลิน,A_PERSONSTATE
 N_HOME.TOOLS-T4-03,6452,ตะเกียบ,N_HOME.TOOLS,N_HOME.CUTLERY,T4,T4,review,review-strong,14,A1 เอา_มา exact; B มี_อยู่ exact; A2 เอา_มา exact | same-group
 N_HOME.TOOLS-T4-03,6490,ไม้จิ้มฟัน,N_HOME.TOOLS,N_HOME.CUTLERY,T4,T4,review,review-strong,14,A1 เอา_มา exact; B มี_อยู่ exact; A2 เอา_มา exact | same-group
 V_COMMUNICATE.PROPOSE-T5-02,6497,แสดงท่าทาง,V_COMMUNICATE.PROPOSE,V_COMMUNICATE.LANG,T5,T4,review,review,6,A1 ต้อง_แล้ว ok; B ต้อง_ให้ exact; A2 จะ_ให้ ok | same-group | scene words: รับรอง
+N_ABSTRACT.MOVE-T4-04,6504,โครงร่าง,N_ABSTRACT.MOVE,N_ABSTRACT.SCHEDULE,T4,T4,review,review,8,A1 ทำ_นี้ ok; B ดู_ของ exact; A2 ทำ_นั้น ok | same-group
 X_PROPER.BRANCH-T5-04,6506,เกาะช้าง,X_PROPER.BRANCH,X_PROPER.SIGHT,T5,T4,review,review,3,A1 ที่_· ok; B ที่_ต้อง ok; A2 ไป_· ok | same-group | scene words: เปิดบัญชี
 A_THING.CLEAN-T5-02,6510,หนา,A_THING.CLEAN,A_THING.SIZE,T5,T4,review,review-strong,12,A1 นี้_มาก exact; B ถ้า_ขนาด exact; A2 ที่_แบบนี้ exact | same-group
 A_THING.METHOD-T5-01,6510,หนา,A_THING.METHOD,A_THING.SIZE,T5,T4,review,review-strong,12,A1 นี้_มาก exact; B ถ้า_ขนาด exact; A2 ที่_แบบนี้ exact | same-group
@@ -1609,6 +1719,8 @@ N_BODY.BONE-T4-02,6536,ส้นเท้า,N_BODY.BONE,N_BODY.LOWER,T4,T4,revi
 N_BODY.BONE-T4-02,6538,ขาหนีบ,N_BODY.BONE,N_BODY.LOWER,T4,T4,review,review,11,A1 ปวด_มาก exact; B ดู_ก่อน exact; A2 ดู_แล้ว ok | same-group | scene words: พักฟื้น
 N_BODY.BONE-T4-02,6540,เอ็นร้อยหวาย,N_BODY.BONE,N_BODY.LOWER,T4,T4,review,review,11,A1 ปวด_มาก exact; B ดู_ก่อน exact; A2 ดู_แล้ว ok | same-group | scene words: พักฟื้น
 N_BODY.BONE-T5-05,6540,เอ็นร้อยหวาย,N_BODY.BONE,N_BODY.LOWER,T5,T4,review,review,6,A1 ปวด_มาก exact; B ปวด_อีก ok; A2 กับ_ก่อน ok | same-group | scene words: ลูกประคบ
+N_BODY.COMBAT-T4-05,6542,นิ้วโป้ง,N_BODY.COMBAT,N_BODY.FINGER,T4,T4,review,review,5,A1 ·_ข้าง ok; B ·_ข้าง ok; A2 พัก_ข้าง ok | same-group
+N_BODY.COMBAT-T4-05,6546,นิ้วชี้,N_BODY.COMBAT,N_BODY.FINGER,T4,T4,review,review,5,A1 ·_ข้าง ok; B ·_ข้าง ok; A2 พัก_ข้าง ok | same-group
 V_HANDLE.PRESS-T4-03,6560,วัดชีพจร,V_HANDLE.PRESS,V_HANDLE.CARE,T4,T4,review,review,8,A1 ต้อง_ก่อน ok; B ลอง_แล้ว ok; A2 ลอง_ให้ exact | same-group | scene words: ตาก
 N_PLACE.GATE-T4-01,6561,ห้องฉุกเฉิน,N_PLACE.GATE,N_PLACE.ROOM,T4,T4,review,review,11,A1 ที่_แล้ว ok; B หา_ไม่ exact; A2 เห็น_ข้างๆ exact | same-group | scene words: บอกทาง
 N_PLACE.HEALTH-T4-01,6561,ห้องฉุกเฉิน,N_PLACE.HEALTH,N_PLACE.ROOM,T4,T4,review,review,5,A1 ที่_ต้อง ok; B ที่_ต้อง ok; A2 ไป_เลย ok | same-group | scene words: ทอง มีชื่อ ทะเบียนบ้าน
@@ -1623,6 +1735,7 @@ N_PLACE.SPOT-T4-02,6574,สถานีอนามัย,N_PLACE.SPOT,N_PLACE.H
 N_PLACE.WORK-T5-01,6574,สถานีอนามัย,N_PLACE.WORK,N_PLACE.HEALTH,T5,T4,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
 N_PLACE.OFFICE-T5-03,6578,โรงพยาบาลชุมชน,N_PLACE.OFFICE,N_PLACE.HEALTH,T5,T4,review,review-strong,9,A1 ที่_มา exact; B ไป_ต้อง ok; A2 ที่_คน exact | same-group
 N_PLACE.CHECK-T4-02,6578,โรงพยาบาลชุมชน,N_PLACE.CHECK,N_PLACE.HEALTH,T4,T4,review,review,8,A1 ที่_ให้ exact; B ที่_นั้น ok; A2 ที่_ไม่ ok | same-group | scene words: ข้างทาง
+N_PLACE.FIGHT-T4-04,6578,โรงพยาบาลชุมชน,N_PLACE.FIGHT,N_PLACE.HEALTH,T4,T4,review,review,5,A1 ว่าที่_นั้น ok; B ที่_นั้น ok; A2 ที่_· ok | same-group
 N_PLACE.SPOT-T4-02,6578,โรงพยาบาลชุมชน,N_PLACE.SPOT,N_PLACE.HEALTH,T4,T4,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
 N_PLACE.WORK-T5-01,6578,โรงพยาบาลชุมชน,N_PLACE.WORK,N_PLACE.HEALTH,T5,T4,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
 A_PERSONSTATE.ANGRY-T5-02,6579,วิตก,A_PERSONSTATE.ANGRY,A_PERSONSTATE.WORRY,T5,T4,review,review,6,A1 คน_ง่าย exact; B ก็_มาก ok; A2 ไม่_· ok | same-group | scene words: ติดตัว
@@ -1659,7 +1772,9 @@ V_COMMUNICATE.PROPOSE-T5-02,6672,พูดซ้ำ,V_COMMUNICATE.PROPOSE,V_COMM
 N_MEDIA.LEGEND-T5-01,6674,เพลงร็อก,N_MEDIA.LEGEND,N_MEDIA.MUSIC,T5,T4,review,review,3,"A1 ได้ยิน_ของ ok; B ได้ยิน_นั้น ok; A2 ชอบ_เก่าๆ ok | same-group | English ""{E} is"" frame with a pair / mass word; scene words: มีความหมาย ลึก"
 X_PROPER.BRANCH-T5-04,6701,เชียงใหม่,X_PROPER.BRANCH,X_PROPER.TOWN,T5,T4,review,review,3,A1 ที่_· ok; B ที่_ต้อง ok; A2 ไป_· ok | same-group | scene words: เปิดบัญชี
 N_ABSTRACT.SCOPE-T5-20,6703,แผนการเดินทาง,N_ABSTRACT.SCOPE,N_ABSTRACT.SCHEDULE,T5,T4,review,review,6,A1 ·_ของ exact; B ว่า_ใหม่ ok; A2 ว่า_ใหม่ ok | same-group
+V_HANDLE.STRIKE-T4-07,6705,เตะ,V_HANDLE.STRIKE,V_HANDLE.BALL,T4,T4,review,review-strong,14,A1 ลอง_ดู exact; B ลอง_ช้าๆ exact; A2 ลอง_ช้าๆ exact | same-group
 V_HANDLE.PRESS-T4-03,6705,เตะ,V_HANDLE.PRESS,V_HANDLE.BALL,T4,T4,review,review,11,A1 ต้อง_ก่อน exact; B ลอง_แล้ว ok; A2 ลอง_ให้ exact | same-group | scene words: ตาก
+V_HANDLE.STRIKE-T4-02,6705,เตะ,V_HANDLE.STRIKE,V_HANDLE.BALL,T4,T4,review,review,5,A1 จะ_อีก ok; B จะ_อีก ok; A2 จะ_ก่อน ok | same-group
 X_PROPER.BRANCH-T5-04,6706,อยุธยา,X_PROPER.BRANCH,X_PROPER.TOWN,T5,T4,review,review,3,A1 ที่_· ok; B ที่_ต้อง ok; A2 ไป_· ok | same-group | scene words: เปิดบัญชี
 N_PLACE.SPOT-T4-02,6711,ตลาดน้ำ,N_PLACE.SPOT,N_PLACE.MARKET,T4,T4,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
 N_PLACE.WORK-T5-01,6711,ตลาดน้ำ,N_PLACE.WORK,N_PLACE.MARKET,T5,T4,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
@@ -1668,6 +1783,7 @@ V_CHANGE.OUTCOME-T5-01,6715,ผ่านการสอบ,V_CHANGE.OUTCOME,V_CH
 N_ABSTRACT.CAUSE-T5-14,6732,บาป,N_ABSTRACT.CAUSE,N_ABSTRACT.RELIGION,T5,T4,review,review,3,A1 มี_ให้ ok; B มี_ให้ ok; A2 มี_ก็ ok | same-group | scene words: วิชา ขยัน ฉลอง
 N_ABSTRACT.CAUSE-T5-15,6732,บาป,N_ABSTRACT.CAUSE,N_ABSTRACT.RELIGION,T5,T4,review,review,3,A1 มี_ให้ ok; B มี_ให้ ok; A2 มี_ให้ ok | same-group
 A_THING.METHOD-T5-05,6737,ยอดเยี่ยม,A_THING.METHOD,A_THING.QUALITY,T5,T4,review,review,6,A1 นี้_มาก exact; B ที่_แบบนี้ ok; A2 ที่_แบบนี้ ok | same-group | scene words: แบบฟอร์ม กรอก
+N_PLACE.FIGHT-T4-04,6738,โรงกีฬา,N_PLACE.FIGHT,N_PLACE.LEISURE,T4,T4,review,review,8,A1 ว่าที่_นั้น ok; B ที่_นั้น exact; A2 ที่_· ok | same-group
 N_PLACE.SPOT-T4-02,6738,โรงกีฬา,N_PLACE.SPOT,N_PLACE.LEISURE,T4,T4,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
 N_PLACE.WORK-T5-01,6738,โรงกีฬา,N_PLACE.WORK,N_PLACE.LEISURE,T5,T4,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
 N_EVENT.WATCH-T4-02,6740,ยิมนาสติก,N_EVENT.WATCH,N_EVENT.SPORT,T4,T4,review,review,5,A1 ดู_ที่ ok; B ดู_กับ ok; A2 ดู_ที่ ok | same-group
@@ -1698,6 +1814,7 @@ V_ROUTINE.PRAY-T5-03,6872,เลี้ยงพระ,V_ROUTINE.PRAY,V_ROUTINE.M
 N_PLACE.SPOT-T4-02,6881,ตึกระฟ้า,N_PLACE.SPOT,N_PLACE.BUILDING,T4,T4,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
 N_PLACE.WORK-T5-01,6881,ตึกระฟ้า,N_PLACE.WORK,N_PLACE.BUILDING,T5,T4,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
 N_MONEY.TAXINV-T4-02,6885,แบงค์ย่อย,N_MONEY.TAXINV,N_MONEY.CASH,T4,T4,review,review,5,A1 ขอ_ที่ ok; B ขอ_ที่ ok; A2 ขอ_· ok | same-group
+N_PLACE.FIGHT-T4-04,6896,สนามกีฬา,N_PLACE.FIGHT,N_PLACE.LEISURE,T4,T4,review,review,8,A1 ว่าที่_นั้น ok; B ที่_นั้น exact; A2 ที่_· ok | same-group
 N_PLACE.SPOT-T4-02,6896,สนามกีฬา,N_PLACE.SPOT,N_PLACE.LEISURE,T4,T4,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: ค่าปรับ เป็นพิเศษ
 N_PLACE.WORK-T5-01,6896,สนามกีฬา,N_PLACE.WORK,N_PLACE.LEISURE,T5,T4,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
 N_PLACE.WORK-T5-01,6904,ป้ายให้หยุด,N_PLACE.WORK,N_PLACE.SPOT,T5,T4,review,review,3,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
@@ -1790,7 +1907,7 @@ N_PLACE.WORK-T5-01,7190,โรงพยาบาลประจำจังห�
 N_PLACE.OFFICE-T5-03,7195,โรงพยาบาลศูนย์,N_PLACE.OFFICE,N_PLACE.HEALTH,T5,T5,review,review-strong,11,A1 ที่_มา exact; B ไป_ต้อง ok; A2 ที่_คน exact | same-group
 N_PLACE.WORK-T5-01,7195,โรงพยาบาลศูนย์,N_PLACE.WORK,N_PLACE.HEALTH,T5,T5,review,review,5,A1 ที่_นี้ ok; B ที่_นี้ ok; A2 ที่_นี้ ok | same-group | scene words: เข้าทำงาน ขึ้นเงินเดือน
 A_PERSONSTATE.EMBARRASSED-T5-02,7197,ประหม่า,A_PERSONSTATE.EMBARRASSED,A_PERSONSTATE.NERVES,T5,T5,review,review,14,A1 ผม_มาก exact; B ไม่ต้อง_ขนาด exact; A2 ผม_จน exact | same-group | scene words: ภรรยา
-A_PERSONSTATE.BREATH-T5-01,7201,เบื่อหน่าย,A_PERSONSTATE.BREATH,A_PERSONSTATE.BORED,T5,T5,review,review,8,A1 ผม_เลย ok; B ·_ขนาด ok; A2 ก็_แล้ว exact | same-group | scene words: กีฬา
+A_PERSONSTATE.BREATH-T5-01,7201,เบื่อหน่าย,A_PERSONSTATE.BREATH,A_PERSONSTATE.BORED,T5,T5,review,review,8,A1 ผม_เลย ok; B ·_ขนาด ok; A2 ก็_แล้ว exact | same-group
 A_PERSONSTATE.SAD-T5-02,7201,เบื่อหน่าย,A_PERSONSTATE.SAD,A_PERSONSTATE.BORED,T5,T5,review,review,8,A1 ผม_· ok; B ก็_เหมือนกัน exact; A2 ไม่_แล้ว ok | same-group | scene words: ตั๋วหนัง
 A_PERSONSTATE.TOUCHED-T5-02,7202,ปลื้ม,A_PERSONSTATE.TOUCHED,A_PERSONSTATE.HAPPY,T5,T5,review,review,11,A1 แล้ว_มาก exact; B แล้ว_จน ok; A2 คง_เหมือนกัน exact | same-group | scene words: ตอนจบ
 A_PERSONSTATE.SAD-T5-02,7204,ใจหาย,A_PERSONSTATE.SAD,A_PERSONSTATE.LONELY,T5,T5,review,review,11,A1 ผม_· exact; B ก็_เหมือนกัน exact; A2 ไม่_แล้ว ok | same-group | scene words: ตั๋วหนัง

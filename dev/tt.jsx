@@ -9394,6 +9394,8 @@ function yueTargetHasModule(w) { try { return !!w && !YUE_NO_MODULE_SET.has(w.id
 const YUE_STRICT = { on: true }
 function yueStrictVocabSetEnabled(on) { YUE_STRICT.on = !!on }
 const YUE_FREE_SET = new Set(YUE_FREE_WORDS.map(r => r[0]))
+// what a free word means, for the word-by-word view (a name or a loanword is shown with its meaning; a particle with its job)
+const YUE_FREE_GLOSS = new Map(YUE_FREE_WORDS.filter(r => r[3] !== 'particle').map(r => [r[0], String(r[2]).split(/[;(]/)[0].trim()]))
 // the Latin-spelled free words (OK): the line check accepts exactly these whole tokens and no other Latin text
 const YUE_FREE_LATIN = YUE_FREE_WORDS.map(r => r[0]).filter(w => /^[A-Za-z]+$/.test(w))
 // the surfaces of every row the learner has been taught (any row of a spelling counts for the spelling)
@@ -60473,6 +60475,7 @@ function yueModuleChunk(i) {
   const words = String(d.chunks[i] || '').split('\u001E').filter(Boolean).map(x => { const k = x.indexOf('\u001D'); return k < 0 ? { surface: x, yale: '' } : { surface: x.slice(0, k), yale: x.slice(k + 1) } })
   return (d.parsed[i] = { words, text: words.map(w => w.surface).join('') })
 }
+const YUE_DUPLICATE = 'the sentence is already used for another word in this track'
 const YUE_PUNCT = /^[，。？！；：、…「」,.?!;:\s]+$/
 const YUE_QUOTES = /^[「」]+$/
 // the Yale of the pieces of a line, joined as the build script's reference joins them (a quotation mark has no Yale; every other punctuation mark stays beside its word)
@@ -60483,7 +60486,8 @@ function yueYaleOfPieces(pieces) {
 function yueModuleRender(c, target) {
   const { m, tag } = c; if (!tag.slot || !target || !target.pinyin) return null
   const d = YUE_MODULES.data, sp = ['A', 'B', 'A'], out = []
-  const glossOf = f => (d.gloss && d.gloss.get(f)) || ''
+  // the short English of a fixed word: the list word's slot, else (a free word: name, loanword, sound, particle) the meaning from the free-word data
+  const glossOf = f => (d.gloss && d.gloss.get(f)) || YUE_FREE_GLOSS.get(f) || ''
   for (let k = 0; k < 3; k++) {
     const [items, en, pr] = m.lines[k], pieces = [], segs = []
     for (const it of items) {
@@ -60527,7 +60531,7 @@ function yueLineProblems(line, target, seenMap) {
   if (!String(line.english || '').trim() || !String(line.prompt || '').trim()) out.push('English or cue missing')
   if (!/[。？！…]$|[」]$/.test(ch)) out.push('the line does not end with a stop, question or exclamation mark')
   const key = ch.replace(/[\s，。？！；、]/g, '')
-  if (seenMap && seenMap.has(key) && seenMap.get(key) !== (target && target.id)) out.push('the sentence is already used for another word in this track')
+  if (seenMap && seenMap.has(key) && seenMap.get(key) !== (target && target.id)) out.push(YUE_DUPLICATE)
   return out
 }
 // the words of a RENDERED line that the learner may not use (a second, independent look at the finished line: the module filter works on the fixed chunks, this works on the
@@ -60560,24 +60564,31 @@ function yueModuleExchange(target, vocab, seenMap, log, o) {
     if (again.length) { cands = again; reused = true; info = inf2 }
   }
   if (strict) log && log('  \u{1F4E6} YUE_MODULE ' + target.chinese + ': ' + info.fit + ' of ' + info.inCell + ' modules fit the vocabulary the learner has' + (reused ? ' (all already used in this track: one is used again)' : ''))
-  let tried = 0, refused = 0, firstWhy = ''
+  let tried = 0, refused = 0, firstWhy = '', repeat = null
+  const take = (c, lines, note) => {
+    YUE_MODULES.used.add(c.m.id); YUE_MODULES.stats.offered++
+    YUE_MODULES.jobs.set(c.m.job, (YUE_MODULES.jobs.get(c.m.job) || 0) + 1); YUE_MODULES.scenes.set(c.m.scene, (YUE_MODULES.scenes.get(c.m.scene) || 0) + 1)
+    YUE_MODULES.why.delete(target.id)
+    log && log('  \u{1F4E6} YUE_MODULE ' + target.chinese + ': module ' + c.m.id + ' (T' + c.m.tier + ') — the three recalls, no request' + (note || ''))
+    return { id: c.m.id, tier: c.m.tier, job: c.m.job, scene: c.m.scene, lines }
+  }
   for (const c of cands) {
     if (tried >= YUE_MODULE_POOL) break
     const lines = yueModuleRender(c, target); if (!lines) continue
     tried++
-    let ok = true
+    let ok = true, onlyRepeat = true
     for (const l of lines) {
       const p = yueLineProblems(l, target, seenMap)
       if (!p.length && allowed) { const bad = yueLineVocabProblems(l, allowed); if (bad.length) p.push('a word you have not been taught: ' + bad.slice(0, 3).join(' ')) }
-      if (p.length) { ok = false; if (!firstWhy) firstWhy = p[0].slice(0, 70); break }
+      if (p.length) { ok = false; if (!firstWhy) firstWhy = p[0].slice(0, 70); if (!p.every(x => x === YUE_DUPLICATE)) onlyRepeat = false }
     }
-    if (!ok) { refused++; continue }
-    YUE_MODULES.used.add(c.m.id); YUE_MODULES.stats.offered++
-    YUE_MODULES.jobs.set(c.m.job, (YUE_MODULES.jobs.get(c.m.job) || 0) + 1); YUE_MODULES.scenes.set(c.m.scene, (YUE_MODULES.scenes.get(c.m.scene) || 0) + 1)
-    YUE_MODULES.why.delete(target.id)
-    log && log('  \u{1F4E6} YUE_MODULE ' + target.chinese + ': module ' + c.m.id + ' (T' + c.m.tier + ') — the three recalls, no request')
-    return { id: c.m.id, tier: c.m.tier, job: c.m.job, scene: c.m.scene, lines }
+    if (ok) return take(c, lines)
+    refused++
+    if (strict && onlyRepeat && !repeat) repeat = { c, lines }
   }
+  // the only lesson that fits the words this learner knows says a sentence that another word of this track already has (a lesson for a beginner has few words to say it
+  // with, so two modules can share a line): rather than leave the word without a lesson, the sentence is said twice. Nothing else is relaxed: every word is still allowed.
+  if (repeat) return take(repeat.c, repeat.lines, ' (a sentence of it is also in another lesson of this track: no other lesson fits)')
   if (cands.length) YUE_MODULES.stats.refused++; else YUE_MODULES.stats.noModule++
   YUE_MODULES.why.set(target.id, yueNoLessonText(target, info, strict))
   log && log('  \u{1F4E6} YUE_MODULE ' + target.chinese + ': ' + (cands.length ? 'none of ' + Math.min(cands.length, YUE_MODULE_POOL) + ' modules passes the checks (' + refused + ' refused' + (firstWhy ? ', first: ' + firstWhy : '') + ')' : YUE_MODULES.why.get(target.id)))

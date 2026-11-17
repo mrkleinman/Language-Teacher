@@ -144,6 +144,19 @@ def tidy(p):
     return s.strip()
 
 
+def free_words():
+    """{word: Yale} of the free words of cantonese-modules/free-words.csv that are written in characters (names, loanwords, interjections, particles). The learner-vocabulary rule of
+    the app lets a lesson line use them although they were never taught; a starter module may therefore carry them in its fixed text. A Latin-spelled one (OK) is left out: the
+    checker refuses Latin letters in a line, so no module can carry it."""
+    out = {}
+    p = os.path.join(SRC, 'free-words.csv')
+    if os.path.exists(p):
+        for r in read(p):
+            if not re.search(r'[A-Za-z]', r['word']):
+                out[r['word']] = r['yale']
+    return out
+
+
 def table(Z, Y):
     """form -> Yale: the word list (lowest tier, then lowest id wins a duplicate form), then the free particles."""
     out, seen = {}, {}
@@ -151,6 +164,8 @@ def table(Z, Y):
         out.setdefault(w['word'], w['yale'])
         seen.setdefault(w['word'], set()).add(w['yale'])
     out.update(FREE_YALE)
+    for w, y in free_words().items():                              # names and loanwords of free-words.csv (a word of the list keeps the reading of the list)
+        out.setdefault(w, y)
     return out, {k: v for k, v in seen.items() if len(v) > 1}
 
 
@@ -164,10 +179,16 @@ QUOTES = '「」'
 
 def encode(mods, Z, py, report):
     chunks, index, rows = [], {}, []
+    FREE_ALL = free_words()
     punct = re.compile(r'[，。？！、；：…\s,.?!"“”「」（）()\-—·]')
 
     def chunk(text, tier_i, nxt):
+        # the cut of a chunk: with the words of the module's own tier and the free particles first (every module written before the starter modules is cut exactly as it always was);
+        # a chunk that is not covered that way is cut again with every word of the list (a starter module may use a word of a higher tier that the beginner order teaches earlier)
+        # and the free words of free-words.csv (阿欣 三文治 ...), which the checker has already proved
         ok, spans, toks = Z.segment(text, tier_i)
+        if not ok:
+            ok, spans, toks = Z.segment(text, tier_i, set(Z.ALLOWED), set(Z.FREE_SET) | set(FREE_ALL))
         assert ok, ('chunk is not covered by the closed list', text, spans)
         words, i, ti = [], 0, 0
         while i < len(text):

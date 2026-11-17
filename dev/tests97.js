@@ -27,8 +27,11 @@ const txt = r => textOf(r.toJSON()).replace(/\s+/g, ' ')
 //   FC-1  我有{W}。 有{W}呀？ …                 needs 我 有                                   cell F_C  水 飯
 //   FM-1  我有{M}{W}。 …                        needs 我 有 and the classifier of the word    cell F_M  人 (個) 奶茶 (杯)
 //   FV-1  我{W}。 我{W}呀？ …                   needs 我                                      cell F_V  食
+//   FX-1  我有蚊{W}。 …                         needs 我 有 and the day's 蚊                    cell F_X  錢   (its lines are the same sentences as FY-1's: see D1)
+//   FY-1  我有{W}錢。 …                         needs 我 有 and the day's 錢                    cell F_Y  蚊
+//   FH-1  哈囉，我有{W}。 …                     needs 我 有 (哈囉 is a free loanword)           cell F_H  媽媽
 //   FG-1  我同{W}。 …                           needs 我 同 (so a day-one learner has a word whose lesson is missing words)   cell F_G  你好
-const Y = { 我: 'ngóh', 有: 'yáuh', 同: 'tùhng', 個: 'go', 食: 'sihk', 呀: 'a', 哇: 'wā', 好: 'hóu', 啦: 'lā', 狗: 'gáu' }
+const Y = { 蚊: 'mān', 錢: 'chín', 哈囉: 'hā lōu', 我: 'ngóh', 有: 'yáuh', 同: 'tùhng', 個: 'go', 食: 'sihk', 呀: 'a', 哇: 'wā', 好: 'hóu', 啦: 'lā', 狗: 'gáu' }
 function mkFixture() {
   const chunks = [], idx = new Map()
   const ck = (...ws) => { const s = ws.map(w => /^[，。？！]$/.test(w) ? w : w + '\u001D' + Y[w]).join('\u001E'); if (!idx.has(s)) { idx.set(s, chunks.length); chunks.push(s) } return idx.get(s) }
@@ -47,11 +50,15 @@ function mkFixture() {
       L([ck('有', '，', '我', '有'), '{W}', ck('啦', '。')], 'Yes, I have {Es} now.', 'Say yes, you have {Es}.')),
     mod('FM-1', 'F_M', L([ck('我', '有'), '{M}', '{W}', ck('。')], 'I have {Es}.', 'Say you have {Es}.'), L([ck('有'), '{M}', '{W}', ck('呀', '？')], 'Is there {Es}?', 'Ask if there is {Es}.'),
       L([ck('我', '有'), '{M}', '{W}', ck('啦', '。')], 'I have {Es} now.', 'Say you have {Es} now.')),
+    mod('FX-1', 'F_X', L([ck('我', '有', '蚊'), '{W}', ck('。')], 'I have dollars of {Es}.', 'Say what you have.'), L([ck('我', '有', '蚊'), '{W}', ck('呀', '？')], 'Do I have dollars of {Es}?', 'Ask what you have.'), L([ck('我', '有', '蚊'), '{W}', ck('啦', '。')], 'I have dollars of {Es} now.', 'Say what you have now.')),
+    mod('FY-1', 'F_Y', L([ck('我', '有'), '{W}', ck('錢', '。')], 'I have {Es} of money.', 'Say what you have.'), L([ck('我', '有'), '{W}', ck('錢', '呀', '？')], 'Do I have {Es} of money?', 'Ask what you have.'), L([ck('我', '有'), '{W}', ck('錢', '啦', '。')], 'I have {Es} of money now.', 'Say what you have now.')),
+    mod('FH-1', 'F_H', L([ck('哈囉', '，', '我', '有'), '{W}', ck('。')], 'Hello, I have {Es}.', 'Say hello and what you have.'), L([ck('哈囉', '，', '我', '有'), '{W}', ck('呀', '？')], 'Hello, do I have {Es}?', 'Say hello and ask.'), L([ck('哈囉', '，', '我', '有'), '{W}', ck('啦', '。')], 'Hello, I have {Es} now.', 'Say hello and what you have now.')),
     mod('FG-1', 'F_G', L([ck('我', '同'), '{W}', ck('。')], 'I say {E}.', 'Say {E}.'), L([ck('我', '同'), '{W}', ck('呀', '？')], 'Do I say {E}?', 'Ask if you say {E}.'), L([ck('我', '同'), '{W}', ck('啦', '。')], 'I say {E} now.', 'Say {E} now.')),
     mod('FV-1', 'F_V', L([ck('我'), '{W}', ck('。')], 'I {E}.', 'Say that you {E}.'), L([ck('我'), '{W}', ck('呀', '？')], 'Do I {E}?', 'Ask if you {E}.'), L([ck('我'), '{W}', ck('啦', '。')], 'I {E} now.', 'Say you {E} now.')),
   ]
   const t = {
     61: ['朋友', 1, 'F_A', 'friend', 'friends', '個', 'go'], 58: ['屋企', 1, 'F_B', 'home', 'homes', '', ''], 91: ['水', 1, 'F_C', 'water', 'waters', '', ''], 106: ['飯', 1, 'F_C', 'rice', 'rices', '', ''],
+    54: ['錢', 1, 'F_X', 'money', 'moneys', '', ''], 88: ['蚊', 1, 'F_Y', 'dollar', 'dollars', '', ''], 62: ['媽媽', 1, 'F_H', 'mum', 'mums', '', ''],
     3048: ['你好', 1, 'F_G', 'hello', '', '', ''], 23: ['人', 1, 'F_M', 'person', 'people', '個', 'go'], 45: ['奶茶', 1, 'F_M', 'milk tea', 'milk teas', '杯', 'būi'], 56: ['食', 1, 'F_V', 'eat', '', '', ''],
   }
   return { v: 'fixture', t, c: chunks, m }
@@ -206,6 +213,26 @@ function mkFixture() {
     const d2 = txt(r2)
     T('B5', 'a learner who knows 我 and 有 sees an enabled Daily ("Learn + review"); the card names 你好 (its lesson needs 同) and what stands in for it, and the text above it says words were swapped or wait', /Learn \+ review/.test(d2) && !/No lesson fits yet/.test(d2) && /你好\s*: no lesson yet uses only words you know plus this one \(the nearest still needs 同\)/.test(d2) && /Some words (were swapped|wait)/.test(d2), d2.slice(-1500))
     await TR.act(async () => { r2.unmount() })
+  }
+
+  // ═════ D — a lesson that says a sentence another lesson of the track already has; the word-by-word view of free words ══════════════════════════════════════════
+  {
+    const vT2 = learner(['我', '有']), tg = [54, 88].map(id => ({ ...vT2.find(w => w.id === id), selectionRole: 'new' }))
+    const logs = []
+    const res = await c.generateCantoneseTrack(tg, vT2, () => {}, m => logs.push(m), { cancelled: false }, { startedAt: '2026-11-17T08:00:00.000Z' }).catch(e => ({ err: e }))
+    const L = res.pairs ? res.pairs.filter(p => !p._framing) : []
+    T('D1', 'two NEW words whose only lessons say the SAME sentences (錢 and 蚊: 我有蚊錢。 twice): both are built (a word is not left without a lesson for a repeated sentence), the log says the sentence is repeated, and no untaught word comes in',
+      !res.err && L.length === 6 && L.filter(p => p.targetId === 54).length === 3 && L.filter(p => p.targetId === 88).length === 3 && new Set(L.map(p => p.chinese)).size === 3 && logs.some(m => /also in another lesson of this track: no other lesson fits/.test(m)) &&
+      L.every(p => p.segments.filter(s => s.type !== 'punct').every(s => ['我', '有', '錢', '蚊', '呀', '啦'].includes(s.surface))), res.err ? res.err.message : L.map(p => p.chinese))
+    const trD = c.cantoneseBuildTrack(res, tg, 'daily', '2026-11-17T08:00:00.000Z')
+    T('D2', 'the structure check passes on such a track (it asks for 3 sound recalls per word, not for different sentences), and the writer\'s own check still reports a repeat when it is asked (yueLineProblems with the track\'s sentences)',
+      c.cantoneseTrackCheck(trD).ok && c.ev('yueLineProblems')(L[0], tg[0], new Map([[L[0].chinese.replace(/[\s，。？！；、]/g, ''), 88]])).includes(c.ev('YUE_DUPLICATE')))
+    // the word-by-word view of a free word: a loanword is shown with its meaning, a particle as a particle
+    const v3 = learner(['我', '有']), t3 = { ...v3.find(w => w.id === 62), selectionRole: 'new' }
+    const r3 = await c.generateCantoneseTrack([t3], v3, () => {}, () => {}, { cancelled: false }, { startedAt: '2026-11-17T08:00:00.000Z' })
+    const l3 = r3.pairs.filter(p => !p._framing)[1], seg = ch => l3.segments.find(s => s.surface === ch)
+    T('D3', 'a free loanword in a lesson line (哈囉) is shown word by word with its Yale and its meaning ("hello"), and the sentence-final particle 呀 is a particle with no meaning of its own; both are allowed words',
+      !!seg('哈囉') && seg('哈囉').pinyin === 'hā lōu' && seg('哈囉').english === 'hello' && seg('哈囉').type === 'vocab' && !!seg('呀') && seg('呀').type === 'particle' && seg('呀').english === '' && l3.chinese.startsWith('哈囉'), l3.segments)
   }
 
   // ═════ W — the whole writer, rule ON ══════════════════════════════════════════════════════════════════════════════════════════════════════════

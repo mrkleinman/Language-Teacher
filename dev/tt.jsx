@@ -3114,7 +3114,28 @@ const TTS_VOICES = {
   ja: { languageCode:'ja-JP', male:'ja-JP-Neural2-C',        female:'ja-JP-Neural2-B' },
   zh: { languageCode:'zh-CN', male:'cmn-CN-Wavenet-C',       female:'cmn-CN-Wavenet-A' },
   // Cantonese (Hong Kong): the cloud voice is yue-HK; a browser names its Cantonese voices zh-HK (some yue-HK), so the browser choice has its own list (pickBrowserVoice)
-  yue: { languageCode:'yue-HK', male:'yue-HK-Standard-B', female:'yue-HK-Standard-A', browserLang:'zh-HK', browserLangs:['zh-HK', 'yue-HK'] },
+  // 18 Nov (owner: "very robotic"): the Standard voices are Google's oldest, most mechanical tier. Cantonese now asks for the Chirp 3 HD voices Thai already uses (the same two voice names, Charon
+  // for the man A and Aoede for the woman B); Chirp 3 HD for Hong Kong Cantonese is a Preview, so when Google refuses it the request is repeated once with the Standard voice (ttsSynthesize)
+  yue: { languageCode:'yue-HK', male:'yue-HK-Chirp3-HD-Charon', female:'yue-HK-Chirp3-HD-Aoede', fallbackMale:'yue-HK-Standard-B', fallbackFemale:'yue-HK-Standard-A', browserLang:'zh-HK', browserLangs:['zh-HK', 'yue-HK'] },
+}
+// one cloud request for a line of speech: the voice of the language, and when Google answers without audio (a voice that is not enabled yet, Cantonese Chirp 3 HD is a Preview) the same
+// text once more with the language's fallback voice if it has one. Returns Google's answer ({ audioContent } on success).
+async function ttsSynthesize(key, text, langKey, isMale, rate) {
+  const v = TTS_VOICES[langKey] || TTS_VOICES.th
+  const tries = [{ languageCode: v.languageCode, name: isMale ? v.male : v.female }]
+  const fb = isMale ? v.fallbackMale : v.fallbackFemale
+  if (fb) tries.push({ languageCode: v.languageCode, name: fb })
+  let last = null
+  for (const t of tries) {
+    const r = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + key, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: { text }, voice: { languageCode: t.languageCode, name: t.name }, audioConfig: { audioEncoding: 'MP3', speakingRate: rate } })
+    })
+    const d = await r.json().catch(() => null)
+    if (d && d.audioContent) return d
+    last = d
+  }
+  return last
 }
 function ttsVoiceFor(langCode, isMale) {
   const v = TTS_VOICES[langCode] || TTS_VOICES.th
@@ -46641,12 +46662,9 @@ function Player({ track, onComplete, onBack, onBookmark, gcpTtsKey, onReviewQual
       // role drives the voice instead. Never send Japanese text to a Thai voice.
       // v642: the speaker map decides the voice; the particle only for letter-less legacy lines
       const isMale = _tl === 'th' ? (pair && thaiSpeakerMapGender(pair.speaker) ? thaiSpeakerMapGender(pair.speaker) === 'male' : /ครับ$/.test(text.trim())) : (pair && pair.speaker === 'A')
-      const _v = ttsVoiceFor(_tl, isMale)
-      fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${gcpTtsKey}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: { text }, voice: { languageCode: _v.languageCode, name: _v.name }, audioConfig: { audioEncoding: 'MP3', speakingRate: thaiSpeed } })
-      }).then(r => r.json()).then(data => {
+      ttsSynthesize(gcpTtsKey, text, _tl, isMale, thaiSpeed).then(data => {
         if (cancelled) return
+        if (!data || !data.audioContent) { setSpeaking(false); stopCountdown(); if (!cancelledRef.current) onDone(); return }
         audioEl = new Audio('data:audio/mp3;base64,' + data.audioContent)
         audioEl.onended = () => { setSpeaking(false); stopCountdown(); if (!pausedRef.current && !cancelledRef.current) onDone() }
         audioEl.onerror = () => { setSpeaking(false); stopCountdown(); if (!cancelledRef.current) onDone() }
@@ -62728,11 +62746,7 @@ function CantoneseLearnWords({ words, gcpTtsKey, onDone, onBack }) {
     const done = () => setSpeaking(false)
     try {
       if (gcpTtsKey) {
-        const v = ttsVoiceFor('yue', false)
-        fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + gcpTtsKey, {
-          method:'POST', headers:{ 'Content-Type':'application/json' },
-          body: JSON.stringify({ input:{ text:ttsTextForWord(w) }, voice:{ languageCode:v.languageCode, name:v.name }, audioConfig:{ audioEncoding:'MP3', speakingRate:0.9 } }),
-        }).then(r => r.json()).then(d => {
+        ttsSynthesize(gcpTtsKey, ttsTextForWord(w), 'yue', false, 0.9).then(d => {
           if (!d || !d.audioContent) { done(); return }
           const a = new Audio('data:audio/mp3;base64,' + d.audioContent)
           audioRef.current = a; a.onended = done; a.onerror = done; a.play().catch(done)

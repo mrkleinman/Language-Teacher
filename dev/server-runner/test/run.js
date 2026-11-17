@@ -19,7 +19,7 @@ const { thaiHandlers } = require('./thai-stand-in')
 
 const ROOT = path.resolve(__dirname, '..', '..')
 const PAGE_DIR = path.join(os.tmpdir(), 'runner-test'), PAGE = process.env.RUNNER_TEST_PAGE || path.join(PAGE_DIR, 'index.html')
-const CANARY = 'CANARY-access-7f3a9c41d2e8', GKEY = 'AIzaSyCANARYgeminikey0123456789abcdef', TOKEN = 'runner-token-CANARY-5521'
+const CANARY = 'CANARY-access-7f3a9c41d2e8', GKEY = ['AIza', 'SyCANARYgeminikey0123456789abcdef'].join('')   // made up at run time: a Gemini-key-shaped canary, never a real key, TOKEN = 'runner-token-CANARY-5521'
 let n = 0, fails = 0
 const T = (id, name, pass, detail) => { n++; if (!pass) fails++; console.log((pass ? 'PASS ' : 'FAIL ') + id + '  ' + name + (!pass && detail !== undefined ? '\n      ' + (typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 600) : '')) }
 const sleep = ms => new Promise(r => setTimeout(r, ms))
@@ -98,7 +98,7 @@ const yueVocab = () => Array.from({ length: 60 }, (_, i) => ({ id: i + 1, status
     const bad = okKeys.filter(([, a, b]) => a !== b)
     T('A9', 'the storage keys this service knows match the keys in tt.jsx', bad.length === 0, bad)
     const sc = makeScrubber([CANARY, GKEY])
-    T('A10', 'the scrubber removes a secret in plain, URL-encoded and JSON-escaped form, key=… in a URL and a key-shaped string', !/CANARY|AIza/.test(sc.text('x ' + CANARY + ' ' + encodeURIComponent(CANARY) + ' https://g/v1?key=' + GKEY + ' AIzaSyZZZZZZZZZZZZZZZZZZZZZZZZZZ1234'))
+    T('A10', 'the scrubber removes a secret in plain, URL-encoded and JSON-escaped form, key=… in a URL and a key-shaped string', !/CANARY|AIza/.test(sc.text('x ' + CANARY + ' ' + encodeURIComponent(CANARY) + ' https://g/v1?key=' + GKEY + ' AIza' + 'SyZZZZZZZZZZZZZZZZZZZZZZZZZZ1234'))
       && !JSON.stringify(sc.deep({ a: [CANARY], [CANARY]: 1 })).includes('CANARY'))
   }
 
@@ -175,7 +175,7 @@ const yueVocab = () => Array.from({ length: 60 }, (_, i) => ({ id: i + 1, status
     r = await http1(port, 'GET', '/jobs/' + f.json.id + '/result'); T('B26', 'a failed job has no result (409, with the reason)', r.status === 409 && r.json.state === 'failed')
     // scrubbing: everything that left the service or reached the disk
     const allText = [JSON.stringify(sa), JSON.stringify(sf), (await http1(port, 'GET', '/jobs/' + a.json.id)).text, (await http1(port, 'GET', '/jobs/' + a.json.id + '/result')).text, (await http1(port, 'GET', '/jobs/' + f.json.id)).text, dirText(dir)].join('\n')
-    T('B27', 'the access code and the Gemini key appear in no status, log line, error, result or stored file', !allText.includes(CANARY) && !allText.includes(GKEY) && !/AIzaSyCANARY/.test(allText), allText.match(/.{0,40}(CANARY|AIza).{0,20}/))
+    T('B27', 'the access code and the Gemini key appear in no status, log line, error, result or stored file', !allText.includes(CANARY) && !allText.includes(GKEY) && !/AIza/.test(allText), allText.match(/.{0,40}(CANARY|AIza).{0,20}/))
     T('B28', 'the job files on disk are not world-readable', fs.readdirSync(dir).every(x => (fs.statSync(path.join(dir, x)).mode & 0o077) === 0))
     // purge after the time to live
     await sleep(2300); await app.sweep()

@@ -52,7 +52,9 @@ const html = el => RDS.renderToStaticMarkup(el).replace(/<[^>]+>/g, ' ').replace
     }
     const sel = c.selectTrackTargets({ vocab: ev('jazhWordsOnly')(vocab), targetCap: 30, recentTrackWordIds: [], lang,
       newSelector: v => lang === 'ja' ? ev('japaneseSelectNewSlots')(v, []) : lang === 'zh' ? ev('mandarinSelectTargets')(v, []) : ev('cantoneseSelectTargets')(v, []) })
-    const targets = c.jazhDailyTargets(sel.targets, vocab, lang)
+    // TEST CHANGED (stage B-1): the Cantonese screen computes its Daily with yueDailyTargets (the contract AND the teachability gate), so this helper does the same for Cantonese. With the
+    // learner-vocabulary rule off (starter modules not merged yet) the gate lets every word through and the result is the same list as before.
+    const targets = lang === 'yue' ? c.yueDailyTargets(sel.targets, vocab).targets : c.jazhDailyTargets(sel.targets, vocab, lang)
     return { targets, blocked: gate({ lang, targets, vocab, trackMode: 'daily', tracks: [] }), short: targets.length < 30, sel }
   }
   function revision(lang, vocab) {

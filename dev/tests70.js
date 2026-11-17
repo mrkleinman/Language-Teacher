@@ -128,7 +128,9 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     const v = vocab.map(w => ids.has(w.id) ? { ...w, status: 'learning', introducedAt: '2026-08-01', lastSeen: '2026-09-20', okStreak: 1, interval: 3, dueDate: '2026-09-21' } : { ...w, status: 'locked', introducedAt: null, lastSeen: null, okStreak: 0, repCount: 0, dueDate: null, interval: 0 })
     const pw = c.ev('pickWords')(v, 'daily', []), kinds = c.ev('thaiGreetKindOf')
     T('Y9', 'pickWords: the due greeting becomes a framing word and none of the 30 is a greeting / parting word',
-      pw.targets.length === 30 && pw.framing && pw.framing.open && kinds(pw.framing.open.thai) === 'open' && !pw.targets.some(w => kinds(w.thai)), { n: pw.targets.length, framing: pw.framing && Object.keys(pw.framing).map(k => pw.framing[k] && pw.framing[k].thai) })
+      // 17 Nov — CHANGED (the owner's rule: a Daily is never padded with unseen words): this learner has 45 learned words but only 28 are usable review words (function-word cap, ineligible
+      // words), and the 2 missing used to be padded in as unseen words. The Daily is now those 28 (+ the belt's new words) and the pad is gone; what this check protects (the framing word) is unchanged.
+      pw.targets.length >= 28 && pw.targets.length <= 30 && !pw.targets.some(w => w._newCeilingOverflow) && pw.framing && pw.framing.open && kinds(pw.framing.open.thai) === 'open' && !pw.targets.some(w => kinds(w.thai)), { n: pw.targets.length, framing: pw.framing && Object.keys(pw.framing).map(k => pw.framing[k] && pw.framing[k].thai) })
     const pwW = c.ev('pickWords')(v, 'weak', [])
     T('Y9', 'other modes are unchanged (no framing words)', !pwW.framing)
     const w1 = vocab.find(w => w.thai === 'ยินดีต้อนรับ'), w2 = vocab.find(w => w.thai === 'ดูแลตัวเองด้วย'), w3 = vocab.find(w => w.thai === 'สวัสดีครับ')

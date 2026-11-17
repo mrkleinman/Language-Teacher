@@ -47678,7 +47678,7 @@ function GcpTtsSection({ gcpTtsKey, onSaveGcpTtsKey, lang }) {
   return (
     <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, background: 'var(--surface2)' }}>
       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>🔊 {other ? 'Voices (Google Cloud TTS)' : 'Thai Voices (Google Cloud TTS)'}</div>
-      <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>{other ? 'One key for every language (it is the same key as in the Thai profile). Voices used here: ' + TTS_VOICES[vl].male + ' (male) · ' + TTS_VOICES[vl].female + ' (female).' : 'Chirp3 HD Thai — Charon (male A) · Aoede (female B). 1M chars/month free.'}</div>
+      <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>{other ? 'One voices key for every language. Voices used here: ' + TTS_VOICES[vl].male + ' (male) · ' + TTS_VOICES[vl].female + ' (female).' : 'Chirp3 HD Thai — Charon (male A) · Aoede (female B). 1M chars/month free.'}</div>
       <input placeholder="AIza..." value={draft} onChange={e => { setDraft(e.target.value); setSaved(false); setTestResult('') }}
         style={{ width: '100%', padding: '8px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 13, boxSizing: 'border-box', marginBottom: 8, fontFamily: 'DM Mono, monospace' }} />
       <div style={{ display: 'flex', gap: 8 }}>
@@ -47777,23 +47777,564 @@ function GenerationModelCard() {
     </Card>
   )
 }
-// v688: Japanese and Mandarin have no Lessons / Words / Add / Data screens of their own (Thai-only; they showed an empty page).
-// Their Settings shows the AI Generation Model card, which is shared by every language.
-const TH_ONLY_VIEWS = { lessons: 'Lessons', browse: 'Words', 'add-words': 'Add words', data: 'Data', settings: 'Settings' }
-function NonThaiExtraView({ view, lang, onBack }) {
+// ══ 17 Nov — THE HEADER BUTTONS IN JAPANESE, MANDARIN AND CANTONESE ════════════════════════════════════════════════════════════════════════
+// Owner: "I understand only Thai has lessons but why do none of the other tabs work on the other languages". Now:
+//   Words (view 'browse')     the language's word list (WordListView) with search and filters; Back goes to the language's dashboard
+//   Settings                  the full Settings of the Thai profile (the keys, voices, spend and the AI model are shared by every language), without the Thai-only controls
+//   Data                      backup and restore of THIS language's progress (LangDataView): its words, tracks, daily-new slots (and the Japanese speech style); never a key
+//   Add (view 'add-words')    the learner's own words (LangAddWordsView): single or bulk, each language with its own fields and validation
+//   Lessons                   Thai-only content: the button is not shown outside Thai (Header) and the view is a plain page (NonThaiExtraView)
+// The teacher screens hand over their own save functions (ctx), so every write goes through the same multi-tab saving (stSyncCommit) the screen uses itself.
+function langExtraSpec(lang) {
+  if (lang === 'ja') return { lang, name: 'Japanese', vocabKey: JA.vocab, tracksKey: JA.tracks, slotsKey: JA.dailyNew, merge: mergeJapaneseVocab, file: 'japanese-teacher-backup', cls: 'jp' }
+  if (lang === 'zh') return { lang, name: 'Mandarin', vocabKey: ZH.vocab, tracksKey: ZH.tracks, slotsKey: ZH.dailyNew, merge: mergeMandarinVocab, file: 'mandarin-teacher-backup', cls: 'zh' }
+  if (lang === 'yue') return { lang, name: 'Cantonese', vocabKey: YUE.vocab, tracksKey: YUE.tracks, slotsKey: YUE.dailyNew, merge: mergeCantoneseVocab, file: 'cantonese-teacher-backup', cls: 'yue' }
+  return null
+}
+const LANG_PLAIN_NAMES = { th: 'Thai', ja: 'Japanese', zh: 'Mandarin', yue: 'Cantonese' }
+// which language a saved word belongs to, from its own fields (Cantonese rows reuse the Mandarin field names; only they carry a Jyutping string)
+function langOfWordRecord(w) {
+  if (!w || typeof w !== 'object') return null
+  if (typeof w.thai === 'string') return 'th'
+  if (typeof w.japanese === 'string') return 'ja'
+  if (typeof w.chinese === 'string') return typeof w.jyutping === 'string' ? 'yue' : 'zh'
+  return null
+}
+const LANG_BACKUP_FORMAT = 'language-teacher-backup'
+// a word record that has moved forward (more exposures, or the same number seen later) is newer than another copy of itself — the rule the multi-tab saving uses
+const langWordIsNewer = (a, b) => ST_VOCAB_OPTS.newer(a, b)
+const langWordHasProgress = w => !!w && ((w.repCount || 0) > 0 || (w.status && w.status !== 'new') || !!w.lastSeen)
+
+// ── BACKUP: build ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Only this language's own keys, by NAME: the words, the tracks, the daily-new slots (and the Japanese speech style). Nothing else is read, so no credential can be in it; the text is
+// still passed through the scrubber (the keys the screen holds, the saved site access code, and anything shaped like a Google key) as a second guard.
+function langBackupScrub(text, secrets) {
+  return aiScrubSecrets(text, secrets || []).replace(/AIza[0-9A-Za-z_-]{20,}/g, '…')
+}
+async function langBackupText(lang, st) {
+  const sp = langExtraSpec(lang), s = st || {}
+  let stored = null; try { stored = await stGet(sp.slotsKey) } catch (e) {}
+  const today = new Date().toISOString().slice(0, 10)
+  const dailyNew = stored && Array.isArray(stored.wordIds) ? { date: stored.date || null, wordIds: stored.wordIds } : ((s.slots || []).length ? { date: today, wordIds: s.slots } : null)
+  const vocab = s.vocab || [], tracks = s.tracks || []
+  const out = { format: LANG_BACKUP_FORMAT, version: 2, language: lang, languageName: sp.name, app: 'Language Teacher', appVersion: APP_VERSION, exportedAt: new Date().toISOString(),
+    counts: { words: vocab.length, wordsWithProgress: vocab.filter(langWordHasProgress).length, tracks: tracks.length }, vocab, tracks, dailyNew }
+  if (lang === 'ja' && s.register && JAPANESE_REGISTER_RULES[s.register]) out.register = s.register
+  return langBackupScrub(JSON.stringify(out), s.secrets)
+}
+// ── BACKUP: read and check a file ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+// A file of another language is refused with a plain message and nothing is changed. The language is checked twice: the file's own `language` and the words themselves
+// (a Thai backup from before this format has neither a language nor a format, so its words decide).
+function langBackupParse(lang, text) {
+  const sp = langExtraSpec(lang), nm = sp.name, bad = error => ({ ok: false, error })
+  const raw = String(text == null ? '' : text)
+  if (!raw.trim()) return bad('The file is empty. Nothing was changed.')
+  let data
+  try { data = JSON.parse(raw) } catch (e) { return bad('That is not a backup file: it could not be read as a backup. Nothing was changed.') }
+  if (data && typeof data === 'object' && !Array.isArray(data) && (data.start_url || data.icons) && !Array.isArray(data.vocab)) return bad('That is the app manifest, not a backup. Nothing was changed.')
+  let vocab, tracks = [], declared = null, dailyNew = null, register = null, exportedAt = null
+  if (Array.isArray(data)) vocab = data
+  else if (data && typeof data === 'object' && Array.isArray(data.vocab)) {
+    vocab = data.vocab; tracks = data.tracks == null ? [] : data.tracks
+    if (data.format != null && data.format !== LANG_BACKUP_FORMAT) return bad('That file is not a Language Teacher backup. Nothing was changed.')
+    declared = data.language == null ? null : String(data.language)
+    exportedAt = typeof data.exportedAt === 'string' ? data.exportedAt : null
+    if (data.dailyNew && typeof data.dailyNew === 'object' && Array.isArray(data.dailyNew.wordIds)) dailyNew = { date: typeof data.dailyNew.date === 'string' ? data.dailyNew.date : null, wordIds: data.dailyNew.wordIds.filter(x => x != null) }
+    if (typeof data.register === 'string' && JAPANESE_REGISTER_RULES[data.register]) register = data.register
+  } else return bad('No word list was found in this file, so it is not a backup of ' + nm + '. Nothing was changed.')
+  if (declared && !LANG_PLAIN_NAMES[declared]) return bad('The file names a language this app does not know ("' + declared.slice(0, 20) + '"). Nothing was changed.')
+  if (declared && declared !== lang) return bad('This is a ' + LANG_PLAIN_NAMES[declared] + ' backup, not a ' + nm + ' backup, so it was not restored and nothing was changed. Open the ' + LANG_PLAIN_NAMES[declared] + ' profile and restore it there.')
+  if (!Array.isArray(tracks)) return bad('The tracks in this file are not a list. Nothing was changed.')
+  if (!vocab.length) return bad('The word list in this file is empty. Nothing was changed.')
+  const kinds = new Set(); let broken = 0
+  vocab.forEach(w => { const k = langOfWordRecord(w); if (!k || w.id == null) broken++; else kinds.add(k) })
+  if (kinds.size > 1) return bad('This file mixes words of different languages, so it was not restored. Nothing was changed.')
+  const found = kinds.size ? [...kinds][0] : null
+  if (found && found !== lang) return bad('This file holds ' + LANG_PLAIN_NAMES[found] + ' words, not ' + nm + ' words, so it was not restored and nothing was changed. Open the ' + LANG_PLAIN_NAMES[found] + ' profile and restore it there.')
+  if (broken) return bad(broken + ' of the ' + vocab.length + ' entries in this file are not ' + nm + ' words, so the file looks damaged. Nothing was changed.')
+  if (tracks.some(t => !t || typeof t !== 'object' || Array.isArray(t))) return bad('Some tracks in this file are not readable, so the file looks damaged. Nothing was changed.')
+  const wrong = tracks.find(t => t.language && t.language !== lang)
+  if (wrong) return bad('This file holds a track of another language (' + (LANG_PLAIN_NAMES[wrong.language] || String(wrong.language).slice(0, 20)) + '), so it was not restored. Nothing was changed.')
+  // one record per id (a repeated id keeps the one with more progress)
+  const byId = new Map()
+  vocab.forEach(w => { const k = String(w.id), p = byId.get(k); if (!p || langWordIsNewer(w, p)) byId.set(k, w) })
+  const words = [...byId.values()]
+  return { ok: true, lang, vocab: words, tracks, dailyNew, register, exportedAt, duplicates: vocab.length - words.length,
+    counts: { words: words.length, wordsWithProgress: words.filter(langWordHasProgress).length, tracks: tracks.length } }
+}
+// ── BACKUP: merge ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// mode 'merge' (the default): nothing on this device is lost — a word keeps whichever copy has more progress, a word only one side has is kept, tracks are joined (the newest 20 stay).
+// mode 'replace': this device becomes the file. The file's words go through the language's own bank merge (the bank's text wins, the learner's history is carried), as at every start.
+function langBackupMergeVocab(lang, localVocab, incomingVocab, mode) {
+  const sp = langExtraSpec(lang), inc = sp.merge(incomingVocab), stats = { fromFile: 0, keptLocal: 0, added: 0, localOnly: 0 }
+  if (mode === 'replace') return { vocab: inc, stats }
+  const loc = new Map((localVocab || []).filter(w => w && w.id != null).map(w => [String(w.id), w])), out = []
+  inc.forEach(w => {
+    const k = String(w.id), l = loc.get(k)
+    if (!l) { out.push(w); if (langWordHasProgress(w) || w.custom) stats.added++; return }
+    loc.delete(k)
+    if (stJson(l) === stJson(w)) { out.push(l); return }
+    if (langWordIsNewer(w, l)) { out.push(w); stats.fromFile++ } else { out.push(l); if (langWordHasProgress(l) && stJson(l) !== stJson(w)) stats.keptLocal++ }
+  })
+  loc.forEach(l => { out.push(l); stats.localOnly++ })
+  return { vocab: out, stats }
+}
+function langBackupMergeTracks(localTracks, incomingTracks, mode) {
+  const cap = list => { const s = list.sort(stTrackOrder); return s.length > 20 ? s.slice(s.length - 20) : s }
+  if (mode === 'replace') return cap((incomingTracks || []).slice())
+  const byId = new Map()
+  ;(localTracks || []).forEach(t => { if (t) byId.set(String(stTrackId(t)), t) })
+  ;(incomingTracks || []).forEach(t => { if (!t) return; const k = String(stTrackId(t)), l = byId.get(k); if (!l || (!l.rated && t.rated)) byId.set(k, t) })
+  return cap([...byId.values()])
+}
+// write a checked backup through the screen's own save functions (the multi-tab saving). ctx = { vocab, tracks, slots, register, saveVocab, saveTracks, saveSlots, saveRegister }
+async function langBackupApply(lang, parsed, mode, ctx) {
+  const replace = mode === 'replace', opt = replace ? { replace: true } : undefined
+  const mv = langBackupMergeVocab(lang, ctx.vocab || [], parsed.vocab, mode)
+  await ctx.saveVocab(mv.vocab, opt)
+  const tracks = langBackupMergeTracks(ctx.tracks || [], parsed.tracks, mode)
+  await ctx.saveTracks(tracks, opt)
+  let slots = false
+  if (parsed.dailyNew && parsed.dailyNew.wordIds.length && ctx.saveSlots && (replace || !(ctx.slots || []).length)) { await ctx.saveSlots(parsed.dailyNew.wordIds); slots = true }
+  let register = false
+  if (parsed.register && ctx.saveRegister && (replace || ctx.register === JA_REGISTER_DEFAULT) && parsed.register !== ctx.register) { await ctx.saveRegister(parsed.register); register = true }
+  return { mode, words: mv.vocab.length, wordsWithProgress: mv.vocab.filter(langWordHasProgress).length, tracks: tracks.length, ...mv.stats, slots, register }
+}
+function langBackupDone(lang, r) {
+  const nm = langExtraSpec(lang).name
+  return (r.mode === 'replace' ? 'Replaced this device\'s ' + nm + ' progress with the file: ' : 'Restored ' + nm + ' progress: ') + r.words + ' words (' + r.wordsWithProgress + ' with progress) and ' + r.tracks + ' track' + (r.tracks === 1 ? '' : 's') + '.' +
+    (r.mode === 'merge' && r.keptLocal ? ' ' + r.keptLocal + ' word' + (r.keptLocal === 1 ? ' had' : 's had') + ' newer progress on this device and ' + (r.keptLocal === 1 ? 'was' : 'were') + ' kept.' : '') +
+    (r.mode === 'merge' && r.fromFile ? ' ' + r.fromFile + ' word' + (r.fromFile === 1 ? '' : 's') + ' took the file\'s newer progress.' : '')
+}
+async function langReadFileText(file) {
+  if (file && typeof file.text === 'function') return file.text()
+  return new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result || '')); r.onerror = () => reject(new Error('The file could not be read.')); r.readAsText(file) })
+}
+function LangDataView({ lang, ctx, onBack }) {
+  const sp = langExtraSpec(lang), c = ctx || {}, cred = c.cred || {}
+  const [msg, setMsg] = useState(null)             // { ok, text }
+  const [pending, setPending] = useState(null)     // a checked file waiting for the learner's choice: { parsed, name }
+  const [confirmReplace, setConfirmReplace] = useState(false)
+  const [paste, setPaste] = useState('')
+  const [busy, setBusy] = useState(false)
+  const vocab = c.vocab || [], tracks = c.tracks || []
+  const secrets = () => [cred.geminiKey, cred.gcpTtsKey, typeof window !== 'undefined' ? window.__geminiBackupKey : '']
+  const text = () => langBackupText(lang, { vocab, tracks, slots: c.slots, register: c.register, secrets: secrets() })
+  async function download() {
+    try {
+      const body = await text()
+      const blob = new Blob([body], { type: 'application/json' }), url = URL.createObjectURL(blob), a = document.createElement('a')
+      a.href = url; a.download = sp.file + '-' + new Date().toISOString().slice(0, 10) + '.json'
+      if (document.body && document.body.appendChild) { try { document.body.appendChild(a) } catch (e) {} }
+      a.click()
+      setTimeout(() => { try { URL.revokeObjectURL(url); if (a.parentNode && a.parentNode.removeChild) a.parentNode.removeChild(a) } catch (e) {} }, 4000)
+      setMsg({ ok: true, text: 'Downloaded ' + a.download + ' (' + vocab.length + ' words, ' + tracks.length + ' tracks). If nothing was saved on this device, use "Copy backup text" instead.' })
+    } catch (e) { setMsg({ ok: false, text: 'The download could not be started here. Use "Copy backup text" instead and keep the text in a file.' }) }
+  }
+  async function copy() {
+    try { await navigator.clipboard.writeText(await text()); setMsg({ ok: true, text: 'Backup text copied (' + vocab.length + ' words, ' + tracks.length + ' tracks). Paste it into a file and keep it safe: it holds your progress, never a key.' }) }
+    catch (e) { setMsg({ ok: false, text: 'The text could not be copied here. Use "Download backup" instead.' }) }
+  }
+  function inspect(body, name) {
+    setConfirmReplace(false)
+    if (name === 'manifest.json') { setPending(null); setMsg({ ok: false, text: 'That is the app manifest, not your backup. Pick ' + sp.file + '-YYYY-MM-DD.json' }); return }
+    const parsed = langBackupParse(lang, body)
+    if (!parsed.ok) { setPending(null); setMsg({ ok: false, text: parsed.error }); return }
+    setMsg(null); setPending({ parsed, name: name || 'pasted text' })
+  }
+  async function onFile(e) {
+    const f = e && e.target && e.target.files && e.target.files[0]
+    if (!f) return
+    try { inspect(await langReadFileText(f), f.name) } catch (x) { setPending(null); setMsg({ ok: false, text: String((x && x.message) || x) }) }
+    try { e.target.value = '' } catch (x) {}
+  }
+  async function restore(mode) {
+    if (!pending || busy) return
+    if (mode === 'replace' && !confirmReplace) { setConfirmReplace(true); return }
+    setBusy(true)
+    try { const r = await langBackupApply(lang, pending.parsed, mode, c); setMsg({ ok: true, text: langBackupDone(lang, r) }); setPending(null); setConfirmReplace(false); setPaste('') }
+    catch (x) { setMsg({ ok: false, text: 'The restore stopped: ' + aiScrubSecrets(String((x && x.message) || x), secrets()) + '. What was saved before the error is kept.' }) }
+    setBusy(false)
+  }
+  const p = pending && pending.parsed
+  return (
+    <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <button onClick={onBack} aria-label="Back" style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 4 }}><Icon name="arrow_left" size={20} /></button>
+        <span className="display" style={{ fontSize: 18 }}>{sp.name} backup &amp; restore</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Card style={{ padding: 16 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Back up {sp.name}</p>
+          <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 10 }}>Saves your {sp.name} words with their progress, your {sp.name} tracks and today's new-word places{lang === 'ja' ? ' and your speech style' : ''} in one file. Use it to move to another device or to keep a copy. It never contains a key or an access code, and it holds nothing of the other languages.</p>
+          <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 10 }}>{vocab.length} words · {vocab.filter(langWordHasProgress).length} with progress · {tracks.length} tracks</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn onClick={download} variant="primary" style={{ flex: 1, justifyContent: 'center' }}>⬇ Download backup</Btn>
+            <Btn onClick={copy} variant="secondary" style={{ flex: 1, justifyContent: 'center' }}>Copy backup text</Btn>
+          </div>
+        </Card>
+        <Card style={{ padding: 16 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Restore {sp.name}</p>
+          <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 10 }}>Choose a {sp.name} backup file. You will see what is in it before anything is changed. A backup of another language is refused.</p>
+          <label style={{ display: 'block', padding: 12, borderRadius: 10, border: '1px dashed var(--border)', textAlign: 'center', cursor: 'pointer', color: 'var(--text)', fontSize: 14, fontWeight: 600 }}>
+            <input type="file" accept=".json,application/json" data-backup-file="1" onChange={onFile} style={{ display: 'none' }} />
+            📂 Choose backup file
+            <span style={{ display: 'block', fontSize: 10, color: 'var(--muted)', marginTop: 4, fontWeight: 400 }}>Look for: {sp.file}-YYYY-MM-DD.json</span>
+          </label>
+          <p style={{ fontSize: 11, color: 'var(--muted)', margin: '12px 0 6px' }}>Or paste the backup text:</p>
+          <textarea value={paste} onChange={e => setPaste(e.target.value)} placeholder="Paste the text you copied from “Copy backup text”" data-backup-paste="1"
+            style={{ width: '100%', minHeight: 70, resize: 'vertical', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 12, padding: 10, boxSizing: 'border-box' }} />
+          <Btn onClick={() => inspect(paste, 'pasted text')} disabled={!paste.trim()} variant="secondary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>Check the pasted text</Btn>
+        </Card>
+        {p && (
+          <Card style={{ padding: 16, border: '1px solid var(--gold)' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>This is a {sp.name} backup{p.exportedAt ? ' from ' + p.exportedAt.slice(0, 10) : ''}</p>
+            <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 10 }}>{p.counts.words} words ({p.counts.wordsWithProgress} with progress) · {p.counts.tracks} track{p.counts.tracks === 1 ? '' : 's'}. On this device now: {vocab.length} words ({vocab.filter(langWordHasProgress).length} with progress) · {tracks.length} tracks.</p>
+            <Btn onClick={() => restore('merge')} disabled={busy} variant="primary" style={{ width: '100%', justifyContent: 'center', marginBottom: 8 }}>Restore (keeps newer progress on this device)</Btn>
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 10 }}>Adds what is missing and, for each word, keeps whichever copy has more progress. Nothing here is lost.</p>
+            <Btn onClick={() => restore('replace')} disabled={busy} variant="secondary" style={{ width: '100%', justifyContent: 'center', color: '#ef4444', borderColor: '#ef4444' }}>{confirmReplace ? 'Tap again: replace everything with this file' : 'Replace everything with this file'}</Btn>
+            {confirmReplace && <p style={{ fontSize: 11, color: '#ef4444', marginTop: 6 }}>This makes the {sp.name} words and tracks on this device exactly the file's. Progress made after the backup is lost.</p>}
+            <button onClick={() => { setPending(null); setConfirmReplace(false) }} style={{ marginTop: 10, background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 12 }}>Cancel</button>
+          </Card>
+        )}
+        {msg && <p data-backup-msg={msg.ok ? 'ok' : 'error'} style={{ textAlign: 'center', fontSize: 13, color: msg.ok ? '#10b981' : '#ef4444', padding: 8, lineHeight: 1.5 }}>{msg.ok ? '✅ ' : '❌ '}{msg.text}</p>}
+      </div>
+    </div>
+  )
+}
+// v688: Japanese and Mandarin had no Lessons / Words / Add / Data screens of their own (Thai-only; they showed an empty page); 17 Nov: all but Lessons now exist (see the block above).
+const TH_ONLY_VIEWS = { lessons: 'Lessons' }
+// ── ADD WORDS: the learner's own words ────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Each language has its own fields and validation: Japanese = written form + reading in kana (+ romaji, checked against the reading as the app does everywhere) + meaning; Mandarin =
+// characters + pinyin (validateMandarinPinyin) + meaning; Cantonese = traditional characters + Yale (validateYale) + meaning. An added word is an ordinary word of the list (entryType 'word', status
+// 'new', no curriculum position so it never counts toward a belt or a rank test) with an id above every bank and phrase id; the language's merge keeps saved words that are not in the bank.
+const LANG_CUSTOM_ID_BASE = 100000
+const LANG_HAN_RX = /^[㐀-䶿一-鿿々]+$/
+const LANG_JA_WRITTEN_RX = /^[぀-ヿ㐀-䶿一-鿿ｦ-ﾟ々〆]+$/
+const LANG_KANA_RX = /^[぀-ゟ゠-ヿ\s]+$/
+function langCustomNextId(vocab) { let m = LANG_CUSTOM_ID_BASE; (vocab || []).forEach(w => { const n = Number(w && w.id); if (Number.isFinite(n) && n > m) m = n }); return m + 1 }
+function langCustomMeaning(v) {
+  const e = String(v == null ? '' : v).replace(/\s+/g, ' ').trim()
+  if (!e) return { error: 'Type the meaning in English.' }
+  if (e.length > 120) return { error: 'The meaning is too long (120 characters at most).' }
+  if (/[฀-๿぀-ヿ㐀-鿿]/.test(e)) return { error: 'The meaning must be in English (it has Chinese, Japanese or Thai characters in it).' }
+  return { value: e }
+}
+function langCustomWritten(lang, s) {
+  const w = String(s == null ? '' : s).normalize('NFC').trim()
+  if (lang === 'ja') {
+    if (!w) return { error: 'Type the word in Japanese (kanji or kana).' }
+    if (/\s/.test(w)) return { error: 'One word at a time: the written form has a space in it.' }
+    if (!LANG_JA_WRITTEN_RX.test(w)) return { error: 'The written form must be Japanese (kanji or kana): "' + w.slice(0, 20) + '".' }
+    return { value: w }
+  }
+  if (!w) return { error: lang === 'yue' ? 'Type the word in traditional Chinese characters.' : 'Type the word in Chinese characters.' }
+  if (!LANG_HAN_RX.test(w)) return { error: 'The characters must be Chinese characters only (no spaces, letters, numbers or kana): "' + w.slice(0, 20) + '".' }
+  return { value: w }
+}
+// the reading: kana (ja, with the optional romaji), pinyin (zh), Yale (yue)
+function langCustomReading(lang, written, s, romajiIn) {
+  const r = String(s == null ? '' : s).normalize('NFC').trim().replace(/\s+/g, ' ')
+  if (lang === 'ja') {
+    let reading = r
+    if (!reading && LANG_KANA_RX.test(written || '')) reading = String(written)
+    if (!reading) return { error: 'Type the reading in kana (for example ねこ for 猫).' }
+    if (!LANG_KANA_RX.test(reading)) return { error: 'The reading must be in kana (hiragana or katakana): "' + reading.slice(0, 20) + '". Romaji goes in the romaji box.' }
+    const auto = kanaToRomaji(reading), given = String(romajiIn == null ? '' : romajiIn).trim()
+    if (given && !romajiMatchesReading(given, reading)) return { error: 'The romaji "' + given.slice(0, 30) + '" does not match the reading ' + reading + ' (it is read "' + auto + '"). Write the romaji the same plain way (kyou, not kyō) or leave it empty and it is written for you.' }
+    return { value: reading, romaji: given || auto }
+  }
+  if (lang === 'zh') {
+    if (!r) return { error: 'Type the pinyin with tone marks (for example nǐ hǎo).' }
+    const v = validateMandarinPinyin(r)
+    if (!v.ok) return { error: 'Pinyin: ' + v.reason + ' ("' + r.slice(0, 30) + '"). Use tone marks (nǐ hǎo), not numbers (ni3 hao3).' }
+    if (!/[a-zü]/i.test(r)) return { error: 'Pinyin: it has no letters ("' + r.slice(0, 30) + '").' }
+    return { value: r }
+  }
+  if (!r) return { error: 'Type the Yale romanisation (for example néih hóu).' }
+  const v = validateYale(r)
+  if (!v.ok) return { error: 'Yale: ' + v.reason + ' ("' + r.slice(0, 30) + '"). Cantonese is written in Yale with tone marks (néih hóu), not Jyutping numbers (nei5 hou2).' }
+  if (!/[a-z]/i.test(r)) return { error: 'Yale: it has no letters ("' + r.slice(0, 30) + '").' }
+  return { value: r }
+}
+// { ok, fields: { written, reading, romaji, english } } or { ok: false, error }
+function langCustomValidate(lang, f) {
+  const x = f || {}
+  const w = langCustomWritten(lang, x.written); if (w.error) return { ok: false, error: w.error }
+  const r = langCustomReading(lang, w.value, x.reading, x.romaji); if (r.error) return { ok: false, error: r.error }
+  const m = langCustomMeaning(x.english); if (m.error) return { ok: false, error: m.error }
+  return { ok: true, fields: { written: w.value, reading: r.value, romaji: lang === 'ja' ? r.romaji : '', english: m.value } }
+}
+const langCustomReadKey = s => String(s == null ? '' : s).toLowerCase().replace(/[\s']/g, '')
+function langCustomFindExisting(lang, vocab, f) {
+  const k = langCustomReadKey(f.reading)
+  return (vocab || []).find(w => w && !w.duplicateOf && (lang === 'ja' ? w.japanese : w.chinese) === f.written && langCustomReadKey(lang === 'ja' ? w.reading : w.pinyin) === k) || null
+}
+function langCustomRecord(lang, f, id, stamp) {
+  const base = { id, unlockOrder: id, english: f.english, note: null, entryType: 'word', tier: null, belt: beltForCurriculumIndex(0), beltOrder: beltOrderForCurriculumIndex(0), curriculumIndex: 0,
+    okStreak: 0, manualKnown: false, partOfSpeech: null, status: 'new', interval: 0, repCount: 0, lapses: 0, lastSeen: null, dueDate: null, difficulty: 'hard', custom: true, addedAt: stamp }
+  if (lang === 'ja') return { ...base, japanese: f.written, reading: f.reading, romaji: f.romaji, lemma: f.written, conjugationClass: null, permittedForms: null }
+  if (lang === 'zh') return { ...base, chinese: f.written, pinyin: f.reading, introducedDate: null }
+  return { ...base, chinese: f.written, pinyin: f.reading, jyutping: '', introducedDate: null }
+}
+// the words to save: checks each again, skips what is already in the list (or repeated in this batch) with the reason. o.queue: put them first in the next Daily ("Next in queue").
+function langCustomBuild(lang, vocab, list, o) {
+  const stamp = new Date().toISOString(), opt = o || {}, added = [], skipped = [], seen = new Set()
+  let id = langCustomNextId(vocab)
+  ;(list || []).forEach(f => {
+    const v = langCustomValidate(lang, f)
+    if (!v.ok) { skipped.push({ fields: f, reason: v.error }); return }
+    const k = v.fields.written + '|' + langCustomReadKey(v.fields.reading)
+    const have = langCustomFindExisting(lang, vocab, v.fields)
+    if (have) { skipped.push({ fields: v.fields, reason: v.fields.written + ' (' + v.fields.reading + ') is already in your word list.' }); return }
+    if (seen.has(k)) { skipped.push({ fields: v.fields, reason: v.fields.written + ' (' + v.fields.reading + ') is there twice in this batch.' }); return }
+    seen.add(k)
+    const rec = langCustomRecord(lang, v.fields, id++, stamp)
+    if (opt.queue) rec.queuedNext = stamp
+    added.push(rec)
+  })
+  return { vocab: added.length ? (vocab || []).concat(added) : (vocab || []), added, skipped }
+}
+// one word per line: written = reading = meaning (Japanese: the reading may be left out for a word written in kana, a romaji may follow); tab or | work like =
+function langCustomParseBulk(lang, text) {
+  const entries = [], errors = []
+  String(text == null ? '' : text).split(/\r?\n/).forEach((line, i) => {
+    if (!line.trim()) return
+    const p = line.split(/\t|=|\|/).map(s => s.trim()), no = i + 1
+    let f
+    if (lang === 'ja') {
+      if (p.length === 2) f = { written: p[0], reading: '', english: p[1], romaji: '' }
+      else if (p.length === 3) f = { written: p[0], reading: p[1], english: p[2], romaji: '' }
+      else if (p.length === 4) f = { written: p[0], reading: p[1], english: p[2], romaji: p[3] }
+      else { errors.push({ line: no, text: line.slice(0, 60), error: 'Use: written form = reading in kana = meaning (the reading may be left out for a word written in kana).' }); return }
+    } else {
+      if (p.length !== 3) { errors.push({ line: no, text: line.slice(0, 60), error: 'Use: characters = ' + (lang === 'zh' ? 'pinyin' : 'Yale') + ' = meaning.' }); return }
+      f = { written: p[0], reading: p[1], english: p[2] }
+    }
+    const v = langCustomValidate(lang, f)
+    if (v.ok) entries.push(v.fields); else errors.push({ line: no, text: line.slice(0, 60), error: v.error })
+  })
+  return { entries, errors }
+}
+// "Fill": the reading and the meaning from the model chosen in Settings, through the same request path as every other helper (geminiRequest). Nothing is sent without a usable model, and what comes
+// back is checked by the same validators as typed input — a reading that is not valid is not used.
+async function langCustomFill(lang, written, apiKey) {
+  const st = aiSelectedModelStatus(apiKey, 'word-fill')
+  if (!st.ready) return { ok: false, message: 'Fill is not available: ' + st.reason + '. Type the reading and the meaning yourself.' }
+  const w = langCustomWritten(lang, written)
+  if (w.error) return { ok: false, message: w.error }
+  const ask = lang === 'ja' ? 'For the Japanese word "' + w.value + '" give (1) its reading in hiragana (katakana only for a loanword written in katakana), (2) a short common English meaning. Respond ONLY with JSON: {"reading":"...","english":"..."}'
+    : lang === 'zh' ? 'For the Mandarin Chinese word "' + w.value + '" give (1) its pinyin with TONE MARKS (nǐ hǎo; no tone numbers), (2) a short common English meaning. Respond ONLY with JSON: {"reading":"...","english":"..."}'
+    : 'For the Cantonese word "' + w.value + '" (colloquial Hong Kong Cantonese) give (1) its Yale romanisation with tone marks and h for the low tones (néih hóu; no Jyutping, no tone numbers), syllables separated by spaces, (2) a short common English meaning. Respond ONLY with JSON: {"reading":"...","english":"..."}'
+  let parsed
+  try {
+    const raw = await geminiRequest({ apiKey, model: GEMINI_DEFAULT_MODEL, maxTokens: 200, temperature: 0, stage: 'R_word_autofill', messages: [{ role: 'user', content: ask }] })
+    parsed = JSON.parse(String(raw || '').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g, '').trim())
+  } catch (e) {
+    return { ok: false, message: 'Fill did not work: ' + aiScrubSecrets(String((e && e.message) || e), [apiKey]).slice(0, 160) + '. Type the reading and the meaning yourself.' }
+  }
+  const out = { ok: true, notes: [] }
+  const r = langCustomReading(lang, w.value, parsed && parsed.reading, '')
+  if (r.error) out.notes.push('the reading the model gave was not valid (' + r.error.replace(/\s*Use tone marks.*$|\s*Cantonese is written.*$/, '') + ')'); else { out.reading = r.value; if (r.romaji) out.romaji = r.romaji }
+  const m = langCustomMeaning(parsed && parsed.english)
+  if (m.error) out.notes.push('the meaning the model gave was not usable'); else out.english = m.value
+  out.message = out.notes.length ? 'Filled what was usable; ' + out.notes.join('; ') + ' — type that part yourself.' : 'Filled. Check the reading and the meaning before you add the word.'
+  return out
+}
+// a note under a word of the list that the learner added
+function langCustomWordNote(lang, w) {
+  if (!w || !w.custom) return ''
+  if (lang === 'yue') { try { if (YUE_MODULES.data && !yueModuleTagOf(w)) return 'Your word. It cannot be taught in a Cantonese track yet: no lesson module exists for a word you add yourself.' } catch (e) {} }
+  return 'Your word.'
+}
+function LangAddWordsView({ lang, ctx, onBack }) {
+  const sp = langExtraSpec(lang), c = ctx || {}, cred = c.cred || {}, vocab = c.vocab || []
+  const rd = lang === 'ja' ? 'Reading in kana' : lang === 'zh' ? 'Pinyin' : 'Yale'
+  const ph = lang === 'ja' ? { w: 'Word (e.g. 猫)', r: 'Reading in kana (e.g. ねこ)', e: 'English meaning (e.g. cat)' }
+    : lang === 'zh' ? { w: 'Characters (e.g. 你好)', r: 'Pinyin with tone marks (e.g. nǐ hǎo)', e: 'English meaning (e.g. hello)' }
+    : { w: 'Traditional characters (e.g. 你好)', r: 'Yale (e.g. néih hóu)', e: 'English meaning (e.g. hello)' }
+  const [f, setF] = useState({ written: '', reading: '', romaji: '', english: '' })
+  const [tab, setTab] = useState('single')
+  const [bulk, setBulk] = useState('')
+  const [ready, setReady] = useState([])
+  const [problems, setProblems] = useState([])         // [{ text, reason }]
+  const [fillMsg, setFillMsg] = useState(null)         // { ok, text }
+  const [filling, setFilling] = useState(false)
+  const [done, setDone] = useState(null)
+  const [queue, setQueue] = useState(lang !== 'yue')
+  const model = aiSelectedModelStatus(cred.geminiKey, 'word-fill')
+  const set = k => e => { const v = e.target.value; setF(p => ({ ...p, [k]: v })); setDone(null) }
+  const inputStyle = { width: '100%', padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 15, outline: 'none', marginBottom: 10, boxSizing: 'border-box' }
+  const key = x => x.written + '|' + langCustomReadKey(x.reading)
+  function stage(list) {
+    const have = new Set(ready.map(key)), good = [], bad = []
+    list.forEach(x => {
+      const dup = langCustomFindExisting(lang, vocab, x)
+      if (dup) bad.push({ text: x.written, reason: x.written + ' (' + x.reading + ') is already in your word list.' })
+      else if (have.has(key(x))) bad.push({ text: x.written, reason: x.written + ' (' + x.reading + ') is already waiting below.' })
+      else { have.add(key(x)); good.push(x) }
+    })
+    if (good.length) setReady(r => r.concat(good))
+    return bad
+  }
+  function addSingle() {
+    const v = langCustomValidate(lang, f)
+    if (!v.ok) { setProblems([{ text: f.written || '(empty)', reason: v.error }]); return }
+    const bad = stage([v.fields]); setProblems(bad)
+    if (!bad.length) { setF({ written: '', reading: '', romaji: '', english: '' }); setFillMsg(null); setDone(null) }
+  }
+  function addBulk() {
+    const r = langCustomParseBulk(lang, bulk)
+    const bad = stage(r.entries)
+    setProblems(r.errors.map(x => ({ text: 'Line ' + x.line + ': ' + x.text, reason: x.error })).concat(bad))
+    if (!r.errors.length && !bad.length) setBulk('')
+    setDone(null)
+  }
+  async function fill() {
+    if (filling) return
+    setFilling(true); setFillMsg(null)
+    const r = await langCustomFill(lang, f.written, cred.geminiKey)
+    if (r.ok) { setF(p => ({ ...p, reading: r.reading && !p.reading.trim() ? r.reading : p.reading, english: r.english && !p.english.trim() ? r.english : p.english })) }   // only empty boxes are filled (the romaji is written from the reading)
+    setFillMsg({ ok: !!r.ok && !(r.notes && r.notes.length), text: r.message }); setFilling(false)
+  }
+  async function save() {
+    if (!ready.length) return
+    const r = langCustomBuild(lang, vocab, ready, { queue: queue && lang !== 'yue' })
+    if (r.added.length) await c.saveVocab(r.vocab)
+    setReady([]); setProblems(r.skipped.map(x => ({ text: x.fields.written || '', reason: x.reason })))
+    setDone({ n: r.added.length, queued: queue && lang !== 'yue' })
+  }
+  async function remove(w) {
+    if (typeof window !== 'undefined' && window.confirm && !window.confirm('Remove ' + (w.japanese || w.chinese) + ' from your word list?')) return
+    await c.saveVocab(vocab.filter(x => x.id !== w.id), { deleted: [w.id] })
+  }
+  const mine = vocab.filter(w => w && w.custom)
+  const showScript = x => (lang === 'ja' ? x.japanese : x.chinese)
+  return (
+    <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <button onClick={onBack} aria-label="Back" style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 4 }}><Icon name="arrow_left" size={20} /></button>
+        <span className="display" style={{ fontSize: 18 }}>Add {sp.name} words</span>
+      </div>
+      {lang === 'yue' && <p data-yue-add-note="1" style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5, marginBottom: 12 }}>Your words are kept in your Cantonese word list. A Cantonese lesson is built from fixed lesson modules, and a word you add has none yet, so it is not chosen for a Cantonese track yet (the word list says so next to it).</p>}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 16, background: 'var(--surface)', borderRadius: 10, padding: 4 }}>
+        {[['single', 'Single'], ['bulk', 'Bulk Import']].map(([id, label]) => (
+          <button key={id} onClick={() => setTab(id)} style={{ flex: 1, padding: 8, borderRadius: 8, border: 'none', background: tab === id ? 'var(--surface2)' : 'transparent', color: tab === id ? 'var(--text)' : 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{label}</button>
+        ))}
+      </div>
+      {tab === 'single' ? (
+        <div>
+          <input value={f.written} onChange={set('written')} placeholder={ph.w} className={sp.cls} {...(lang === 'yue' ? { lang: 'zh-HK' } : {})} style={inputStyle} />
+          <input value={f.reading} onChange={set('reading')} placeholder={ph.r} className="phon" style={{ ...inputStyle, fontSize: 14, color: 'var(--gold)' }} />
+          {lang === 'ja' && <input value={f.romaji} onChange={set('romaji')} placeholder="Romaji (optional, e.g. neko — written for you if empty)" className="phon" style={{ ...inputStyle, fontSize: 13 }} />}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <input value={f.english} onChange={set('english')} placeholder={ph.e} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} onKeyDown={e => e.key === 'Enter' && addSingle()} />
+            <button onClick={fill} disabled={!f.written.trim() || filling || !model.ready} data-fill="1"
+              style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface2)', color: f.written.trim() && model.ready ? 'var(--gold)' : 'var(--muted)', cursor: f.written.trim() && model.ready && !filling ? 'pointer' : 'default', fontSize: 13, whiteSpace: 'nowrap' }}>{filling ? '⏳' : '✨ Fill'}</button>
+          </div>
+          {!model.ready && <p data-fill-note="1" style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.5, marginBottom: 10 }}>Fill is not available: {model.reason}. Type the {rd.toLowerCase()} and the meaning yourself.</p>}
+          {fillMsg && <p data-fill-msg={fillMsg.ok ? 'ok' : 'note'} style={{ fontSize: 12, color: fillMsg.ok ? '#10b981' : '#f59e0b', lineHeight: 1.5, marginBottom: 10 }}>{fillMsg.text}</p>}
+          <Btn onClick={addSingle} variant="secondary" style={{ width: '100%', justifyContent: 'center' }}><Icon name="plus" size={14} /> Add word</Btn>
+        </div>
+      ) : (
+        <div>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8, lineHeight: 1.5 }}>One word per line: {lang === 'ja' ? 'written form = reading in kana = meaning (a word written in kana may leave the reading out)' : lang === 'zh' ? 'characters = pinyin = meaning' : 'characters = Yale = meaning'}. A tab or | works like =.</p>
+          <textarea value={bulk} onChange={e => { setBulk(e.target.value); setDone(null) }} data-bulk="1"
+            placeholder={lang === 'ja' ? '猫 = ねこ = cat\nありがとう = thank you' : lang === 'zh' ? '你好 = nǐ hǎo = hello\n谢谢 = xièxie = thank you' : '你好 = néih hóu = hello\n多謝 = dōjeh = thank you'}
+            style={{ ...inputStyle, minHeight: 140, resize: 'vertical' }} />
+          <Btn onClick={addBulk} variant="secondary" style={{ width: '100%', justifyContent: 'center' }}><Icon name="plus" size={14} /> Check &amp; add</Btn>
+        </div>
+      )}
+      {problems.length > 0 && (
+        <div data-add-problems="1" style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, border: '1px solid #ef4444', background: 'rgba(239,68,68,0.06)' }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', marginBottom: 4 }}>Not added:</p>
+          {problems.map((p, i) => <p key={i} style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5, marginBottom: 4 }}>{p.text ? p.text + ' — ' : ''}{p.reason}</p>)}
+        </div>
+      )}
+      {ready.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <p style={{ fontSize: 12, color: 'var(--muted)' }}>{ready.length} word{ready.length === 1 ? '' : 's'} ready to save</p>
+            <button onClick={() => setReady([])} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 12 }}>Clear</button>
+          </div>
+          <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {ready.map((w, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, padding: '8px 12px', background: 'var(--surface)', borderRadius: 8, fontSize: 13, flexWrap: 'wrap' }}>
+                <span className={sp.cls} style={{ color: 'var(--gold)' }}>{w.written}</span>
+                <span className="phon" style={{ color: '#9a7a35', fontSize: 12 }}>{w.reading}{w.romaji ? ' · ' + w.romaji : ''}</span>
+                <span style={{ color: 'var(--muted)' }}>= {w.english}</span>
+              </div>
+            ))}
+          </div>
+          {lang !== 'yue' && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={queue} onChange={e => setQueue(e.target.checked)} data-queue="1" /> Study these first (put them in “Next in queue” for the next Daily Track)
+            </label>
+          )}
+          <Btn onClick={save} variant="primary" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }}><Icon name="check" size={14} /> Save {ready.length} word{ready.length === 1 ? '' : 's'}</Btn>
+        </div>
+      )}
+      {done && (
+        <p data-add-done="1" style={{ marginTop: 14, fontSize: 13, color: done.n ? '#10b981' : '#f59e0b', lineHeight: 1.5 }}>
+          {done.n ? '✅ Saved ' + done.n + ' word' + (done.n === 1 ? '' : 's') + ' to your ' + sp.name + ' word list (status new).' + (done.queued ? ' They are first in the queue for the next Daily Track.' : lang === 'yue' ? '' : ' They come after the curriculum words unless you put them in the queue from the word list (the ⏭ button).') : 'Nothing was saved.'}
+        </p>
+      )}
+      {mine.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Words you added ({mine.length})</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {mine.map(w => (
+              <div key={w.id} data-mine={w.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '6px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, flexWrap: 'wrap' }}>
+                <span className={sp.cls} style={{ fontSize: 15, fontWeight: 700 }}>{showScript(w)}</span>
+                <span className="phon" style={{ fontSize: 11, color: 'var(--muted)' }}>{lang === 'ja' ? w.reading : w.pinyin}</span>
+                <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 'auto' }}>{w.english}</span>
+                <button data-remove-word={w.id} onClick={() => remove(w)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 11 }}>Remove</button>
+                {langCustomWordNote(lang, w) !== 'Your word.' && <span style={{ flexBasis: '100%', fontSize: 10, color: '#f59e0b' }}>{langCustomWordNote(lang, w)}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+// ── SETTINGS in every language: the Thai Settings screen, with the Thai-only parts left out (lang) ──────────────────────────────────────────────
+// The keys, the spend and the AI model are shared by every language (the same storage keys), so a key saved here is the key of every profile. What the screen shows comes from storage when it opens,
+// and a save also reaches the teacher screen that is open (cred.setGeminiKey / setGcpTtsKey / setGeminiSpend), so Generate uses the new key at once.
+function LangSettingsView({ lang, cred, onBack }) {
+  const c = cred || {}
+  const [st, setSt] = useState(null)
+  useEffect(() => {
+    let dead = false
+    ;(async () => {
+      const gk = await stGet('tt-gemini-key'), gt = await stGet('tt-gcp-tts-key'), gb = await stGet('tt-gemini-fallback-key'), gs = parseFloat(await stGet('tt-gemini-spend'))
+      if (!dead) setSt({ gemini: gk || c.geminiKey || '', tts: gt || c.gcpTtsKey || '', backup: gb || '', spend: Number.isFinite(gs) ? gs : (c.geminiSpend || 0) })
+    })()
+    return () => { dead = true }
+  }, [])
+  if (!st) return <div className="fade-in" style={{ padding: 16, display: 'flex', justifyContent: 'center' }}><Spinner size={24} /></div>
+  return <Settings lang={lang} onBack={onBack}
+    geminiKey={st.gemini} onSaveGeminiKey={async k => { setSt(s => ({ ...s, gemini: k })); await stSet('tt-gemini-key', k); if (c.setGeminiKey) c.setGeminiKey(k) }}
+    geminiSpend={Math.max(st.spend, typeof c.geminiSpend === 'number' ? c.geminiSpend : 0)}
+    onResetGeminiSpend={async () => { setSt(s => ({ ...s, spend: 0 })); await stSet('tt-gemini-spend', 0); if (c.setGeminiSpend) c.setGeminiSpend(0) }}
+    gcpTtsKey={st.tts} onSaveGcpTtsKey={async k => { setSt(s => ({ ...s, tts: k })); await stSet('tt-gcp-tts-key', k); if (c.setGcpTtsKey) c.setGcpTtsKey(k) }}
+    geminiBackupKey={st.backup} onSaveGeminiBackupKey={async k => { setSt(s => ({ ...s, backup: k })); await stSet('tt-gemini-fallback-key', k); try { window.__geminiBackupKey = k } catch (e) {} }} />
+}
+// ctx = what the teacher screen hands over: { vocab, tracks, slots, register, cred, saveVocab, saveTracks, saveSlots, saveRegister } (its own save functions)
+function NonThaiExtraView({ view, lang, onBack, ctx }) {
+  const c = ctx || {}
+  if (langExtraSpec(lang) && c.saveVocab) {
+    if (view === 'browse') return <WordListView vocab={c.vocab || []} lang={lang} initialFilter="all" onBack={onBack} onVocabUpdate={c.saveVocab} noteFor={w => langCustomWordNote(lang, w)} />
+    if (view === 'settings') return <LangSettingsView lang={lang} cred={c.cred} onBack={onBack} />
+    if (view === 'data') return <LangDataView lang={lang} ctx={c} onBack={onBack} />
+    if (view === 'add-words') return <LangAddWordsView lang={lang} ctx={c} onBack={onBack} />
+  }
   if (!TH_ONLY_VIEWS[view]) return null
   const name = lang === 'ja' ? 'Japanese' : lang === 'zh' ? 'Mandarin' : lang === 'yue' ? 'Cantonese' : 'this language'
   const back = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
       <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 4 }}><Icon name="arrow_left" size={20} /></button>
       <span className="display" style={{ fontSize: 18 }}>{TH_ONLY_VIEWS[view]}</span>
-    </div>
-  )
-  if (view === 'settings') return (
-    <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
-      {back}
-      <GenerationModelCard />
-      <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>This choice applies to every language. The Gemini key, voices and backups are set in the Thai profile's Settings (they also apply to every language).</p>
     </div>
   )
   return (
@@ -48175,7 +48716,7 @@ function BeltVocabView({ vocab, beltLabel, beltName, displayName, beltColor, onB
 
 // Word list opened by the dashboard stat tiles (Words / Due / Learning / Known) in Japanese and Mandarin — the same tap-through the
 // Thai dashboard has. Read-only: search, a filter row, and one line per word (script, reading, meaning, status).
-function WordListView({ vocab, lang, initialFilter, onBack, onVocabUpdate }) {
+function WordListView({ vocab, lang, initialFilter, onBack, onVocabUpdate, noteFor }) {
   const [filter, setFilter] = useState(initialFilter || 'all')
   const [q, setQ] = useState('')
   const today = new Date().toISOString().slice(0, 10)
@@ -48207,8 +48748,8 @@ function WordListView({ vocab, lang, initialFilter, onBack, onVocabUpdate }) {
       </div>
       <p style={{ fontSize:11, color:'var(--muted)', margin:0 }}>{rows.length} {filter === 'phrases' ? 'phrase' : 'word'}{rows.length === 1 ? '' : 's'}</p>
       <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-        {rows.slice(0, 400).map(w => (
-          <div key={w.id} style={{ display:'flex', alignItems:'baseline', gap:8, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 10px', minWidth:0 }}>
+        {rows.slice(0, 400).map(w => { const note = noteFor ? noteFor(w) : ''; return (
+          <div key={w.id} style={{ display:'flex', alignItems:'baseline', gap:8, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 10px', minWidth:0, ...(note ? { flexWrap:'wrap' } : null) }}>
             <span className={lang === 'ja' ? 'jp' : lang === 'zh' ? 'zh' : lang === 'yue' ? 'yue' : 'thai'} {...(lang === 'yue' ? { lang: 'zh-HK' } : {})} style={{ color:'var(--text)', fontSize:15, fontWeight:700 }}>{script(w)}</span>
             <span className="phon" style={{ color:'var(--muted)', fontSize:11 }}>{reading(w)}</span>
             <span style={{ color:'var(--muted)', fontSize:11, marginLeft:'auto', textAlign:'right' }}>{w.english}</span>
@@ -48216,8 +48757,9 @@ function WordListView({ vocab, lang, initialFilter, onBack, onVocabUpdate }) {
             {onVocabUpdate && <button data-queue-word={w.id} onClick={() => queueWord(w, !w.queuedNext)}
               style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, padding:'0 3px', lineHeight:1, fontWeight:700, color: w.queuedNext ? 'var(--gold)' : 'var(--muted)' }}
               title={w.queuedNext ? 'Queued as first in the next track — tap to remove' : 'Put this word first in the next track'}>{w.queuedNext ? '⏭ queued' : '⏭'}</button>}
+            {note && <span data-word-note={w.id} style={{ flexBasis:'100%', fontSize:10, color: note === 'Your word.' ? 'var(--muted)' : '#f59e0b' }}>{note}</span>}
           </div>
-        ))}
+        ) })}
         {rows.length > 400 && <p style={{ fontSize:11, color:'var(--muted)', textAlign:'center' }}>Showing the first 400 — search to narrow.</p>}
       </div>
     </div>
@@ -52658,6 +53200,13 @@ function useSharedCredentials() {
     return () => { dead = true }
   }, [])
 
+  // the Gemini spend counter, as on the Thai screen: every successful request adds to the stored total (the Settings screen of every language shows it)
+  const spendRef = useRef(0)
+  useEffect(() => { spendRef.current = geminiSpend }, [geminiSpend])
+  useEffect(() => {
+    window.__trackGeminiUsage = (cost) => { const next = stAddToNumber('tt-gemini-spend', spendRef.current, cost); spendRef.current = next; setGeminiSpend(next) }
+    return () => { window.__trackGeminiUsage = null }
+  }, [])
   // the setters are for the shared Settings screen of the Japanese / Mandarin / Cantonese profiles (LangSettingsView): a key saved there is used by the screen at once
   return { geminiKey, apiKey: geminiKey, model: GEMINI_DEFAULT_MODEL, geminiSpend, gcpTtsKey, setGeminiKey, setGeminiSpend, setGcpTtsKey }
 }
@@ -58182,7 +58731,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
               onBack={() => { setActiveTrack(null); setPlayerResumeCompleted(false); setView('dashboard') }} />
           </ErrorBoundary>
         )}
-        <NonThaiExtraView view={view} lang="ja" onBack={() => setView('dashboard')} />
+        <NonThaiExtraView view={view} lang="ja" onBack={() => setView('dashboard')} ctx={{ vocab, tracks, slots, register, cred, saveVocab: saveVocabJa, saveTracks: saveTracksJa, saveSlots, saveRegister }} />
       </main>
     </div>
   )
@@ -62007,7 +62556,7 @@ function MandarinTeacher({ lang, onSetLang }) {
               onBack={() => { setActiveTrack(null); setPlayerResumeCompleted(false); setView('dashboard') }} />
           </ErrorBoundary>
         )}
-        <NonThaiExtraView view={view} lang="zh" onBack={() => setView('dashboard')} />
+        <NonThaiExtraView view={view} lang="zh" onBack={() => setView('dashboard')} ctx={{ vocab, tracks, slots, cred, saveVocab: saveVocabZh, saveTracks: saveTracksZh, saveSlots }} />
       </main>
     </div>
   )
@@ -62701,7 +63250,7 @@ function CantoneseTeacher({ lang, onSetLang }) {
               onBack={() => { setActiveTrack(null); setPlayerResumeCompleted(false); setView('dashboard') }} />
           </ErrorBoundary>
         )}
-        <NonThaiExtraView view={view} lang="yue" onBack={() => setView('dashboard')} />
+        <NonThaiExtraView view={view} lang="yue" onBack={() => setView('dashboard')} ctx={{ vocab, tracks, slots, cred, saveVocab: saveVocabYue, saveTracks: saveTracksYue, saveSlots }} />
       </main>
     </div>
   )

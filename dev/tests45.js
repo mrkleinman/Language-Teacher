@@ -83,8 +83,12 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     T('S6b', 'the existing-track entry points (Japanese and Mandarin QC rebuild, Thai Retry missing) pass the track\'s own model', sites === 2 && /aiBeginRun\('daily-track', null, \{ genModel: t0\.generationModel \|\| GEMINI_DEFAULT_MODEL \}\)/.test(SRC), sites)
     T('S3c', 'v688: the saved choice and access code are loaded at start-up whatever language the app opens in (Japanese / Mandarin start-ups never loaded them)',
       /;\(async \(\) => \{\n  try \{ const p = await stGet\(AI_GEN_PREF_KEY\); if \(p\) aiSetGenerationPreference\(p\) \} catch \(e\) \{\}\n  try \{ const c = await stGet\(AI_ANTHROPIC_ACCESS_KEY\); if \(c\) aiSetAnthropicAccess\(c\) \} catch \(e\) \{\}\n\}\)\(\)/.test(SRC))
-    T('S3d', 'v688: Japanese and Mandarin Settings show the shared AI Generation Model card; their Thai-only buttons explain instead of showing an empty page',
-      (SRC.match(/<NonThaiExtraView view=\{view\} lang="(ja|zh)" onBack=\{\(\) => setView\('dashboard'\)\} \/>/g) || []).length === 2 && /if \(view === 'settings'\) return \([\s\S]{0,200}<GenerationModelCard \/>/.test(SRC))
+    // TEST CHANGED (17 Nov, header buttons in ja / zh / yue): the Japanese and Mandarin Settings used to be a page of their own that held only the AI Generation Model card, and the call was
+    // `<NonThaiExtraView ... />` with no other prop. Settings is now the full Settings screen (LangSettingsView -> Settings) of which the AI Generation Model card is the last card, and the call hands
+    // over the teacher's own state and save functions (ctx). The check is the same intent: each of the two screens shows the shared model card in its Settings, and what is left Thai-only explains.
+    T('S3d', 'v688: Japanese and Mandarin Settings show the shared AI Generation Model card; their Thai-only button (Lessons) explains instead of showing an empty page',
+      (SRC.match(/<NonThaiExtraView view=\{view\} lang="(ja|zh)" onBack=\{\(\) => setView\('dashboard'\)\}.*ctx=\{\{.*\}\} \/>/g) || []).length === 2 && /if \(view === 'settings'\) return <LangSettingsView lang=\{lang\}/.test(SRC) &&
+      /<Settings lang=\{lang\} onBack=\{onBack\}/.test(SRC) && /<GenerationModelCard \/>\n    <\/div>\n  \)\n\}\n\n\/\/ ── Main App/.test(SRC))
     T('S7', 'Settings shows "AI Generation Model" with exactly the two labelled choices', /AI Generation Model/.test(SRC) && /label: 'Gemini 2\.5 Flash-Lite', tag: 'Default'/.test(SRC) && /label: 'Claude Haiku 5\.5', tag: 'Experimental'/.test(SRC) && /<GenerationModelCard \/>/.test(SRC)
       && Object.keys(c.ev('AI_GEN_MODELS')).length === 2)
     T('S8', 'the model is stamped on the finished track and its export (finaliseMainTrack, the Thai screen, the export header)',

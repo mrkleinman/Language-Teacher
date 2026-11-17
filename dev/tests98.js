@@ -207,6 +207,7 @@ const progressed = (c, lang, k) => initOf(c, lang).map((w, i) => i < k ? { ...w,
       new RegExp('Restored ' + NAME[lang] + ' progress: ' + ex.V.length + ' words \\(6 with progress\\) and 2 tracks').test(msgOf(o.r)), { m: msgOf(o.r), w0 })
     T('D6c-' + lang, NAME[lang] + ': the restore went through the teacher\'s own multi-tab saving (stSyncCommit on this language\'s keys only) and the open screen shows it without a reload',
       o.commits.some(c => c.key === KEYS[lang][0]) && o.commits.some(c => c.key === KEYS[lang][1]) && o.commits.every(c => KEYS[lang].includes(c.key)) && !allStoredHasOther(o.c, lang) && /Restored/.test(msgOf(o.r)), { commits: o.commits })
+    if (lang === 'ja') T('D6d-ja', 'Japanese: the speech style travels too (a fresh device takes the backup\'s "polite" instead of the default) and it is saved through the screen\'s own register save', stored(o.c, 'tt-ja-register') === 'polite' && /Restored/.test(msgOf(o.r)), stored(o.c, 'tt-ja-register'))
     await click(o.r, /^\s*←|Back/); await flush(10)
     await TR.act(async () => { o.r.unmount() })
   }

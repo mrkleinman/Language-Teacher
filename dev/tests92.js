@@ -132,7 +132,9 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
   T('G1', 'a 30-target Cantonese track is written with ZERO model requests: 90 recalls, all from gap-fill modules', !err && calls === 0 && modelCalls() === 0 && content.length === 90 && content.every(p => p._module === true), { err: err && String(err.message).slice(0, 200), calls, n: content.length })
   const byT = new Map(); content.forEach(p => { if (!byT.has(p.targetId)) byT.set(p.targetId, []); byT.get(p.targetId).push(p) })
   T('G2', 'each target\'s three recalls come from ONE module, in order A, B, A, and stay together', [...byT.values()].every(l => l.length === 3 && new Set(l.map(p => p._moduleId)).size === 1 && l.map(p => p.speaker).join('') === 'ABA' && l.map(p => p.recallIndex).join('') === '123') &&
-    res.pairs.every((p, i) => i % 3 === 0 ? p.recallIndex === 1 : p.recallIndex === (i % 3) + 1))
+    // 18 Nov (greeting / parting, stage B-1): every track now opens with 2 framing lines and closes with 2, so the order of the recalls is read on the LESSON lines only (res.pairs
+    // minus the framing pairs); a framing pair has no recallIndex and is not a target pair (tests97 holds the framing pins)
+    res.pairs.filter(p => !p._framing).every((p, i) => i % 3 === 0 ? p.recallIndex === 1 : p.recallIndex === (i % 3) + 1))
   const modIds = [...byT.values()].map(l => l[0]._moduleId)
   T('G3', 'no module is used twice in one track, and no sentence twice', new Set(modIds).size === modIds.length && new Set(content.map(p => p.chinese)).size === 90)
   T('G4', 'every pair carries the shared identity the Player and the finisher read: language yue, targetId, wordId, recallIndex, pairId, thai / phonetic (= the Cantonese and the Yale), segments, spokenPinyin = pinyin (no tone sandhi)',
@@ -140,9 +142,10 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
       c.ev('assertTrackPairsProvenance')(res.pairs, 'yue').ok), content.slice(0, 1))
   T('G5', 'the log says which module wrote each target and that no request was made', logs.some(l => /YUE_MODULE .*: module .* the three recalls, no request/.test(l)) && logs.some(l => /YUE_MODULES y1 · 4174 gap-fill modules/.test(l)) && logs.some(l => /0 model requests/.test(l)), logs.slice(0, 3))
   const track = c.cantoneseBuildTrack(res, targets, 'daily', '2026-11-16T10:00:00.000Z'), chk = c.cantoneseTrackCheck(track)
-  T('G6', 'the finished track record: language yue, mode, 30 keywords with Yale, 90 pairs, module marker, trackContext for yue; the structure check passes (every target 3 recalls, every line sound)',
-    track.language === 'yue' && track.trackMode === 'daily' && track.keywords.length === 30 && track.keywords.every(k => k.pinyin && k.wordId != null) && track.pairs.length === 90 && track.moduleTrack.modelRequests === 0 &&
-    track.trackContext.language === 'yue' && c.ev('assertTrackContext')(track.trackContext).ok && chk.ok && chk.pairs === 90 && chk.fromModules === 90 && track.generatorVersion === 'yue-modules-v1', { chk, tc: c.ev('assertTrackContext')(track.trackContext) })
+  // 18 Nov (stage B-1): the track holds 90 lesson pairs + 4 greeting / parting pairs = 94 (chk.pairs counts the lesson lines, chk.framing the others); the generator version is v2 (framing + vocabulary rule)
+  T('G6', 'the finished track record: language yue, mode, 30 keywords with Yale, 90 lesson pairs + 4 framing pairs, module marker, trackContext for yue; the structure check passes (every target 3 recalls, every line sound)',
+    track.language === 'yue' && track.trackMode === 'daily' && track.keywords.length === 30 && track.keywords.every(k => k.pinyin && k.wordId != null) && track.pairs.length === 94 && track.framingCount === 4 && track.recallCount === 90 && track.moduleTrack.modelRequests === 0 &&
+    track.trackContext.language === 'yue' && c.ev('assertTrackContext')(track.trackContext).ok && chk.ok && chk.pairs === 90 && chk.framing === 4 && chk.fromModules === 90 && track.generatorVersion === 'yue-modules-v2', { chk, tc: c.ev('assertTrackContext')(track.trackContext) })
   const broken = { ...track, pairs: track.pairs.map((p, i) => i === 5 ? { ...p, pinyin: 'nei5' } : i === 7 ? { ...p, segments: [] } : p).filter((p, i) => i !== 40) }
   const chk2 = c.cantoneseTrackCheck(broken)
   T('G7', 'the structure check of a finished track finds a bad Yale, lost segments and a missing recall', !chk2.ok && chk2.problems.length >= 3 && chk2.problems.some(x => /recalls \(3 needed\)/.test(x)), chk2.problems)
@@ -169,10 +172,11 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
   const rev = c.selectRevisionTargets('yue', learned)
   let r2 = null
   try { c.ev('YUE_MODULES').used.clear(); r2 = await c.generateCantoneseTrack(rev.targets.filter(w => data.t[String(w.id)]).slice(0, 12), learned, () => {}, () => {}, { cancelled: false }) } catch (e) { r2 = { err: e } }
-  T('G10', 'Revision uses the same writer: 12 learned words → 36 recalls from modules, no request; the revision track record carries 0 NEW', !r2.err && r2.pairs.length === 36 && modelCalls() === 0 && c.cantoneseBuildTrack(r2, rev.targets.slice(0, 12), 'revision').selectedNewTargetIds.length === 0 && c.cantoneseBuildTrack(r2, rev.targets.slice(0, 12), 'revision').trackMode === 'revision', r2.err && r2.err.message)
+  T('G10', 'Revision uses the same writer: 12 learned words → 36 recalls from modules, no request; the revision track record carries 0 NEW', !r2.err && r2.pairs.length === 40 && r2.pairs.filter(p => !p._framing).length === 36 && modelCalls() === 0 && c.cantoneseBuildTrack(r2, rev.targets.slice(0, 12), 'revision').selectedNewTargetIds.length === 0 && c.cantoneseBuildTrack(r2, rev.targets.slice(0, 12), 'revision').trackMode === 'revision', r2.err && r2.err.message)
+  // 18 Nov (stage B-1): +4 framing pairs on every track (12 words: 36 lesson + 4 = 40; 5 words: 15 + 4 = 19)
   // each new run starts clean: used modules are forgotten, so the same targets can be written again
   let r3 = null; try { r3 = await c.generateCantoneseTrack(targets.slice(0, 5), learned, () => {}, () => {}, { cancelled: false }) } catch (e) { r3 = { err: e } }
-  T('G11', 'a second run starts clean (the used-module memory is reset per run)', !r3.err && r3.pairs.length === 15, r3.err && r3.err.message)
+  T('G11', 'a second run starts clean (the used-module memory is reset per run)', !r3.err && r3.pairs.length === 19 && r3.pairs.filter(p => !p._framing).length === 15, r3.err && r3.err.message)
   // cancel
   let cancelled = 0; const stop = { cancelled: false }
   let r4 = null; try { r4 = await c.generateCantoneseTrack(targets.slice(0, 6), learned, (d) => { if (d >= 3) stop.cancelled = true }, () => {}, stop) } catch (e) { r4 = { err: e } }
@@ -180,7 +184,10 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
   // a learned word that no module can fill never blocks a Revision track: it is swapped for the next learned word
   {
     const noWord = standIds.filter(id => learned.some(w => w.id === id))
-    const L2 = learned.map((w, i) => noWord.includes(w.id) ? { ...w, dueDate: '2020-01-01', status: 'learning', lastSeen: '2026-10-30', okStreak: 0 } : i < 120 ? w : { ...w, status: 'new', lastSeen: null, introducedAt: null, repCount: 0, dueDate: null, okStreak: 0 })
+    // 18 Nov (learner-vocabulary rule, stage B-1): this learner used to know only the first 120 words and the rest were NEW. With the rule on, a learner who knows 120 words has few lessons
+    // that use only those words, so the revision would be (rightly) shorter than 30 for a reason that has nothing to do with this test (swapping a word no module can fill). The learner
+    // here now knows every word, as in the rest of this suite, so the rule passes everything and the test still shows the module-less swap; the rule itself is pinned in tests97.
+    const L2 = learned.map((w, i) => noWord.includes(w.id) ? { ...w, dueDate: '2020-01-01', status: 'learning', lastSeen: '2026-10-30', okStreak: 0 } : w)
     const rv = c.selectRevisionTargets('yue', L2)
     const rawRv = c.ev('selectRevisionTrackTargets')({ vocab: c.ev('jazhWordsOnly')(L2), maxTargets: 30, language: 'yue' }).targets
     T('G15', 'Revision never offers a word no module can fill (the blocked stand-ins 當 像 適合 are the most overdue words here, so the plain selector would put them first): they are swapped for the next learned words and the track keeps its 30 words',

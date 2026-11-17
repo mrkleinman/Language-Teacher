@@ -123,20 +123,24 @@ const fn = (name, body) => { const i = SRC.indexOf(name); return i < 0 ? '' : SR
     const cx = load(FILE, { React, globals: { Blob: class { constructor(parts) { this.text = parts.join('') } }, URL: { createObjectURL: b => { captured = b.text; return 'blob:x' }, revokeObjectURL: noop },
       document: { querySelector: () => null, getElementById: () => el(), createElement: el, body: el(), head: el(), addEventListener: noop } } }); cx.console.info = () => {}
     cx.yueModulesSetEnabled(true); cx.ev('yueModulesUseData')(DATA)
+    cx.yueStrictVocabSetEnabled(false)    // starter modules not merged yet: remove this switch when they are (this is the real first-day flow: 6 new words, nothing taught)
     const V = cx.initCantoneseVocab(), tg = V.slice(0, 6).map(w => ({ ...w, selectionRole: 'new' }))
     const res = await cx.generateCantoneseTrack(tg, V, () => {}, () => {}, { cancelled: false }), tr = cx.cantoneseBuildTrack(res, tg, 'daily', '2026-11-16T10:00:00.000Z')
     cx.downloadCantoneseTrack(tr)
     // 17 Nov (Cantonese quality review, tests95): the transcript says what became of the review. This track is a bare module track with no review on it, so the line is "not run (…)"; the old sentence
     // "not available for Cantonese yet" is gone. (A track with a review prints its counts and flags: tests95 E7.)
+    // 18 Nov (stage B-1): the track holds 6 words x 3 = 18 lesson lines and 4 greeting / parting lines, so the transcript lists 22 CANTONESE lines; the structure check still counts the 18 lesson lines
+    // ("18/18 lines from modules") and names the framing lines apart
     T('U12', 'the transcript download names Cantonese, Yale and the structure check, lists every target with its Yale and every pair with cue, Cantonese, Yale, English and breakdown (never "PINYIN" or "MANDARIN")',
       /CANTONESE TEACHER/.test(captured) && /Romanisation: Yale/.test(captured) && /STRUCTURE CHECK: passed · 18\/18 lines from modules/.test(captured) && /Quality review: not run \(this track was made before the Cantonese quality review existed, or it was never started\)/.test(captured) && !/not available for Cantonese yet/.test(captured) && /YALE:\s+\S/.test(captured) && /BREAKDOWN:/.test(captured) &&
-      (captured.match(/CANTONESE:/g) || []).length === 18 && !/PINYIN|MANDARIN/i.test(captured), captured.slice(0, 500))
+      (captured.match(/CANTONESE:/g) || []).length === 22 && /4 greeting \/ parting lines/.test(captured) && !/PINYIN|MANDARIN/i.test(captured), captured.slice(0, 500))
   }
 
   // ── F — the whole flow, no key ──
   async function open(storage) {
     const cx = load(FILE, { React, realBelt: true }); cx.console.info = () => {}; cx.console.warn = () => {}
     cx.yueModulesSetEnabled(true); cx.ev('yueModulesUseData')(DATA)
+    cx.yueStrictVocabSetEnabled(false)    // starter modules not merged yet: remove this switch when they are (the real first-day flow F3-F6 / S1 builds a Daily for a learner who has been taught nothing)
     Object.entries(storage || {}).forEach(([k, val]) => cx.localStorage.setItem(k, JSON.stringify(val)))
     let r; await TR.act(async () => { r = TR.create(React.createElement(cx.CantoneseTeacher, { lang: 'yue', onSetLang() {} })); await flush(80) })
     return { r, c: cx }
@@ -152,10 +156,11 @@ const fn = (name, body) => { const i = SRC.indexOf(name); return i < 0 ? '' : SR
   T('F3', 'Daily Track opens the generator (nothing built yet); no start gate blocks a brand-new learner (a short track: the belt\'s 5 NEW words only)', await click(o.r, /Daily Track/) && /Build the track/.test(txt(o.r)) && /TARGETING 5 WORDS/.test(txt(o.r)) && /short on purpose/.test(txt(o.r)) && !/TRACK_SELECTION_BLOCKED/.test(txt(o.r)), txt(o.r).slice(0, 300))
   let reqs = 0; o.c.geminiGenerate = async () => { reqs++; throw new Error('no network') }
   T('F4', 'Build the track: 5 words → 15 recalls from modules in a moment, the structure check passes, 0 model requests, a Study button', await click(o.r, /Build the track/) && /Structure check passed/.test(txt(o.r)) && /15 \/ 15 lines from modules/.test(txt(o.r)) && /0 model requests/.test(txt(o.r)) && /Study track/.test(txt(o.r)) && reqs === 0, txt(o.r).slice(-400))
-  T('F5', 'Study track: the track is saved under the Cantonese key only (tt-yue-tracks: one track, language yue, 15 pairs, Yale) and the Player opens on the first cue', await click(o.r, /Study track/) && /Say in Cantonese/.test(txt(o.r)) && await (async () => {
+  // 18 Nov (stage B-1): 15 lesson pairs + 4 greeting / parting pairs = 19 saved pairs
+  T('F5', 'Study track: the track is saved under the Cantonese key only (tt-yue-tracks: one track, language yue, 15 lesson pairs + 4 framing pairs, Yale) and the Player opens on the first cue', await click(o.r, /Study track/) && /Say in Cantonese/.test(txt(o.r)) && await (async () => {
     const saved = JSON.parse(o.c.localStorage.getItem('tt-yue-tracks') || 'null'); const tr = saved && (saved.items || saved.list || saved)
     const arr = Array.isArray(tr) ? tr : (tr && tr.v) || []
-    return arr.length === 1 && arr[0].language === 'yue' && arr[0].pairs.length === 15 && arr[0].pairs.every(p => c.validateYale(p.pinyin).ok) })() && !o.c.localStorage.getItem('tt-zh-tracks') && !o.c.localStorage.getItem('tt-ja-tracks') && !o.c.localStorage.getItem('tt-tracks'),
+    return arr.length === 1 && arr[0].language === 'yue' && arr[0].pairs.length === 19 && arr[0].pairs.filter(p => !p._framing).length === 15 && arr[0].pairs.every(p => c.validateYale(p.pinyin).ok) })() && !o.c.localStorage.getItem('tt-zh-tracks') && !o.c.localStorage.getItem('tt-ja-tracks') && !o.c.localStorage.getItem('tt-tracks'),
     { keys: [...Array(o.c.localStorage.length).keys()].map(i => o.c.localStorage.key(i)) })
   T('F6', 'the new words of the track are remembered for today under tt-yue-daily-new (5 new words, ids), and nothing of the other languages is written', (() => { const d = JSON.parse(o.c.localStorage.getItem('tt-yue-daily-new') || 'null'); const v = d && (d.v || d); return !!v && Array.isArray(v.wordIds) && v.wordIds.length === 5 })() &&
     [...Array(o.c.localStorage.length).keys()].map(i => o.c.localStorage.key(i)).every(k => !/^tt-(zh|ja)-/.test(k) && k !== 'tt-vocab'))

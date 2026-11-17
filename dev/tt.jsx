@@ -9375,6 +9375,109 @@ const YUE_FREE_YALE = Object.freeze({ '呀': 'a', '啊': 'a', '啦': 'lā', '喇
 // the Daily writer of the first slice is the gap-fill modules only: a word with no module (穿 睜 當: their English slot cannot sit in a sentence) cannot be a Daily
 // target yet; the ids are written next to the module data (YUE_NO_MODULE_IDS) so the selector knows them before the data is unpacked
 function yueTargetHasModule(w) { try { return !!w && !YUE_NO_MODULE_SET.has(w.id != null ? w.id : w.wordId) } catch (e) { return true } }
+
+// ── THE LEARNER-VOCABULARY RULE (18 Nov) ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// A real day-one Cantonese Daily used words the learner had never been taught (狗 名字 乜嘢 多士 鍾意 今日 超市 買咗 ...): every module had only been proved against the
+// WHOLE tier-1 list. A module may now serve a target only if EVERY fixed word of it (its chunk words, already cut with the word list at build time, plus the target's own
+// surface for {W} and the classifier for {M}) is in the learner's ALLOWED SET:
+//   (a) a word the learner has been taught (isLearnerTaught: the app's ONE definition, as Mandarin's mandarinLearnerInventory uses it); a written form that has two
+//       rows (好 adjective / adverb, 都, 睇, 坐, 呢, 凍, 過 ...) counts as known when ANY row of that spelling is taught,
+//   (b) the day's own targets (all targets of the track, new and review: a line for one target may use another target of the same track),
+//   (c) the FREE words (YUE_FREE_WORDS: loanwords, names, interjections, sentence-final particles).
+// The {M} classifier of a module must itself be in the allowed set, else that module cannot serve that target.
+// Greeting and parting words of the framing lines are NOT in the set: they are free only inside the framing pairs (yueFramingPairs), never in a lesson line.
+// A NEW word is selectable only when a module can serve it for the learner (yueTargetTeachable); one that cannot yet is swapped for the next teachable word of the same
+// kind by gateTargetsByFeasibility, so the NEW count cannot change.
+// SWITCH: yueStrictVocabSetEnabled(false) turns the rule off (default ON in the app, like yueModulesSetEnabled). It exists ONLY because the starter modules (tiny-vocabulary
+// exchanges for the first 200 words) are not merged yet, so without it the real day-one flow cannot build; the tests that run that flow switch it off with the comment
+// "starter modules not merged yet: remove this switch when they are". When they are merged: delete the switch and those lines (see the stage B-1 report).
+const YUE_STRICT = { on: true }
+function yueStrictVocabSetEnabled(on) { YUE_STRICT.on = !!on }
+const YUE_FREE_SET = new Set(YUE_FREE_WORDS.map(r => r[0]))
+// the Latin-spelled free words (OK): the line check accepts exactly these whole tokens and no other Latin text
+const YUE_FREE_LATIN = YUE_FREE_WORDS.map(r => r[0]).filter(w => /^[A-Za-z]+$/.test(w))
+// the surfaces of every row the learner has been taught (any row of a spelling counts for the spelling)
+function yueTaughtSurfaces(vocab) {
+  const s = new Set()
+  ;(vocab || []).forEach(w => { if (w && w.chinese && isLearnerTaught(w)) s.add(w.chinese) })
+  return s
+}
+// the allowed set of ONE track: taught words + the free words + every target of the track (new and review)
+function yueAllowedSet(vocab, targets) {
+  const s = yueTaughtSurfaces(vocab)
+  YUE_FREE_SET.forEach(w => s.add(w))
+  ;(targets || []).forEach(t => { if (t && t.chinese) s.add(t.chinese) })
+  return s
+}
+// every fixed word of a module (punctuation has no Yale and is not a word) and whether it needs the classifier; cached on the module
+function yueModuleFixed(m) {
+  if (m._fixed) return m._fixed
+  const set = new Set()
+  let usesM = false
+  m.lines.forEach(ln => ln[0].forEach(it => {
+    if (typeof it === 'number') { const ch = yueModuleChunk(it); if (ch) ch.words.forEach(w => { if (w.yale) set.add(w.surface) }) }
+    else if (it === '{M}') usesM = true
+  }))
+  m._usesM = usesM
+  return (m._fixed = set)
+}
+// the words of a module that the learner may not use: its fixed words that are not allowed (the target's own surface is), and the classifier when it has a slot for one
+function yueModuleMissing(m, tag, has) {
+  const miss = []
+  yueModuleFixed(m).forEach(s => { if (s !== tag.word && !has(s)) miss.push(s) })
+  if (m._usesM && !(tag.measure && (tag.measure === tag.word || has(tag.measure)))) miss.push(tag.measure || '{M}')
+  return miss
+}
+// TEACHABILITY: can ONE module serve this word for this learner, given the words taught + the free words + the word itself (the day's other picks only widen the set at build
+// time, so a word that passes here can always be built)? The context caches the answer per word. With the rule off, or while the module data is not unpacked yet (the
+// writer will say so itself), a word is as teachable as it always was.
+function yueTeachCtx(vocab) {
+  const strict = YUE_STRICT.on, d = strict ? YUE_MODULES.data : null
+  const base = d ? yueAllowedSet(vocab, []) : null
+  const tier = d ? jaModuleLearnerTier(vocab) : 1
+  const cache = new Map()
+  const probe = w => {
+    const tag = yueModuleTagOf(w); if (!tag) return { ok: false, why: 'no module can fill this word yet' }
+    const has = s => s === w.chinese || base.has(s)
+    const pool = yueModulePool(tag, w, tier)
+    let near = null
+    for (const m of pool) {
+      const miss = yueModuleMissing(m, tag, has)
+      if (miss.length) { if (!near || miss.length < near.length) near = miss; continue }
+      const lines = yueModuleRender({ m, tag }, w)
+      if (lines && lines.every(l => !yueLineProblems(l, w, null).length)) return { ok: true, why: '' }
+    }
+    return { ok: false, why: 'no lesson yet uses only words you know plus this one' + (near && near.length ? ' (the nearest still needs ' + near.slice(0, 4).join(' ') + ')' : '') }
+  }
+  const get = w => { const k = w && w.id; if (k == null) return { ok: false, why: '' }; if (!cache.has(k)) cache.set(k, probe(w)); return cache.get(k) }
+  return {
+    strict: !!d,
+    teachable: w => !!w && yueTargetHasModule(w) && (!d || get(w).ok),
+    why: w => !w ? '' : !yueTargetHasModule(w) ? 'no module can fill this word yet' : (d ? get(w).why : ''),
+  }
+}
+function yueTargetTeachable(w, vocab) { return yueTeachCtx(vocab).teachable(w) }
+// the same swap as Mandarin (gateTargetsByFeasibility): a word no module can serve for this learner is replaced by the next teachable word OF THE SAME KIND (a new word by a
+// new word, a learned word by a learned word), so the NEW count cannot change; one that finds no substitute is left out and named in `deferred` with the reason
+function yueGateTargets(raw, vocab, pool) {
+  const ctx = yueTeachCtx(vocab)
+  const g = gateTargetsByFeasibility(raw, pool, w => ctx.teachable(w), w => !hasBeenIntroduced(w))
+  return { targets: g.targets, deferred: g.deferred.map(d => ({ ...d, why: ctx.why(d.target) })), ctx }
+}
+// the Daily of the Cantonese screen, in the Thai / Mandarin order: swap what cannot be taught → the contract (function-word cap, queued words, backfill) → drop what cannot be
+// taught (a word queued by hand, a backfilled review word) so no target is ever left that no lesson can serve
+function yueDailyTargets(raw, vocab) {
+  const list = raw || []
+  if (!list.length || !(vocab || []).length) return { targets: list, deferred: [] }
+  try {
+    const wv = jazhWordsOnly(vocab)
+    const pool = [...wv].sort((a, b) => (a.unlockOrder || 0) - (b.unlockOrder || 0))
+    const g = yueGateTargets(list, vocab, pool)
+    const t = jazhDailyTargets(g.targets, vocab, 'yue')
+    const kept = t.filter(w => g.ctx.teachable(w)), lost = t.filter(w => !g.ctx.teachable(w))
+    return { targets: kept.length === t.length ? t : kept.map((w, i) => ({ ...w, targetIndex: i })), deferred: g.deferred.concat(lost.map(w => ({ target: w, replacedBy: null, why: g.ctx.why(w) }))) }
+  } catch (e) { return { targets: list, deferred: [] } }
+}
 // NEW words for a Cantonese Daily: the same rule as Mandarin (the ONE configured count, carried slots never exceed it), words without a module are passed over
 function cantoneseSelectTargets(vocab, savedSlots) {
   const byOrder = (a, b) => (a.unlockOrder || a.id) - (b.unlockOrder || b.id)
@@ -34133,7 +34236,7 @@ const PIPELINE_VERSION = 'v651-canonical'
 // opening / closing set pieces, romanisation word breaks, dictionary reading fixes.
 // v710: the exchange bank after three more native-teacher reviews; checker false positives fixed in the checks; vetted lines skip only the
 // paid re-judging (every integrity check still runs); dictionary reading audit and word breaks.
-const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v710-exchange-bank', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650', yue: 'yue-modules-v1' })
+const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v710-exchange-bank', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650', yue: 'yue-modules-v2' })
 const QC_VERSION = 'qc-v710'
 const FINALIZER_VERSION = 'final-v710-exchange-bank'
 const TRACK_LANGUAGES = Object.freeze(['th', 'ja', 'zh', 'yue'])
@@ -36067,7 +36170,8 @@ function enforceTrackTargetContract(selection, o) {
   const due = w => w.dueDate || '9999-12-31'
   const learned = vocab.filter(w => !used.has(w.id) && jazhTargetEligible(w, lang) && (typeof revisionEligible === 'function' ? revisionEligible(w) : hasBeenIntroduced(w)))
     .sort((a, b) => due(a).localeCompare(due(b)) || String(a.lastSeen || '').localeCompare(String(b.lastSeen || '')) || (a.id - b.id))
-  for (const w of learned) { if (out.length >= need) break; out.push({ ...w, selectionRole: 'reinforce', _selectorStage: 'fallback-learned' }); used.add(w.id); log.push('BACKFILL slot=' + out.length + ' fallback-learned ' + w.id) }
+  const yueCtx = lang === 'yue' ? yueTeachCtx(vocab) : null            // Cantonese: a backfilled review word must have a lesson that uses only words the learner may use
+  for (const w of learned) { if (out.length >= need) break; if (yueCtx && !yueCtx.teachable(w)) continue; out.push({ ...w, selectionRole: 'reinforce', _selectorStage: 'fallback-learned' }); used.add(w.id); log.push('BACKFILL slot=' + out.length + ' fallback-learned ' + w.id) }
   // 17 Nov (the owner's rule: "for any language that has less than 30 words learnt, just stick with the number of available words"): a track holds
   // min(30, the words that exist), for Japanese, Mandarin and Cantonese alike. A Daily is the review words that exist plus the belt's new-word quota (the
   // selector already placed those): it is NEVER padded with extra NEW words to reach 30 (a new learner would get 30 new words at a belt whose limit is 5),
@@ -40843,7 +40947,7 @@ function selectRevisionTargets(lang, vocab) {
       candidateStats: rvAll.candidateStats ? { ...rvAll.candidateStats, skippedBeforeSelection: skippedCandidates.length } : null, frozen }
   }
   const sel = selectRevisionTrackTargets({ vocab: V, maxTargets: REVISION_TRACK_MAX, language: lang })
-  let gated = sel.targets
+  let gated = sel.targets, yueDeferred = []
   if (lang === 'zh' && gated.length && V.length) {
     try {
       const inv0 = mandarinLearnerInventory(V, gated), rules0 = scarcityRules(inv0)
@@ -40857,12 +40961,13 @@ function selectRevisionTargets(lang, vocab) {
   if (lang === 'yue' && gated.length && V.length) {
     try {
       const pool = selectRevisionTrackTargets({ vocab: V, maxTargets: 100000, language: 'yue' }).targets
-      gated = gateTargetsByFeasibility(gated, pool, w => yueTargetHasModule(w), w => !hasBeenIntroduced(w)).targets
+      const g = yueGateTargets(gated, V, pool)
+      gated = g.targets; yueDeferred = g.deferred
     } catch (e) { gated = sel.targets }
   }
   const targets = gated.length ? jazhContractTargets(gated, lang, V, 'revision') : gated
   return { language: lang, rule: 'revision', selector: 'selectRevisionTargets(' + lang + ') = selectRevisionTrackTargets' + (lang === 'zh' ? ' → feasibility gate' : '') + ' → jazhContractTargets(revision)',
-    selection: sel, raw: sel.targets, targets, targetIds: targets.map(w => w.id), counts: sel.counts, blocked: null }
+    selection: sel, raw: sel.targets, targets, targetIds: targets.map(w => w.id), counts: sel.counts, blocked: null, deferred: yueDeferred }
 }
 // ══ v698 TOPICS — selection (the ONLY difference between a Topic Track and a Daily Track is where the NEW words come from) ══
 const TOPIC_NEW_PER_TRACK = 5
@@ -60271,7 +60376,7 @@ function zhModuleExchange(target, vocab, inv, rules, seenMap, log) {
 // the build-time checker (cantonese-modules/tools/yue_check.py) proves the vocabulary, register and length of every line, and the runtime checks below are the shared
 // structural ones — no leftover token, the segments rebuild the sentence, the Yale is valid Yale and matches, the target is in the sentence, no sentence twice in a track.
 // Source files: dev/cantonese-modules/ · rebuild the data with `python3 tools/build_yue_modules.py` · switch off: YUE_MODULES.on = false.
-const YUE_MODULES = { on: true, ver: null, data: null, loading: null, used: new Set(), jobs: new Map(), scenes: new Map(), rand: Math.random,
+const YUE_MODULES = { on: true, ver: null, data: null, loading: null, used: new Set(), jobs: new Map(), scenes: new Map(), why: new Map(), rand: Math.random,
   stats: { targets: 0, offered: 0, noModule: 0, refused: 0 } }
 const YUE_MODULE_POOL = 60              // modules rendered and checked per target (each is three deterministic checks, no request)
 function yueModulesSetEnabled(on) { YUE_MODULES.on = !!on }
@@ -60304,7 +60409,7 @@ async function yueModulesLoad(log) {
 }
 function yueModulesActive() { return !!(YUE_MODULES.on && YUE_MODULES.data) }
 function yueModulesBeginRun(vocab, log) {
-  YUE_MODULES.used.clear(); YUE_MODULES.jobs.clear(); YUE_MODULES.scenes.clear(); YUE_MODULES.stats = { targets: 0, offered: 0, noModule: 0, refused: 0 }
+  YUE_MODULES.used.clear(); YUE_MODULES.jobs.clear(); YUE_MODULES.scenes.clear(); YUE_MODULES.why.clear(); YUE_MODULES.stats = { targets: 0, offered: 0, noModule: 0, refused: 0 }
   if (!log) return
   const d = YUE_MODULES.data
   if (!YUE_MODULES.on) log('\u{1F4E6} YUE_MODULES switched off')
@@ -60317,10 +60422,25 @@ function yueModuleTagOf(target) {
   const tg = d.tags[String(target.id != null ? target.id : target.wordId)]; if (!tg) return null
   return tg[0] === target.chinese ? { word: tg[0], tier: tg[1], cell: tg[2], slot: tg[3], plural: tg[4], measure: tg[5], measureYale: tg[6] } : null
 }
-function yueModuleCandidates(target, learnerTier) {
+// the modules of the word's cell that suit the learner's tier and do not exclude the word (nothing is said yet about what the learner knows)
+function yueModulePool(tag, target, learnerTier) {
+  const d = YUE_MODULES.data, id = String(target.id != null ? target.id : target.wordId), hi = Math.max(tag.tier, learnerTier || tag.tier)
+  return (d.byCell.get(tag.cell) || []).filter(m => m.tier >= tag.tier && m.tier <= hi && !(m.excl && m.excl.has(id)))
+}
+// o.allowed: the learner's allowed set (yueAllowedSet) — only the modules whose every fixed word is in it are listed (the learner-vocabulary rule); o.includeUsed: also the
+// modules this track has already used; o.info is filled with { inCell, fit, nearest: the fewest words a module of the cell still needs, words: those words }
+function yueModuleCandidates(target, learnerTier, o) {
   const d = YUE_MODULES.data, tag = yueModuleTagOf(target); if (!d || !tag) return []
-  const id = String(target.id != null ? target.id : target.wordId), hi = Math.max(tag.tier, learnerTier || tag.tier)
-  const mods = (d.byCell.get(tag.cell) || []).filter(m => m.tier >= tag.tier && m.tier <= hi && !(m.excl && m.excl.has(id)) && !YUE_MODULES.used.has(m.id))
+  const opt = o || {}, pool = yueModulePool(tag, target, learnerTier)
+  let mods = opt.includeUsed ? pool.slice() : pool.filter(m => !YUE_MODULES.used.has(m.id))
+  if (opt.allowed) {
+    const has = s => opt.allowed.has(s)
+    const fits = []
+    let near = null
+    mods.forEach(m => { const miss = yueModuleMissing(m, tag, has); if (!miss.length) fits.push(m); else if (!near || miss.length < near.length) near = miss })
+    if (opt.info) { opt.info.inCell = pool.length; opt.info.fit = fits.length; opt.info.nearest = near ? near.length : 0; opt.info.words = near || [] }
+    mods = fits
+  } else if (opt.info) { opt.info.inCell = pool.length; opt.info.fit = mods.length; opt.info.nearest = 0; opt.info.words = [] }
   const r = new Map(mods.map(m => [m.id, YUE_MODULES.rand()]))
   const fresh = m => (YUE_MODULES.jobs.get(m.job) ? 1 : 0) + (YUE_MODULES.scenes.get(m.scene) ? 1 : 0)
   mods.sort((a, b) => (fresh(a) - fresh(b)) || (b.tier - a.tier) || (r.get(a.id) - r.get(b.id)))
@@ -60371,7 +60491,8 @@ function yueLineProblems(line, target, seenMap) {
   const out = [], ch = String(line && line.chinese || ''), segs = Array.isArray(line && line.segments) ? line.segments : []
   if (!ch) return ['no Cantonese text']
   if (/[{}]/.test(ch + (line.english || '') + (line.prompt || '') + (line.pinyin || ''))) out.push('a slot token is left in the line')
-  if (/[A-Za-z฀-๿぀-ヿ]/.test(ch)) out.push('Latin, Thai or kana text inside the Cantonese')
+  // Latin letters are refused, except a free word spelled in Latin (OK) as a whole token: it stays Latin in the line and carries its Yale in the segment
+  if (/[A-Za-z฀-๿぀-ヿ]/.test(YUE_FREE_LATIN.reduce((t, w) => t.split(w).join(''), ch))) out.push('Latin, Thai or kana text inside the Cantonese')
   if (target && target.chinese && !ch.includes(target.chinese)) out.push('the target ' + target.chinese + ' is not in the sentence')
   if (!segs.length || segs.map(s => s && s.surface || '').join('') !== ch) out.push('the segments do not rebuild the sentence')
   const bad = segs.filter(s => s && s.type !== 'punct' && !(s.pinyin && validateYale(s.pinyin).ok))
@@ -60389,11 +60510,29 @@ function yueLineProblems(line, target, seenMap) {
   if (seenMap && seenMap.has(key) && seenMap.get(key) !== (target && target.id)) out.push('the sentence is already used for another word in this track')
   return out
 }
-// the next unused module exchange for a target whose three lines ALL pass yueLineProblems; null when there is none (the caller says so — nothing else writes a Cantonese Daily yet)
-function yueModuleExchange(target, vocab, seenMap, log) {
+// the sentence that says why no lesson can be written for a word (shown on the generator screen and in the log; never a silent substitute)
+function yueNoLessonText(target, info, usable) {
+  if (!yueModulesActive() || !yueModuleTagOf(target) || (info && !info.inCell)) return 'no module can fill this word yet'
+  if (usable && info && info.inCell && !info.fit) return 'no lesson yet uses only words you know plus this one' + (info.words && info.words.length ? ' (the nearest still needs ' + info.words.slice(0, 4).join(' ') + ')' : '')
+  return 'no lesson passes the checks for this word'
+}
+// the next unused module exchange for a target whose three lines ALL pass yueLineProblems; null when there is none (the caller says so — nothing else writes a Cantonese Daily yet).
+// With the learner-vocabulary rule on, only the modules whose every fixed word the learner may use are tried (o.allowed = the allowed set of the whole track; without it, the
+// words taught + the free words + this target); YUE_MODULES.why keeps the plain-words reason of a word that got nothing. A module already used in this track is used again
+// ONLY when no unused module fits the vocabulary (so a learner who knows few words is not refused for want of variety); the log says so.
+function yueModuleExchange(target, vocab, seenMap, log, o) {
   if (!yueModulesActive() || !target) return null
   YUE_MODULES.stats.targets++
-  const cands = yueModuleCandidates(target, jaModuleLearnerTier(vocab))
+  const opt = o || {}, strict = YUE_STRICT.on
+  const allowed = strict ? (opt.allowed || yueAllowedSet(vocab, [target])) : null
+  const tier = jaModuleLearnerTier(vocab)
+  let info = {}, reused = false
+  let cands = yueModuleCandidates(target, tier, { allowed, info })
+  if (strict && !cands.length) {
+    const inf2 = {}, again = yueModuleCandidates(target, tier, { allowed, includeUsed: true, info: inf2 })
+    if (again.length) { cands = again; reused = true; info = inf2 }
+  }
+  if (strict) log && log('  \u{1F4E6} YUE_MODULE ' + target.chinese + ': ' + info.fit + ' of ' + info.inCell + ' modules fit the vocabulary the learner has' + (reused ? ' (all already used in this track: one is used again)' : ''))
   let tried = 0, refused = 0, firstWhy = ''
   for (const c of cands) {
     if (tried >= YUE_MODULE_POOL) break
@@ -60407,12 +60546,52 @@ function yueModuleExchange(target, vocab, seenMap, log) {
     if (!ok) { refused++; continue }
     YUE_MODULES.used.add(c.m.id); YUE_MODULES.stats.offered++
     YUE_MODULES.jobs.set(c.m.job, (YUE_MODULES.jobs.get(c.m.job) || 0) + 1); YUE_MODULES.scenes.set(c.m.scene, (YUE_MODULES.scenes.get(c.m.scene) || 0) + 1)
+    YUE_MODULES.why.delete(target.id)
     log && log('  \u{1F4E6} YUE_MODULE ' + target.chinese + ': module ' + c.m.id + ' (T' + c.m.tier + ') — the three recalls, no request')
     return { id: c.m.id, tier: c.m.tier, job: c.m.job, scene: c.m.scene, lines }
   }
   if (cands.length) YUE_MODULES.stats.refused++; else YUE_MODULES.stats.noModule++
-  log && log('  \u{1F4E6} YUE_MODULE ' + target.chinese + ': ' + (cands.length ? 'none of ' + Math.min(cands.length, YUE_MODULE_POOL) + ' modules passes the checks (' + refused + ' refused' + (firstWhy ? ', first: ' + firstWhy : '') + ')' : 'no module for this word'))
+  YUE_MODULES.why.set(target.id, yueNoLessonText(target, info, strict))
+  log && log('  \u{1F4E6} YUE_MODULE ' + target.chinese + ': ' + (cands.length ? 'none of ' + Math.min(cands.length, YUE_MODULE_POOL) + ' modules passes the checks (' + refused + ' refused' + (firstWhy ? ', first: ' + firstWhy : '') + ')' : YUE_MODULES.why.get(target.id)))
   return null
+}
+// ── FRAMING LINES: the greeting that opens a track and the parting that closes it ─────────────────────────────────────────────────────────────────────
+// Every Cantonese Daily / Revision track opens with a greeting (A, then B answers) and closes with a parting (A, then B answers), taken from YUE_FRAMING_LINES
+// (cantonese-modules/framing-lines.csv) by the time of day on the device clock: a line for the morning is never chosen at another hour (早晨 only before noon), a line for
+// the evening and night (早唞) only then. They are FRAMING pairs, not target pairs: no targetId, never one of the three recalls of a word, not in the readiness / plan
+// checks or the NEW count, and not sent to the quality review. Their words are free to use from day one even though some are taught later (早晨 再見 on day 2, 拜拜
+// on day 20): that freedom stops at the framing pair, a lesson line never uses a word that was not taught. A greeting is answered with the same greeting and a
+// parting with the same parting (what a speaker says). A framing word that is already a due learned word is rated with the rest (jazhFramingKeywords).
+function yueFramingFits(l, hour) {
+  if (l.time === 'morning') return hour >= 5 && hour < 12
+  if (l.time === 'evening') return hour >= 18 || hour < 5
+  return true
+}
+// the lines that may open / close a track at this hour; special lines (喂: a call) are never chosen for a plain track
+function yueFramingChoices(role, hour) { return YUE_FRAMING_LINES.filter(l => l.role === role && !l.special && yueFramingFits(l, hour)) }
+function yueFramingEnglish(s) {
+  const t = String(s || '').split(/[;(]/)[0].trim().replace(/[.!?]+$/, '')
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) + '.' : ''
+}
+function yueFramingPair(l, speaker, kind, cue) {
+  const chinese = l.text + '！', pinyin = yueYaleOfPieces([[{ surface: l.text, yale: l.yale }], [{ surface: '！', yale: '' }]]), english = yueFramingEnglish(l.english)
+  const segments = [{ surface: l.text, pinyin: l.yale, english: l.english.split(/[;(]/)[0].trim(), type: 'vocab' }, { surface: '！', pinyin: '', english: '', type: 'punct' }]
+  return { chinese, pinyin, spokenPinyin: pinyin, english, prompt: cue, segments, speaker,
+    targetId: null, targetChinese: null, recallIndex: null, checkTier: null, _framing: true, _source: 'yue-framing', _kind: kind, _target: kind, _framingId: l.id, _framingRole: l.role,
+    thai: chinese, phonetic: pinyin, wordId: null, words: segments.filter(x => x.type !== 'punct').map(x => ({ p: x.pinyin, e: x.english })) }
+}
+// the opening (A greets, B greets back) and the closing (A says goodbye, B says it back) for this hour; o.rand picks among the lines that suit it (default: the module randomiser)
+function yueFramingPairs(hour, o) {
+  const rand = (o && o.rand) || YUE_MODULES.rand, h = Number.isFinite(hour) ? hour : new Date().getHours()
+  const pick = role => { const c = yueFramingChoices(role, h); return c.length ? c[Math.min(c.length - 1, Math.floor(rand() * c.length))] : null }
+  const op = pick('open'), cl = pick('close')
+  const open = op ? [yueFramingPair(op, 'A', 'greeting', op.cue), yueFramingPair(op, 'B', 'greeting', op.replyCue)] : []
+  const close = cl ? [yueFramingPair(cl, 'A', 'parting', cl.cue), yueFramingPair(cl, 'B', 'parting', cl.replyCue)] : []
+  return { open, close, hour: h, openId: op ? op.id : null, closeId: cl ? cl.id : null }
+}
+// the words of the framing lines of a track (for the CONVERSATION BASICS panel and the learner's inventory): each with what it says and when it is used
+function yueFramingBasics() {
+  return YUE_FRAMING_LINES.filter(l => !l.special).map(l => ({ id: l.id, form: l.text, yale: l.yale, english: l.english, role: l.role, time: l.time }))
 }
 // ── the Cantonese Daily / Revision writer: modules only, zero model requests ───────────────────────────────────────────────────────────────────
 // Returns the same shape as generateMandarinTrack ({ pairs, recallCount, framingCount, ... }); a target that no module can serve makes the run INCOMPLETE and is named
@@ -60424,6 +60603,10 @@ async function generateCantoneseTrack(targets, vocab, onProgress, onLog, stopSig
   await yueModulesLoad(onLog)
   if (!yueModulesActive()) throw new Error('Cantonese lessons are written from the built-in lesson modules, and they could not be loaded in this browser (it cannot unpack the data). No Cantonese track was written.')
   yueModulesBeginRun(vocab, onLog)
+  // the learner-vocabulary rule: the words this learner may use in a lesson line = taught + free + EVERY target of this track (a line for one target may use another target)
+  const allowed = YUE_STRICT.on ? yueAllowedSet(vocab, targets) : null
+  if (allowed) onLog && onLog('\u{1F4E6} vocabulary rule ON: ' + yueTaughtSurfaces(vocab).size + ' taught words + ' + YUE_FREE_SET.size + ' free words + ' + (targets || []).length + ' targets of this track')
+  else onLog && onLog('\u{1F4E6} vocabulary rule OFF (yueStrictVocabSetEnabled(false)): modules are only checked against the word list')
   const seenMap = new Map(), perTarget = [], failures = []
   let done = 0
   for (let i = 0; i < targets.length; i++) {
@@ -60432,8 +60615,8 @@ async function generateCantoneseTrack(targets, vocab, onProgress, onLog, stopSig
     onLog && onLog((i + 1) + '/' + targets.length + '  ' + t.chinese + '  ' + t.pinyin)
     onProgress && onProgress(done, total, { targetIdx: i, targetId: t.id, recallIndex: 1, checkTier: 1, starting: true })
     let mx = null
-    try { mx = yueModuleExchange(t, vocab, seenMap, onLog) } catch (e) { mx = null }
-    if (!mx) { [1, 2, 3].forEach(r => failures.push({ target: t.chinese, targetId: t.id, recallIndex: r, reason: yueTargetHasModule(t) ? 'no module passes the checks' : 'no module can fill this word yet' })); continue }
+    try { mx = yueModuleExchange(t, vocab, seenMap, onLog, { allowed }) } catch (e) { mx = null }
+    if (!mx) { const why = YUE_MODULES.why.get(t.id) || (yueTargetHasModule(t) ? 'no module passes the checks' : 'no module can fill this word yet'); [1, 2, 3].forEach(r => failures.push({ target: t.chinese, targetId: t.id, recallIndex: r, reason: why })); continue }
     const set = []
     mx.lines.forEach((l, k) => {
       const r = k + 1
@@ -60460,8 +60643,13 @@ async function generateCantoneseTrack(targets, vocab, onProgress, onLog, stopSig
     throw err
   }
   const pairs = []; perTarget.forEach(set => set.forEach(p => pairs.push(p)))       // each target's exchange stays together (line 1 → 2 → 3)
-  onLog && onLog('✅ Track complete — ' + pairs.length + ' recalls from ' + perTarget.length + ' gap-fill modules, 0 model requests')
-  return { pairs, recallCount: pairs.length, framingCount: 0, allowedContent: [], grammarUsed: [], scarcity: 'modules' }
+  // the greeting that opens the track and the parting that closes it, by the device clock (o.now pins it for a test)
+  const hour = (o.now != null ? new Date(o.now) : new Date()).getHours()
+  const fr = yueFramingPairs(hour)
+  const framed = fr.open.concat(pairs, fr.close)
+  onLog && onLog('\u{1F44B} GREETING / PARTING: ' + (fr.open[0] ? fr.open[0].chinese + ' at the start' : 'no opening') + ' · ' + (fr.close[0] ? fr.close[0].chinese + ' at the end' : 'no closing') + ' (clock hour ' + hour + ')')
+  onLog && onLog('✅ Track complete — ' + pairs.length + ' recalls from ' + perTarget.length + ' gap-fill modules + ' + (fr.open.length + fr.close.length) + ' greeting / parting lines, 0 model requests')
+  return { pairs: framed, recallCount: pairs.length, framingCount: fr.open.length + fr.close.length, framing: { open: fr.openId, close: fr.closeId, hour }, allowedContent: [], grammarUsed: [], scarcity: 'modules' }
 }
 // the whole track record of a finished module run (what the screen hands to the shared saver)
 function cantoneseBuildTrack(res, targets, mode, startedAt) {
@@ -60470,7 +60658,8 @@ function cantoneseBuildTrack(res, targets, mode, startedAt) {
   const track = {
     createdAt: at, date: at.slice(0, 10), language: 'yue', mode: m, trackMode: m, speechStyle: 'colloquial-hk', provider: 'modules', model: 'none', pairs: res.pairs, scene: null,
     allowedContent: res.allowedContent || [], grammarUsed: res.grammarUsed || [], scarcity: res.scarcity || 'modules', recallCount: res.recallCount, framingCount: res.framingCount || 0,
-    rated: false, bookmark: 0, generatorVersion: GENERATOR_VERSIONS.yue, pipelineVersion: 'yue-modules-v1', moduleTrack: { version: 'yue-modules-v1', modelRequests: 0, checks: 'structure' },
+    rated: false, bookmark: 0, generatorVersion: GENERATOR_VERSIONS.yue, pipelineVersion: 'yue-modules-v2', moduleTrack: { version: 'yue-modules-v2', modelRequests: 0, checks: 'structure', vocabularyRule: YUE_STRICT.on ? 'learner' : 'off' },
+    framing: res.framing || null,
     selectedTargetIds: selected, selectedNewTargetIds: m === 'daily' ? (targets || []).filter(isNew).map(t => t.id) : [], targetPlan: targetPlanFor(targets),
     keywords: (targets || []).map(t => ({ chinese: t.chinese, pinyin: t.pinyin, english: t.english, wordId: t.id, rating: null, thai: t.chinese, phonetic: t.pinyin, isNew: isNew(t), selectionRole: t.selectionRole || (t.status === 'new' ? 'new' : 'review') })),
   }
@@ -60478,9 +60667,12 @@ function cantoneseBuildTrack(res, targets, mode, startedAt) {
     expectedNewCount: m === 'daily' ? track.selectedNewTargetIds.length : 0 })
   return track
 }
-// a plain-words report on a finished module track: every target 3 recalls, every line sound. Used by the screen and by the tests.
+// a plain-words report on a finished module track: every target 3 recalls, every lesson line sound, and (a track of the framing version) the greeting and the parting
+// in place. `pairs` / `fromModules` count the LESSON lines; the framing lines are counted apart (`framing`) and are never target pairs. Used by the screen and by the tests.
 function cantoneseTrackCheck(track) {
-  const pairs = (track && track.pairs) || [], problems = []
+  const all = (track && track.pairs) || [], problems = []
+  const isFr = p => !!(p && p._framing)
+  const pairs = all.filter(p => !isFr(p))
   const byT = new Map()
   pairs.forEach(p => { if (p && p.targetId != null) { if (!byT.has(p.targetId)) byT.set(p.targetId, []); byT.get(p.targetId).push(p) } })
   const want = (track && track.keywords || []).map(k => k.wordId)
@@ -60488,8 +60680,33 @@ function cantoneseTrackCheck(track) {
   // 17 Nov: the track holds the number of targets it was planned with (a short track is short by design; a track meant to hold 30 that lost words is a problem)
   const _pl = track && track.targetPlan
   if (_pl && _pl.planned > 0 && want.length !== _pl.planned) problems.push('the track holds ' + want.length + ' targets but was planned with ' + _pl.planned)
-  pairs.forEach((p, i) => { const pr = yueLineProblems(p, { id: p.targetId, chinese: p.targetChinese, pinyin: (p.segments || []).find(s => s.vocabId === p.targetId)?.pinyin }, null); if (pr.length) problems.push('line ' + (i + 1) + ': ' + pr[0]) })
-  return { ok: !problems.length, targets: want.length, pairs: pairs.length, fromModules: pairs.filter(p => p && p._module).length, problems }
+  all.forEach((p, i) => {
+    if (isFr(p)) return
+    const pr = yueLineProblems(p, { id: p.targetId, chinese: p.targetChinese, pinyin: (p.segments || []).find(s => s.vocabId === p.targetId)?.pinyin }, null); if (pr.length) problems.push('line ' + (i + 1) + ': ' + pr[0])
+  })
+  // the framing lines (a track of the framing version has them; an older track is judged as it was made)
+  const fr = all.map((p, i) => ({ p, i })).filter(x => isFr(x.p))
+  const needFraming = !!(track && (track.pipelineVersion === 'yue-modules-v2' || track.framing))
+  if (needFraming) {
+    const first = all.findIndex(p => !isFr(p)), last = all.length - 1 - [...all].reverse().findIndex(p => !isFr(p))
+    const open = fr.filter(x => x.p._kind === 'greeting'), close = fr.filter(x => x.p._kind === 'parting')
+    if (!open.length) problems.push('the track has no opening greeting')
+    if (!close.length) problems.push('the track has no closing parting')
+    if (open.length && (open.length !== 2 || open[0].p.speaker !== 'A' || open[1].p.speaker !== 'B')) problems.push('the opening is not one line by A and the answer by B')
+    if (close.length && (close.length !== 2 || close[0].p.speaker !== 'A' || close[1].p.speaker !== 'B')) problems.push('the closing is not one line by A and the answer by B')
+    if (open.some(x => x.i > first) && first >= 0) problems.push('a greeting line stands after the lessons began')
+    if (close.some(x => x.i < last)) problems.push('a parting line stands before the lessons end')
+    const hour = track && track.framing && Number.isFinite(track.framing.hour) ? track.framing.hour : null
+    fr.forEach(x => {
+      const p = x.p, line = YUE_FRAMING_LINES.find(l => l.id === p._framingId)
+      if (!line) { problems.push('framing line ' + (x.i + 1) + ' is not one of the known greeting / parting lines'); return }
+      if (p.targetId != null || p.recallIndex != null) problems.push('framing line ' + (x.i + 1) + ' is counted as a target pair')
+      if (p.chinese !== line.text + '！') problems.push('framing line ' + (x.i + 1) + ' does not say ' + line.text)
+      if (hour != null && !yueFramingFits(line, hour)) problems.push('framing line ' + (x.i + 1) + ' (' + line.text + ') does not suit the hour of the day it was built at (' + hour + ')')
+      const pr = yueLineProblems(p, null, null); if (pr.length) problems.push('framing line ' + (x.i + 1) + ': ' + pr[0])
+    })
+  }
+  return { ok: !problems.length, targets: want.length, pairs: pairs.length, framing: fr.length, total: all.length, fromModules: pairs.filter(p => p && p._module).length, problems }
 }
 
 // ══ CANTONESE QUALITY REVIEW (17 Nov, stage 1) — a model judges the lines of a finished module track ════════════════════════════════════════════════
@@ -60504,7 +60721,8 @@ const YUE_REVIEW_STAGE = 'E_yue_review'                       // a judging stage
 const YUE_REVIEW_KINDS = Object.freeze({ mandarin: 'Mandarin or written Chinese', meaning: 'English does not match', yale: 'Yale does not match the characters', sense: 'target word in another sense', register: 'register or speaker', other: 'other problem' })
 const YUE_REVIEW_VERDICTS = Object.freeze({ pass: 'No problems found', review: 'Some lines need a look', fail: 'Many lines are wrong' })
 const YUE_REVIEW_RANK = Object.freeze({ pass: 0, review: 1, fail: 2 })
-const yueReviewLines = track => ((track && track.pairs) || []).filter(p => p && String(p.chinese || '').trim())
+// the greeting / parting lines are fixed, curated words with no target: the reviewer judges the lesson lines only
+const yueReviewLines = track => ((track && track.pairs) || []).filter(p => p && !p._framing && String(p.chinese || '').trim())
 function yueReviewMaxTokens(n) { return Math.max(1500, Math.min(9000, 500 + n * 45)) }
 // the question: the targets (with the sense the word list intends) first, then every line (A is a man, B a woman) with its Cantonese, Yale and English
 function yueReviewPrompt(track, vocab) {
@@ -61440,7 +61658,7 @@ function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack,
                    textAlign:'center', color:'var(--text)', opacity:(targets && targets.length) ? 1 : 0.55 }}>
           <Icon name="sparkles" size={22} color="#10b981" />
           <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Daily Track</div>
-          <div style={{ fontSize:11, color:'#4a9960', marginTop:2 }}>{(targets && targets.length) ? 'Learn + review' : 'No targets'}</div>
+          <div style={{ fontSize:11, color:'#4a9960', marginTop:2 }}>{(targets && targets.length) ? 'Learn + review' : ((held || []).length ? 'No lesson fits yet' : 'No targets')}</div>
           {(targets && targets.length) ? <div style={{ fontSize:11, color:'var(--text-2)', marginTop:4 }}>{'~45 min \u00b7 ' + stats.due + ' due'}</div> : null}   {/* same line as the Thai and Japanese Daily buttons */}
         </button>
         {/* Revision Track — shared component, identical in every language */}
@@ -61818,9 +62036,11 @@ function downloadCantoneseTrack(track) {
   L.push('='.repeat(50))
   L.push('Date: ' + (track.date || ''))
   L.push('Romanisation: Yale · written form: traditional characters (Hong Kong usage) · written by: ready-made lesson modules (no model request to write them)')
-  L.push('Pairs: ' + (track.pairs || []).length)
   const chk = cantoneseTrackCheck(track)
-  L.push('STRUCTURE CHECK: ' + (chk.ok ? 'passed' : chk.problems.length + ' problem(s)') + ' · ' + chk.fromModules + '/' + chk.pairs + ' lines from modules')
+  L.push('Pairs: ' + (track.pairs || []).length + (chk.framing ? ' (' + chk.pairs + ' lesson lines + ' + chk.framing + ' greeting / parting lines)' : ''))
+  L.push('Vocabulary rule: ' + (track.moduleTrack && track.moduleTrack.vocabularyRule === 'learner' ? 'every fixed word of a lesson line is a word the learner had been taught, a word of this track, or a free word (loanword, name, interjection, ending particle)' : 'not applied to this track (it was made before the rule, or with the rule switched off)'))
+  L.push('STRUCTURE CHECK: ' + (chk.ok ? 'passed' : chk.problems.length + ' problem(s)') + ' · ' + chk.fromModules + '/' + chk.pairs + ' lines from modules' + (chk.framing ? ' · ' + chk.framing + ' greeting / parting lines (not target pairs)' : ''))
+  if (track.framing) L.push('Framing: opening ' + (track.framing.open || '-') + ' · closing ' + (track.framing.close || '-') + ' · chosen for clock hour ' + track.framing.hour)
   yueReviewExportLines(track).forEach(x => L.push(x))
   if (track.aiUsage) { aiUsageExportLines(track).forEach(x => L.push(x)); L.push('') }
   L.push('')
@@ -61831,7 +62051,7 @@ function downloadCantoneseTrack(track) {
   L.push('TRACK PAIRS (' + (track.pairs || []).length + ')')
   L.push('-'.repeat(30))
   ;(track.pairs || []).forEach((p, i) => {
-    L.push('PAIR ' + String(i + 1).padStart(2, '0') + (p._moduleId ? '  [module ' + p._moduleId + ']' : ''))
+    L.push('PAIR ' + String(i + 1).padStart(2, '0') + (p._moduleId ? '  [module ' + p._moduleId + ']' : '') + (p._framing ? '  [' + (p._kind === 'parting' ? 'closing parting' : 'opening greeting') + ' — not a target pair]' : ''))
     if (p.speaker) L.push('  SPEAKER:        ' + p.speaker)
     L.push('  ENGLISH CUE:    ' + (p.prompt || ''))
     L.push('  CANTONESE:      ' + (p.chinese || ''))
@@ -62012,7 +62232,32 @@ function CantoneseQualityReview({ track, vocab, cred, onSave, onBack }) {
 }
 // The Cantonese generator screen: no scene step and no model: the track is built from the lesson modules in a moment. The screen says what was built, what was checked,
 // and — when a word cannot be written — which word and why (nothing is replaced silently).
-function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks, onGenerated, onBack }) {
+// CONVERSATION BASICS (the Mandarin panel's twin): the greeting that opens the track and the parting that closes it. Before the build it names the lines that suit the hour on
+// the device clock; after it, the lines the track really has (A, then B's answer). Their words are free in these lines even before they are taught.
+function CantoneseBasicsPanel({ track, hour }) {
+  const h = hour != null ? hour : new Date().getHours()
+  const built = track ? (track.pairs || []).filter(p => p && p._framing) : []
+  const row = (key, label, ch, ya, en, sub) => (
+    <div key={key} style={{ display:'flex', alignItems:'baseline', gap:8, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 10px', minWidth:0 }}>
+      <span style={{ fontSize:9, fontWeight:700, color:'var(--muted)', minWidth:50 }}>{label}</span>
+      <span className="yue" lang="zh-HK" style={{ color:'var(--text)', fontSize:15, fontWeight:700, lineHeight:1.2 }}>{ch}</span>
+      <span className="phon" style={{ color:'var(--muted)', fontSize:11 }}>{ya}</span>
+      <span style={{ color:'var(--muted)', fontSize:11, marginLeft:'auto' }}>{en}</span>
+    </div>)
+  return (
+    <div data-yue-basics={built.length ? 'built' : 'plan'}>
+      <p style={{ fontSize:11, color:'var(--muted)', margin:'2px 0 6px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Conversation basics</p>
+      <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+        {built.length
+          ? built.map((p, i) => row('b' + i, (p._kind === 'parting' ? 'Closing ' : 'Opening ') + p.speaker, p.chinese, p.pinyin, p.english))
+          : [['open', 'Opening'], ['close', 'Closing']].map(([role, label]) => yueFramingChoices(role, h).map(l => row(l.id, label, l.text, l.yale, l.english.split(/[;(]/)[0].trim())))}
+      </div>
+      <p style={{ fontSize:10, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>{built.length
+        ? 'These greeting and goodbye lines open and close the track. They are not one of the three recalls of a word.'
+        : 'The track opens with one of the greetings and closes with one of the goodbyes that suit this time of day (a morning greeting only before noon). They are free to use from day one, even where the word is taught later, and they are not one of the three recalls of a word.'}</p>
+    </div>)
+}
+function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks, held, onGenerated, onBack }) {
   const [phase, setPhase] = useState('idle')          // idle | generating | done | error
   const [fullLog, setFullLog] = useState([])
   const [recallDone, setRecallDone] = useState(0)
@@ -62051,8 +62296,9 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
       setCurrentTargetId(null); setResult({ track, check }); setPhase('done')
     } catch (e) {
       const inc = e && e.incomplete
-      setError(inc ? 'Cantonese track incomplete: ' + inc.produced + '/' + inc.expected + ' recalls.\n' + (inc.failures || []).map(f => '• ' + f.target + ' recall ' + f.recallIndex + ': ' + f.reason).join('\n') +
-        '\n\nNothing else can write a Cantonese sentence yet, so no track was made.' : (e && e.message) || 'Generation failed.')
+      const named = new Map(); ;(inc && inc.failures || []).forEach(f => { if (!named.has(f.targetId)) named.set(f.targetId, f) })
+      setError(inc ? 'Cantonese track incomplete: ' + inc.produced + '/' + inc.expected + ' recalls.\n' + [...named.values()].map(f => '• ' + f.target + ': ' + f.reason).join('\n') +
+        '\n\nNo line was written for the words above, and no line with a word you have not been taught was written in its place (nothing else can write a Cantonese sentence yet), so no track was made.' : (e && e.message) || 'Generation failed.')
       setPhase('error')
     }
   }
@@ -62072,7 +62318,10 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
         leftNote={<>{(targets || []).length} words {'·'} {recallTotal} recalls</>} rightNote={<>{recallDone} / {recallTotal}</>} />
       {phase === 'idle' && (
         <Card style={{ padding:'12px 14px' }}>
-          <p style={{ fontSize:13, lineHeight:1.6 }}>This track is built from ready-made lesson modules: <b>no AI request writes it</b> and no key is needed to build it. Each word gets three lines (A, B, A) with Yale and a word-by-word breakdown.</p>
+          <p style={{ fontSize:13, lineHeight:1.6 }}>This track is built from ready-made lesson modules: <b>no AI request writes it</b> and no key is needed to build it. Each word gets three lines (A, B, A) with Yale and a word-by-word breakdown, after a greeting and before a goodbye.</p>
+          <p data-yue-vocab-rule={YUE_STRICT.on ? 'on' : 'off'} style={{ fontSize:11, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>{YUE_STRICT.on
+            ? 'A lesson line only uses words you have been taught, the words of this track, and a few free words (loanwords such as 三文治, names, sounds like 哇 and ending particles like 呀 啦). A word is taught only when a lesson that uses nothing else can be written for it.'
+            : 'The words of a lesson line are checked against the whole word list, not against what you have been taught (this check is switched off in this build).'}</p>
           {(() => {
             // the review follows the model chosen in Settings (the same choice every language follows); say before the build what will happen after it
             const st = aiSelectedModelStatus(cred && cred.geminiKey, YUE_REVIEW_RUN_KIND)
@@ -62086,6 +62335,15 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
             return note ? <p data-yue-first-track="1" data-short-track="1" style={{ fontSize:11, color:'#f59e0b', marginTop:6, lineHeight:1.5 }}>{note}</p> : null
           })()}
         </Card>)}
+      {(held || []).length > 0 && (
+        <Card style={{ padding:'10px 14px', border:'1px solid #f59e0b' }}>
+          <p data-yue-held="1" style={{ fontSize:11, fontWeight:700, color:'#f59e0b', marginBottom:4 }}>Words that wait for a lesson you can read</p>
+          {(held || []).map(d => <p key={d.target.id} style={{ fontSize:11, color:'var(--muted)', lineHeight:1.5 }}>
+            <span className="yue" lang="zh-HK">{d.target.chinese}</span>{' '}<span className="phon">{d.target.pinyin}</span>{': '}{d.why || 'no lesson yet'}{d.replacedBy
+              ? <> {'\u2014'} <span className="yue" lang="zh-HK">{d.replacedBy.chinese}</span> is taught in its place.</>
+              : ' \u2014 left for a later track.'}</p>)}
+        </Card>)}
+      <CantoneseBasicsPanel track={result && result.track} />
       <div>
         <p style={{ fontSize:9, color:'var(--muted)', marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em' }}>
           {describeTargetSelection((selection && selection.counts) || { total:(targets||[]).length, new:(targets||[]).length, due:0, reinforce:0 }, targets)}
@@ -62126,7 +62384,7 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
     </div>
   )
 }
-function CantoneseDashboard({ vocab, tracks, targets, trackTargets, onStartTrack, notice, gcpTtsKey,
+function CantoneseDashboard({ vocab, tracks, targets, trackTargets, held, onStartTrack, notice, gcpTtsKey,
                               onOpenTrack, onDeleteTrack, onLearnWords, onStartSrsTrack, srsDue, onNav, selection, revisionSelection, onNotYet }) {
   const stats = useMemo(() => getStats(vocab), [vocab])
   const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
@@ -62184,6 +62442,13 @@ function CantoneseDashboard({ vocab, tracks, targets, trackTargets, onStartTrack
       </div>
       <RankTestButton vocab={vocab} rank={currentRankName(vocab)} onStart={st => { if (typeof onNav === 'function') onNav('rank-test', st) }} />
       {notice && <Card style={{ padding:'12px 16px', border:'1px solid #f59e0b' }}><p style={{ fontSize:12, color:'#f59e0b', fontWeight:600 }}>{notice}</p></Card>}
+      {(held || []).length > 0 && <Card style={{ padding:'10px 14px', border:'1px solid #f59e0b' }} data-yue-held-dashboard="1">
+        <p style={{ fontSize:12, fontWeight:700, color:'#f59e0b', marginBottom:4 }}>{(held || []).filter(d => !d.replacedBy).length > 0 ? 'Some words wait for a lesson you can read' : 'Some words were swapped for ones a lesson can teach'}</p>
+        {(held || []).slice(0, 6).map(d => <p key={d.target.id} style={{ fontSize:11, color:'var(--muted)', lineHeight:1.5 }}>
+          <span className="yue" lang="zh-HK">{d.target.chinese}</span>{': '}{d.why || 'no lesson yet'}{d.replacedBy ? <> {'\u2014'} <span className="yue" lang="zh-HK">{d.replacedBy.chinese}</span> instead.</> : ' \u2014 left for later.'}</p>)}
+        {(held || []).length > 6 && <p style={{ fontSize:11, color:'var(--muted)' }}>and {(held || []).length - 6} more.</p>}
+        <p style={{ fontSize:10, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>A track only uses words you have been taught, the words of the track and a few free words, so a word waits until a lesson exists that needs nothing else.</p>
+      </Card>}
       {!voiceOk && !gcpTtsKey && <Card style={{ padding:'10px 14px', border:'1px solid #f59e0b' }}>
         <p data-yue-voice-notice="1" style={{ fontSize:11, color:'#f59e0b', lineHeight:1.5 }}>This device has no Hong Kong Cantonese voice (zh-HK). Audio may be read in Mandarin, which is wrong for these words. Add a Cantonese (Hong Kong) voice in the speech settings of the device, or use a cloud voice key.</p>
       </Card>}
@@ -62192,7 +62457,7 @@ function CantoneseDashboard({ vocab, tracks, targets, trackTargets, onStartTrack
         <p style={{ fontSize:11, color:'var(--muted)', lineHeight:1.6 }}>
           {YUE_NOT_YET.map((r, i) => <span key={r[0]}>{i ? ' · ' : ''}<button onClick={() => onNotYet && onNotYet(r[0])} style={{ background:'none', border:'none', padding:0, color:'var(--muted)', cursor:'pointer', textDecoration:'underline', fontSize:11 }}>{r[0]}</button></span>)}
         </p>
-        <p style={{ fontSize:10, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>Daily and Revision tracks are written from ready-made lesson modules (no AI request to write them). A quality review by the model chosen in Settings then judges every line, when a key is saved.</p>
+        <p style={{ fontSize:10, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>Daily and Revision tracks are written from ready-made lesson modules (no AI request to write them), open with a greeting and close with a goodbye{YUE_STRICT.on ? ', and their lessons use only words you have been taught, the words of the track and a few free words' : ''}. A quality review by the model chosen in Settings then judges every lesson line, when a key is saved.</p>
         {YUE_NO_MODULE_IDS.length > 0 && <p data-yue-no-module-words="1" style={{ fontSize:10, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>
           {YUE_NO_MODULE_IDS.length} words (<span className="yue" lang="zh-HK">{(vocab || []).filter(w => YUE_NO_MODULE_SET.has(w.id)).map(w => w.chinese).join(' ')}</span>) have no lesson module yet, so no track teaches them and their belts cannot be completed until they do.</p>}
       </Card>
@@ -62238,6 +62503,7 @@ function CantoneseTeacher({ lang, onSetLang }) {
   const [trackMode, setTrackMode] = useState('daily')     // 'daily' | 'revision'
   const [notYet, setNotYet] = useState('Listening track')
   const [reviewFromComplete, setReviewFromComplete] = useState(false)   // the review was opened from the end-of-lesson screen: Back returns there
+  const [modulesReady, setModulesReady] = useState(!!YUE_MODULES.data)     // the lesson modules are unpacked: the teachability gate needs them
 
   useEffect(() => {
     let dead = false
@@ -62246,7 +62512,9 @@ function CantoneseTeacher({ lang, onSetLang }) {
       let st = await stGet(YUE.tracks)
       if (Array.isArray(st) && st.length) st = (await applyLegacyProvenanceMigration(YUE.tracks, st, t => stSet(YUE.tracks, t))).tracks
       const sl = await stGet(YUE.dailyNew)
+      try { await yueModulesLoad() } catch (e) {}          // the gate below asks the modules which words a lesson can teach
       if (dead) return
+      setModulesReady(!!YUE_MODULES.data)
       const merged = mergeCantoneseVocab(sv)
       setVocab(merged)
       if (!Array.isArray(sv) || sv.length !== merged.length) stSet(YUE.vocab, merged)
@@ -62275,25 +62543,23 @@ function CantoneseTeacher({ lang, onSetLang }) {
     vocab: jazhWordsOnly(vocab), targetCap: TRACK_TARGET_CAP, recentTrackWordIds, lang: 'yue',
     newSelector: v => cantoneseSelectTargets(v, slots),
   }) : { targets: [], counts:{ total:0, new:0, due:0, reinforce:0 }, expectedRecalls:0 }), [vocab, slots, recentTrackWordIds])
-  const revisionCanon = useMemo(() => selectRevisionTargets('yue', vocab), [vocab])
+  const revisionCanon = useMemo(() => selectRevisionTargets('yue', vocab), [vocab, modulesReady])
   const revisionSelection = revisionCanon.selection
   const isRev = trackMode === 'revision' || trackMode === 'srs'
   const selection = isRev ? revisionSelection : newSelection
-  const newTargets = newSelection.targets
+  // FEASIBILITY GATE (the learner-vocabulary rule): a word no module can serve for THIS learner (no lesson uses only the words taught, the free words and the word itself) is
+  // swapped for the next teachable word OF THE SAME KIND, so the NEW count cannot change; one with no substitute is left out and the dashboard says why
+  const daily = useMemo(() => {
+    const raw = newSelection.targets || []
+    if (!raw.length || !vocab.length) return { targets: raw, deferred: [] }
+    const g = yueDailyTargets(raw, vocab)
+    g.deferred.forEach(d => console.info('[yue] deferred ' + d.target.chinese + ' (' + d.why + ')' + (d.replacedBy ? ' → ' + d.replacedBy.chinese : '')))
+    return g
+  }, [newSelection, vocab, modulesReady])
+  const newTargets = daily.targets
   const srsTargets = revisionSelection.targets
-  // FEASIBILITY GATE: a word no module can fill (穿 睜 當) is swapped for the next teachable word OF THE SAME KIND, so the NEW count cannot change
-  const targets = useMemo(() => {
-    if (isRev) return revisionCanon.targets
-    const raw = selection.targets || []
-    if (!raw.length || !vocab.length) return raw
-    try {
-      const wv = jazhWordsOnly(vocab)
-      const pool = [...wv].sort((a, b) => (a.unlockOrder || 0) - (b.unlockOrder || 0))
-      const g = gateTargetsByFeasibility(raw, pool, w => yueTargetHasModule(w), w => !hasBeenIntroduced(w))
-      g.deferred.forEach(d => console.info('[yue] deferred ' + d.target.chinese + ' (no module can fill it yet)' + (d.replacedBy ? ' → ' + d.replacedBy.chinese : '')))
-      return jazhDailyTargets(g.targets, vocab, 'yue')
-    } catch (e) { return raw }
-  }, [selection, vocab, trackMode, revisionCanon])
+  const targets = isRev ? revisionCanon.targets : daily.targets
+  const held = isRev ? (revisionCanon.deferred || []) : daily.deferred
 
   function onTrackGenerated(rawTrack) {
     const track = stampTrackMode(isRev ? rawTrack : jazhAttachFramingWords(rawTrack, vocab, 'yue'), trackMode, targets)
@@ -62341,7 +62607,7 @@ function CantoneseTeacher({ lang, onSetLang }) {
         lastTrackCost={null} geminiKey={cred.geminiKey} geminiSpend={cred.geminiSpend} />
       <main>
         {view === 'dashboard' && (
-          <CantoneseDashboard vocab={vocab} tracks={tracks} targets={newTargets} trackTargets={targets} notice={notice} gcpTtsKey={cred.gcpTtsKey}
+          <CantoneseDashboard vocab={vocab} tracks={tracks} targets={newTargets} trackTargets={targets} held={daily.deferred} notice={notice} gcpTtsKey={cred.gcpTtsKey}
             srsDue={revisionSelection.counts.due} selection={newSelection} onNav={setView}
             onLearnWords={() => { setTrackMode('daily'); setNotice(''); setView('learn') }}
             revisionSelection={revisionSelection} onNotYet={toNotYet}
@@ -62373,7 +62639,7 @@ function CantoneseTeacher({ lang, onSetLang }) {
         )}
         {view === 'generate' && (
           <ErrorBoundary>
-            <CantoneseGenerator vocab={vocab} targets={targets} selection={selection} cred={cred} trackMode={trackMode} tracks={tracks}
+            <CantoneseGenerator vocab={vocab} targets={targets} selection={selection} cred={cred} trackMode={trackMode} tracks={tracks} held={held}
               onGenerated={onTrackGenerated} onBack={() => setView('dashboard')} />
           </ErrorBoundary>
         )}

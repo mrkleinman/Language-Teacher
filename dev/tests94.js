@@ -251,7 +251,6 @@ const html = el => RDS.renderToStaticMarkup(el).replace(/<[^>]+>/g, ' ').replace
     // the module writer is switched on with the data, as tests93 does
     const zlib = require('zlib'); const DATA = JSON.parse(zlib.gunzipSync(Buffer.from(ev('YUE_MODULES_GZ'), 'base64')).toString('utf8'))
     c.yueModulesUseData(DATA); c.yueModulesSetEnabled(true)
-    c.yueStrictVocabSetEnabled(false)     // starter modules not merged yet: remove this switch when they are (a learner who has been taught 12 words builds a Daily of 17 words, which only the old rule can write)
     // TEST CHANGED (stage B-1): the data is loaded BEFORE the Daily is computed, as on the real screen (the Cantonese Daily is gated by what a module can teach this learner, and the gate
     // only knows once the modules are loaded); with the rule off (starter modules not merged yet) this changes nothing.
     const Ly = learner('yue', 12), d = daily('yue', Ly.vocab), Vy = Ly.vocab
@@ -277,7 +276,7 @@ const html = el => RDS.renderToStaticMarkup(el).replace(/<[^>]+>/g, ' ').replace
     const m = rev.targets.length
     T('F3', 'Cantonese: a Revision of the learned words builds m × 3 recalls (+ 4 framing pairs), 0 new words, plan m (short by design), structure check passes',
       m >= 1 && (c.ev('YUE_STRICT.on') || m === 12) && tr2.pairs.length === 3 * m + 4 && tr2.pairs.filter(p => !p._framing).length === 3 * m && tr2.selectedNewTargetIds.length === 0 && tr2.targetPlan.planned === m && tr2.targetPlan.shortByDesign && c.cantoneseTrackCheck(tr2).ok, { n: m, plan: tr2.targetPlan })
-    c.yueModulesSetEnabled(false); c.yueStrictVocabSetEnabled(true)
+    c.yueModulesSetEnabled(false)
   }
 
   console.log((fails ? 'FAIL ' : 'ALL PASS ') + (n - fails) + '/' + n)

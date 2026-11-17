@@ -45,7 +45,6 @@ function app(o) {
   // the harness runs every setTimeout at once (a timeout would fire immediately); a test of a request that HANGS until it is cancelled needs the real clock
   const c = load(FILE, o.realTimers ? { React, realBelt: true, globals: { setTimeout, clearTimeout } } : { React, realBelt: true }); c.console.info = () => {}; c.console.warn = () => {}
   c.yueModulesSetEnabled(true); c.ev('yueModulesUseData')(DATA)
-  c.yueStrictVocabSetEnabled(false)     // starter modules not merged yet: remove this switch when they are (these tests review a track built for a learner who has been taught nothing: the real first-day flow)
   const calls = { gemini: [], anthropic: [], urls: [] }
   c.fetch = async (url, opts) => {
     const body = JSON.parse((opts && opts.body) || 'null'), isA = String(url) === '/api/anthropic'

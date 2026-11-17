@@ -123,7 +123,6 @@ const fn = (name, body) => { const i = SRC.indexOf(name); return i < 0 ? '' : SR
     const cx = load(FILE, { React, globals: { Blob: class { constructor(parts) { this.text = parts.join('') } }, URL: { createObjectURL: b => { captured = b.text; return 'blob:x' }, revokeObjectURL: noop },
       document: { querySelector: () => null, getElementById: () => el(), createElement: el, body: el(), head: el(), addEventListener: noop } } }); cx.console.info = () => {}
     cx.yueModulesSetEnabled(true); cx.ev('yueModulesUseData')(DATA)
-    cx.yueStrictVocabSetEnabled(false)    // starter modules not merged yet: remove this switch when they are (this is the real first-day flow: 6 new words, nothing taught)
     const V = cx.initCantoneseVocab(), tg = V.slice(0, 6).map(w => ({ ...w, selectionRole: 'new' }))
     const res = await cx.generateCantoneseTrack(tg, V, () => {}, () => {}, { cancelled: false }), tr = cx.cantoneseBuildTrack(res, tg, 'daily', '2026-11-16T10:00:00.000Z')
     cx.downloadCantoneseTrack(tr)
@@ -140,7 +139,6 @@ const fn = (name, body) => { const i = SRC.indexOf(name); return i < 0 ? '' : SR
   async function open(storage) {
     const cx = load(FILE, { React, realBelt: true }); cx.console.info = () => {}; cx.console.warn = () => {}
     cx.yueModulesSetEnabled(true); cx.ev('yueModulesUseData')(DATA)
-    cx.yueStrictVocabSetEnabled(false)    // starter modules not merged yet: remove this switch when they are (the real first-day flow F3-F6 / S1 builds a Daily for a learner who has been taught nothing)
     Object.entries(storage || {}).forEach(([k, val]) => cx.localStorage.setItem(k, JSON.stringify(val)))
     let r; await TR.act(async () => { r = TR.create(React.createElement(cx.CantoneseTeacher, { lang: 'yue', onSetLang() {} })); await flush(80) })
     return { r, c: cx }

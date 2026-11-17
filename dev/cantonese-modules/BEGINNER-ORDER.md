@@ -34,11 +34,11 @@ Rule checked by the tool for every day: the learner's vocabulary (the words of t
 | Sentence | Yale | English |
 | --- | --- | --- |
 | 你好！ | néih hóu! | Hello! |
-| 你好，我係阿明。 | néih hóu, ngóh haih a mìhng. | Hello, I am Ah Ming. |
-| 我係阿欣。 | ngóh haih a yān. | I am Ah Yan. |
-| 你係阿明呀？ | néih haih a mìhng a? | Oh, you are Ah Ming? |
-| 我唔係阿明。 | ngóh m̀h haih a mìhng. | I am not Ah Ming. |
-| 你係唔係阿欣？ | néih haih m̀h haih a yān? | Are you Ah Yan? |
+| 你好，我係利安。 | néih hóu, ngóh haih leih ōn. | Hello, I am Leon. |
+| 我係嘉莉。 | ngóh haih gā leih. | I am Carrie. |
+| 你係利安呀？ | néih haih leih ōn a? | Oh, you are Leon? |
+| 我唔係利安。 | ngóh m̀h haih leih ōn. | I am not Leon. |
+| 你係唔係嘉莉？ | néih haih m̀h haih gā leih? | Are you Carrie? |
 
 ### Day 2 (White, positions 6-10)
 
@@ -53,12 +53,12 @@ Rule checked by the tool for every day: the learner's vocabulary (the words of t
 | Sentence | Yale | English |
 | --- | --- | --- |
 | 早晨！ | jóu sàhn! | Good morning! |
-| 早晨，阿明！ | jóu sàhn, a mìhng! | Good morning, Ah Ming! |
+| 早晨，利安！ | jóu sàhn, leih ōn! | Good morning, Leon! |
 | 多謝你。 | dō jeh néih. | Thank you. |
 | 唔該！ | m̀h gōi! | Thank you! / Excuse me! / Please! |
-| 對唔住，我唔係阿欣。 | deui m̀h jyuh, ngóh m̀h haih a yān. | Sorry, I am not Ah Yan. |
+| 對唔住，我唔係嘉莉。 | deui m̀h jyuh, ngóh m̀h haih gā leih. | Sorry, I am not Carrie. |
 | 多謝，再見！ | dō jeh, joi gin! | Thanks, goodbye! |
-| 再見，阿明！ | joi gin, a mìhng! | Goodbye, Ah Ming! |
+| 再見，利安！ | joi gin, leih ōn! | Goodbye, Leon! |
 
 ### Day 3 (White, positions 11-15)
 
@@ -75,7 +75,7 @@ Rule checked by the tool for every day: the learner's vocabulary (the words of t
 | 佢係我朋友。 | kéuih haih ngóh pàhng yáuh. | He (she) is my friend. |
 | 我係學生。 | ngóh haih hohk sāang. | I am a student. |
 | 佢唔係學生。 | kéuih m̀h haih hohk sāang. | He (she) is not a student. |
-| 阿明係我嘅朋友。 | a mìhng haih ngóh ge pàhng yáuh. | Ah Ming is my friend. |
+| 利安係我嘅朋友。 | leih ōn haih ngóh ge pàhng yáuh. | Leon is my friend. |
 | 佢係唔係你嘅朋友？ | kéuih haih m̀h haih néih ge pàhng yáuh? | Is she your friend? |
 | 對唔住！ 唔緊要！ | deui m̀h jyuh! m̀h gán yiu! | Sorry! Never mind! |
 
@@ -171,7 +171,7 @@ Rule checked by the tool for every day: the learner's vocabulary (the words of t
 | 我去學校。 | ngóh heui hohk haauh. | I am going to school. |
 | 我想返屋企。 | ngóh séung fāan ūk kéi. | I want to go home. |
 | 你去唔去學校？ | néih heui m̀h heui hohk haauh? | Are you going to school? |
-| 阿明嚟我屋企。 | a mìhng làih ngóh ūk kéi. | Ah Ming is coming to my home. |
+| 利安嚟我屋企。 | leih ōn làih ngóh ūk kéi. | Leon is coming to my home. |
 | 你嚟唔嚟我屋企？ | néih làih m̀h làih ngóh ūk kéi? | Are you coming to my home? |
 | 佢返屋企，我去學校。 | kéuih fāan ūk kéi, ngóh heui hohk haauh. | He goes home, I go to school. |
 
@@ -190,7 +190,7 @@ Rule checked by the tool for every day: the learner's vocabulary (the words of t
 | 你去邊度？ | néih heui bīn douh? | Where are you going? |
 | 你喺邊度？ | néih hái bīn douh? | Where are you? |
 | 我喺屋企。 | ngóh hái ūk kéi. | I am at home. |
-| 阿明喺呢度。 | a mìhng hái nī douh. | Ah Ming is here. |
+| 利安喺呢度。 | leih ōn hái nī douh. | Leon is here. |
 | 學校喺嗰度。 | hohk haauh hái gó douh. | The school is over there. |
 | 呢度有水。 | nī douh yáuh séui. | There is water here. |
 | 嗰度有咖啡。 | gó douh yáuh ga fē. | There is coffee over there. |
@@ -481,7 +481,7 @@ Rule checked by the tool for every day: the learner's vocabulary (the words of t
 | Sentence | Yale | English |
 | --- | --- | --- |
 | 你叫咩名字？ | néih giu mē mèhng jih? | What is your name? |
-| 我叫阿明。 | ngóh giu a mìhng. | My name is Ah Ming. |
+| 我叫利安。 | ngóh giu leih ōn. | My name is Leon. |
 | 你係邊個呀？ | néih haih bīn go a? | Who are you? |
 | 佢係邊個？ | kéuih haih bīn go? | Who is he? |
 | 你幾多歲？ | néih géi dō seui? | How old are you? |
@@ -565,7 +565,7 @@ Rule checked by the tool for every day: the learner's vocabulary (the words of t
 | 而家十點鐘。 | yìh gā sahp dím jūng. | It is ten o'clock now. |
 | 你朝早食咩？ | néih jīu jóu sihk mē? | What do you eat in the morning? |
 | 早唞！ | jóu táu! | Good night! |
-| 早唞，阿明！ | jóu táu, a mìhng! | Good night, Ah Ming! |
+| 早唞，利安！ | jóu táu, leih ōn! | Good night, Leon! |
 
 ### Day 29 (Orange, positions 141-145)
 
@@ -801,7 +801,7 @@ Rule checked by the tool for every day: the learner's vocabulary (the words of t
 
 ## Free words (`free-words.csv`)
 
-35 words a sentence may use without the learner having been taught them. Kinds: loanword 6, name 8, interjection 9, particle 12. Each row says why a beginner already has it; the Yale is checked with the app's Yale rules (`tools/yue_free_words.py`).
+29 words a sentence may use without the learner having been taught them. Kinds: loanword 6, name 2, interjection 9, particle 12. Each row says why a beginner already has it; the Yale is checked with the app's Yale rules (`tools/yue_free_words.py`).
 
 | Word | Yale | English | Kind | Why |
 | --- | --- | --- | --- | --- |
@@ -811,14 +811,8 @@ Rule checked by the tool for every day: the learner's vocabulary (the words of t
 | 麥當勞 | mahk dōng lòuh | McDonald's | loanword | the brand every visitor has seen; the Hong Kong name |
 | 肯德基 | háng dāk gēi | KFC | loanword | the brand every visitor has seen; the Hong Kong name |
 | 星巴克 | sīng bā hāk | Starbucks | loanword | the brand every visitor has seen; the Hong Kong name |
-| 阿明 | a mìhng | Ah Ming (man) | name | common Hong Kong given name with 阿, for a male speaker or third person |
-| 阿強 | a kèuhng | Ah Keung (man) | name | common Hong Kong given name with 阿, for a male speaker or third person |
-| 大衛 | daaih waih | David (man) | name | the Chinese spelling of the English name David used in Hong Kong |
-| 彼得 | béi dāk | Peter (man) | name | the Chinese spelling of the English name Peter used in Hong Kong |
-| 阿欣 | a yān | Ah Yan (woman) | name | common Hong Kong given name with 阿, for a female speaker or third person |
-| 阿芬 | a fān | Ah Fan (woman) | name | common Hong Kong given name with 阿, for a female speaker or third person |
-| 瑪麗 | máh laih | Mary (woman) | name | the Chinese spelling of the English name Mary used in Hong Kong |
-| 安娜 | ōn nàh | Anna (woman) | name | the Chinese spelling of the English name Anna used in Hong Kong |
+| 利安 | leih ōn | Leon (the man, speaker A) | name | the name Leon as Hong Kong writes it; always the man, speaker A |
+| 嘉莉 | gā leih | Carrie (the woman, speaker B) | name | the name Carrie as Hong Kong writes it; always the woman, speaker B |
 | 哇 | wā | wow | interjection | wow: a reaction, not a word to learn |
 | 嘩 | wā | wow (the other spelling) | interjection (also list word 20) | the same sound as 哇, spelled 嘩 in the word list (a list word, taught later) |
 | 喂 | wai | hey; hello (on the phone) | interjection (also list word 84) | hey / hello on the phone: a calling sound; also a list word, taught later |

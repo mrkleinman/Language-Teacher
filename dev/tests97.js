@@ -258,7 +258,8 @@ function mkFixture() {
     const logs = []; await c.generateCantoneseTrack(targets, vT, () => {}, m => logs.push(m), { cancelled: false }, { startedAt: '2026-11-17T08:00:00.000Z' })
     T('W4', 'the build log says the rule is ON with the numbers (taught words, free words, targets of this track)', logs.some(m => /vocabulary rule ON: 2 taught words \+ \d+ free words \+ 3 targets of this track/.test(m)), logs.slice(0, 4))
     // the free words
-    T('W5', 'the free words are real data: loanwords, names, sounds and particles are in characters (OK is the one Latin spelling), each has Yale that is valid Yale, and none is a framing word', c.ev('YUE_FREE_WORDS').length >= 30 && c.ev('YUE_FREE_WORDS').every(r => r.length === 4 && c.validateYale(r[1]).ok && /^[A-Za-z]+$|^[一-鿿]+$/.test(r[0])) &&
+    // 18 Nov: the free words are 29 now, not 35: the eight made-up names became exactly two (Leon 利安 and Carrie 嘉莉), so the count pin went from 30 to 29
+    T('W5', 'the free words are real data: loanwords, names, sounds and particles are in characters (OK is the one Latin spelling), each has Yale that is valid Yale, and none is a framing word', c.ev('YUE_FREE_WORDS').length >= 29 && c.ev('YUE_FREE_WORDS').every(r => r.length === 4 && c.validateYale(r[1]).ok && /^[A-Za-z]+$|^[一-鿿]+$/.test(r[0])) &&
       !['你好', '早晨', '再見', '拜拜', '聽日見', '早唞'].some(w => free.has(w)) && free.has('OK') && free.has('三文治') && free.has('呀'))
     // no embedded module uses a Latin word (OK is accepted by the line check but no module writes it)
     const REAL = JSON.parse(zlib.gunzipSync(Buffer.from(load(FILE).ev('YUE_MODULES_GZ'), 'base64')).toString('utf8'))

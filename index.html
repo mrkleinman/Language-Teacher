@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v757"/>
+<meta name="app-version" content="v758"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v757';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v757').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v758';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v758').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -61796,7 +61796,7 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
     </div>
   )
 }
-function CantoneseDashboard({ vocab, tracks, targets, trackTargets, onStartTrack, notice,
+function CantoneseDashboard({ vocab, tracks, targets, trackTargets, onStartTrack, notice, gcpTtsKey,
                               onOpenTrack, onDeleteTrack, onLearnWords, onStartSrsTrack, srsDue, onNav, selection, revisionSelection, onNotYet }) {
   const stats = useMemo(() => getStats(vocab), [vocab])
   const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
@@ -61854,7 +61854,7 @@ function CantoneseDashboard({ vocab, tracks, targets, trackTargets, onStartTrack
       </div>
       <RankTestButton vocab={vocab} rank={currentRankName(vocab)} onStart={st => { if (typeof onNav === 'function') onNav('rank-test', st) }} />
       {notice && <Card style={{ padding:'12px 16px', border:'1px solid #f59e0b' }}><p style={{ fontSize:12, color:'#f59e0b', fontWeight:600 }}>{notice}</p></Card>}
-      {!voiceOk && <Card style={{ padding:'10px 14px', border:'1px solid #f59e0b' }}>
+      {!voiceOk && !gcpTtsKey && <Card style={{ padding:'10px 14px', border:'1px solid #f59e0b' }}>
         <p data-yue-voice-notice="1" style={{ fontSize:11, color:'#f59e0b', lineHeight:1.5 }}>This device has no Hong Kong Cantonese voice (zh-HK). Audio may be read in Mandarin, which is wrong for these words. Add a Cantonese (Hong Kong) voice in the speech settings of the device, or use a cloud voice key.</p>
       </Card>}
       <Card style={{ padding:'10px 14px' }} data-yue-not-available="1">
@@ -62010,7 +62010,7 @@ function CantoneseTeacher({ lang, onSetLang }) {
         lastTrackCost={null} geminiKey={cred.geminiKey} geminiSpend={cred.geminiSpend} />
       <main>
         {view === 'dashboard' && (
-          <CantoneseDashboard vocab={vocab} tracks={tracks} targets={newTargets} trackTargets={targets} notice={notice}
+          <CantoneseDashboard vocab={vocab} tracks={tracks} targets={newTargets} trackTargets={targets} notice={notice} gcpTtsKey={cred.gcpTtsKey}
             srsDue={revisionSelection.counts.due} selection={newSelection} onNav={setView}
             onLearnWords={() => { setTrackMode('daily'); setNotice(''); setView('learn') }}
             revisionSelection={revisionSelection} onNotYet={toNotYet}

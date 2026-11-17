@@ -154,8 +154,7 @@ function daily(c, vocab, mode = 'daily') {
   // learn 30"): this check used to say that 27 learned words still gave 30 targets, the missing 3 being unseen words padded in as NEW_CEILING_OVERFLOW. A Daily now holds the
   // review words that exist plus the belt's new-word quota and is never padded: 27 learned words ⇒ 27 targets (here no new word is available at all: every other belt is locked),
   // short by design, never blocked, no overflow. The learner with plenty of review words still gets exactly 30.
-  console.log('DBG', JSON.stringify({b1: dG1.f.blocked, l1: dG1.f.targets.length, b2: dG2.f.blocked, l2: dG2.f.targets.length, short: dG2.f.short, gen: dG2.cnt.generationTargetCount, cons: dG2.cnt.consistent, ov: dG2.cnt.newCeilingOverflow, sbd: dG2.pw.shortByDesign, sf: dG2.pw.shortfall, has27: thirty.slice(0,27).every(id => dG2.f.targets.some(t => t.id === id)), unv: dG2.f.targets.some(unv)}))
-  T('G', 'a priority bucket / the learned pool running short never blocks: plenty of review words ⇒ 30; only 27 eligible learned words ⇒ the 27 (short by design), NO padding with unseen words (no NEW_CEILING_OVERFLOW)',
+    T('G', 'a priority bucket / the learned pool running short never blocks: plenty of review words ⇒ 30; only 27 eligible learned words ⇒ the 27 (short by design), NO padding with unseen words (no NEW_CEILING_OVERFLOW)',
     !dG1.f.blocked && dG1.f.targets.length === 30 && !dG2.f.blocked && dG2.f.targets.length === 27 && dG2.f.short === true && dG2.cnt.generationTargetCount === 27 && dG2.cnt.consistent &&
     thirty.slice(0, 27).every(id => dG2.f.targets.some(t => t.id === id)) && !dG2.f.targets.some(unv) && dG2.cnt.newCeilingOverflow === 0 && !dG2.f.targets.some(t => t._newCeilingOverflow) &&
     !/NEW_CEILING_OVERFLOW/.test(dG1.line + dG2.line) && !/TRACK_SELECTION_BLOCKED/.test(dG1.line + dG2.line) && dG2.pw.shortByDesign === true && !dG2.pw.shortfall,

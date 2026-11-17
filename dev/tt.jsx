@@ -16560,9 +16560,9 @@ function pickWords(vocab, mode, todayNewWords, popts) {
   const candidateStats = { total: ordered.length + reachedList.length, ineligible: reachedList.length, eligible: ordered.length,
     skippedBeforeSelection: skippedCandidates.length, aliasesMigrated: pool.migrated }
   // a short selection is never silent: freezeThaiTargetSelection turns it into TRACK_SELECTION_BLOCKED
-  const shortfall = targets.length < N ? { requested: N, selected: targets.length,
+  // 17 Nov: a Daily that is short because there are fewer review words than 30 (+ the belt's new quota) is short ON PURPOSE (shortByDesign), not a shortfall to be filled
+  const shortfall = targets.length < N && !shortByDesign ? { requested: N, selected: targets.length,
     reason: 'eligible candidate pool exhausted (' + ordered.length + ' eligible)' } : null
-  // 17 Nov: a Daily that is short because there are fewer review words than 30 (+ the belt's new quota) is short ON PURPOSE, never a shortfall to be filled
   // an unseen word selected from the reserve tiers exceeds the NEW ceiling — only possible when
   // no eligible introduced word is left in the whole bank; flagged, counted as NEW, logged
   const overflowWords = targets.filter(w => /^(new-reserve|bank-reserve)$/.test(w._selectorStage || '') && isGenuinelyNew(w))
@@ -33482,7 +33482,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
       }
       log && log('  ♻️ FINAL_RECOVERY ' + rv.dropped.length + ' line(s) removed by the final cue revalidation · ' + ((qf.recovered || []).length) + ' replaced')
     } } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
-  const _plan = t.targetPlan || track.targetPlan || null          // 17 Nov: what the track was planned with (short by design, or meant to hold 30)
+  const _plan = t.targetPlan || track.targetPlan || (t.trackContext && t.trackContext.targetPlan) || null          // 17 Nov: what the track was planned with (short by design, or meant to hold 30)
   const quota = trackQuotaReport(t.pairs, kws, adapter, c, _plan)
   const status = adapter.qcStatus(t, c)
   const inv = {
@@ -45812,7 +45812,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
       {activeTargets.length > 0 && (
         <Card style={{ padding:'12px 14px' }}>
           <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-            <span>Targeting {activeTargets.length}{targetCounts.selectedTargetCount !== activeTargets.length ? ' of ' + targetCounts.selectedTargetCount : ''} words
+            <span>Targeting {activeTargets.length}{targetCounts.selectedTargetCount !== activeTargets.length ? ' of ' + targetCounts.selectedTargetCount : ''} {activeTargets.length === 1 && targetCounts.selectedTargetCount === 1 ? 'word' : 'words'}
               {targetCounts.unresolvedTargets.length > 0 && <span style={{ color:'#ef4444' }}> · {targetCounts.unresolvedTargets.length} unresolved: {targetCounts.unresolvedTargets.map(u => u.thai).join(', ')}</span>}
               {targetCounts.shortfall && !targetCounts.contract && <span style={{ color:'#f59e0b' }}> · only {targetCounts.shortfall.selected}/{targetCounts.shortfall.requested} could be selected</span>}
               {targetCounts.blocked && <span style={{ color:'#ef4444' }}> · TRACK_SELECTION_BLOCKED ({targetCounts.blocked.eligible}/{targetCounts.blocked.required} eligible)</span>}
@@ -45828,6 +45828,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
               </span>
             )}
           </p>
+          {_selection.short && !topic && (mode === 'daily' || mode === 'revision') && shortTrackNote(activeTargets, mode === 'revision') && <p data-short-track="1" style={{ fontSize:11, color:'#f59e0b', marginBottom:8, lineHeight:1.5 }}>{shortTrackNote(activeTargets, mode === 'revision')}</p>}
           <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
             {activeTargets.map((w,i) => {
               // Each of the three recalls carries its OWN accepted tier. Reading only
@@ -54940,6 +54941,19 @@ function selectTrackTargets(opts) {
   }
 }
 
+// 17 Nov (the owner's rule): a track holds min(30, the words that exist). When it is short, the generator screens say so ONCE, in words, so it does not look like a mistake:
+// a Daily is the review words that exist plus the belt's new-word quota (a new learner has nothing to review yet), a Revision the learned words that exist.
+function shortTrackNote(targets, isRev) {
+  const list = (targets || []).filter(t => t && !t._phraseReview)
+  if (!list.length || list.length >= TRACK_CONTRACT.TARGETS) return null
+  const isNewT = t => t.selectionRole ? t.selectionRole === 'new' : isGenuinelyNew(t)
+  const nNew = isRev ? 0 : list.filter(isNewT).length, nRev = list.length - nNew
+  const w = n => n + ' word' + (n === 1 ? '' : 's')
+  if (isRev) return 'This revision is short on purpose: it holds the ' + w(list.length) + ' you have learned so far (a full revision is ' + TRACK_CONTRACT.TARGETS + '). It grows as you learn words.'
+  if (nNew > 0 && nRev === 0) return 'This track is short on purpose: your belt brings ' + w(nNew) + ' a day, and you have no words to review yet. It grows as you learn words.'
+  if (nNew > 0) return 'This track is short on purpose: your belt brings ' + w(nNew) + ' a day and you have ' + w(nRev) + ' to review so far (a full track is ' + TRACK_CONTRACT.TARGETS + '). It grows as you learn words.'
+  return 'This track is short on purpose: it holds the ' + w(nRev) + ' you have learned so far (no new word is available today). It grows as you learn words.'
+}
 // §10 — one shared summary string so every language describes a track identically.
 // Header totals derive from the SAME classifier as the card badges, so the two can
 // never disagree. Pass targets when available; counts is kept for legacy callers.
@@ -55784,7 +55798,7 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, tracks,
         buildAndQc({
           createdAt:new Date().toISOString(), date:new Date().toISOString().slice(0, 10),
           language:'zh', mode:(trackMode === 'revision' || trackMode === 'srs' ? 'revision' : 'daily'), trackMode:(trackMode === 'revision' || trackMode === 'srs' ? 'revision' : 'daily'), speechStyle:MANDARIN_REGISTER.id,
-          provider:'gemini', model, pairs:res.pairs, scene: zhScene || null,
+          provider:'gemini', model, pairs:res.pairs, scene: zhScene || null, targetPlan: targetPlanFor(targets),
           allowedContent:res.allowedContent, grammarUsed:res.grammarUsed, scarcity:res.scarcity,
           recallCount:res.recallCount, framingCount:res.framingCount, rated:false, bookmark:0,
           keywords:targets.map(t => ({ chinese:t.chinese, pinyin:t.pinyin, english:t.english,
@@ -55966,6 +55980,7 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, tracks,
         <p style={{ fontSize:9, color:'var(--muted)', marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em' }}>
           {describeTargetSelection((selection && selection.counts) || { total:(targets||[]).length, new:(targets||[]).length, due:0, reinforce:0 }, targets)}
         </p>
+        {shortTrackNote(targets, trackMode === 'revision' || trackMode === 'srs') && <p data-short-track="1" style={{ fontSize:11, color:'#f59e0b', marginBottom:6, lineHeight:1.5 }}>{shortTrackNote(targets, trackMode === 'revision' || trackMode === 'srs')}</p>}
         <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
           {(targets || []).map(w => (
             <MandarinTargetPill key={w.id} w={w} state={targetState(w)} srcColor={targetColor(w)}
@@ -56588,7 +56603,7 @@ function jaGeneratorTrackContext(targets, selection, trackMode, register, runId)
     ? (newIds.length < expected ? 'FEWER_NEW_THAN_RESERVED (' + newIds.length + '/' + expected + ': a reserved NEW target was deferred or not eligible)' : 'MORE_NEW_THAN_RESERVED (' + newIds.length + '/' + expected + ')')
     : null
   return makeTrackContext({ trackId: new Date().toISOString(), language: 'ja', mode: isRev ? 'revision' : 'daily', register,
-    selectedTargetIds: ts.map(t => t.id), selectedNewTargetIds: newIds, expectedNewCount: expected, newCountException: exception, generationRunId: runId || AI_CTX.runId })
+    selectedTargetIds: ts.map(t => t.id), selectedNewTargetIds: newIds, expectedNewCount: expected, newCountException: exception, generationRunId: runId || AI_CTX.runId, targetPlan: targetPlanFor(ts) })
 }
 // The Japanese Main Track object, built from the TrackContext (one place, both generation exits).
 function jaTrackObject(tc, g, targets, register, model, trackMode) {
@@ -56597,7 +56612,7 @@ function jaTrackObject(tc, g, targets, register, model, trackMode) {
     createdAt: tc.trackId, date: tc.trackId.slice(0, 10),
     mode: tc.mode, trackMode: tc.mode, language: 'ja', speechStyle: register,
     provider: 'gemini', model, pipelineVersion: PIPELINE_VERSION, generatorVersion: GENERATOR_VERSIONS.ja,
-    trackContext: tc, selectedTargetIds: tc.selectedTargetIds.slice(), selectedNewTargetIds: tc.selectedNewTargetIds.slice(),
+    trackContext: tc, selectedTargetIds: tc.selectedTargetIds.slice(), selectedNewTargetIds: tc.selectedNewTargetIds.slice(), targetPlan: tc.targetPlan || targetPlanFor(targets),
     pairs: g.pairs, scene: g.scene, scenePlan: g.scenePlan || null, lessonContext: g.scene ? buildLessonContext(buildSceneContract(g.scene, 'ja', {}), 'ja') : null, buildingBlocks: g.buildingBlocks || [], allowedContent: g.allowedContent || [],
     recallCount: g.recallCount, framingCount: g.framingCount, generationStats: g.generationStats || null,
     rated: false, bookmark: 0,
@@ -56819,7 +56834,7 @@ async function zhGen2MainTrack(o) {
     provider: 'gemini', model, pairs: framing.open.concat(pairs, framing.close), scene: o.scene || null, scenePlan: gen2LessonSections(pairs, id => (fById.get(id) || {}).chinese),
     allowedContent: inv.allContent.map(w => ({ chinese: w.chinese, pinyin: w.pinyin, english: w.english })),
     grammarUsed: inv.grammarScaffold.map(gg => ({ form: gg.form, pinyin: gg.pinyin, meaning: gg.meaning })), scarcity: mandarinScarcityLevel(inv),
-    recallCount: pairs.length, framingCount: framing.open.length + framing.close.length, rated: false, bookmark: 0, selectedTargetIds: Object.freeze(frozen.map(w => w.id)),
+    recallCount: pairs.length, framingCount: framing.open.length + framing.close.length, rated: false, bookmark: 0, selectedTargetIds: Object.freeze(frozen.map(w => w.id)), targetPlan: targetPlanFor(frozen),
     keywords: frozen.map(w => ({ chinese: w.chinese, pinyin: w.pinyin, english: w.english, wordId: w.id, rating: null, thai: w.chinese, phonetic: w.pinyin, partOfSpeech: w.partOfSpeech || null,
       isNew: w.selectionRole ? w.selectionRole === 'new' : w.status === 'new', selectionRole: w.selectionRole || (w.status === 'new' ? 'new' : 'review') })),
     generator: GEN2_VERSION, deferredTargets: t.deferredTargets || [],
@@ -57571,6 +57586,7 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
         <p style={{ fontSize:9, color:'var(--muted)', marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em' }}>
           {describeTargetSelection((selection && selection.counts) || { total:(targets||[]).length, new:newCount, due:0, reinforce:0 }, targets)}
         </p>
+        {shortTrackNote(targets, trackMode === 'revision') && <p data-short-track="1" style={{ fontSize:11, color:'#f59e0b', marginBottom:6, lineHeight:1.5 }}>{shortTrackNote(targets, trackMode === 'revision')}</p>}
         <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
           {(targets || []).map((w, i) => (
             <JapaneseTargetPill key={w.id} w={w} state={targetState(i, w.id)} srcColor={targetColor(w.id)} recalls={targetRecalls(w.id)} histories={targetHistories(w.id)} />
@@ -60304,7 +60320,7 @@ function cantoneseBuildTrack(res, targets, mode, startedAt) {
     createdAt: at, date: at.slice(0, 10), language: 'yue', mode: m, trackMode: m, speechStyle: 'colloquial-hk', provider: 'modules', model: 'none', pairs: res.pairs, scene: null,
     allowedContent: res.allowedContent || [], grammarUsed: res.grammarUsed || [], scarcity: res.scarcity || 'modules', recallCount: res.recallCount, framingCount: res.framingCount || 0,
     rated: false, bookmark: 0, generatorVersion: GENERATOR_VERSIONS.yue, pipelineVersion: 'yue-modules-v1', moduleTrack: { version: 'yue-modules-v1', modelRequests: 0, checks: 'structure' },
-    selectedTargetIds: selected, selectedNewTargetIds: m === 'daily' ? (targets || []).filter(isNew).map(t => t.id) : [],
+    selectedTargetIds: selected, selectedNewTargetIds: m === 'daily' ? (targets || []).filter(isNew).map(t => t.id) : [], targetPlan: targetPlanFor(targets),
     keywords: (targets || []).map(t => ({ chinese: t.chinese, pinyin: t.pinyin, english: t.english, wordId: t.id, rating: null, thai: t.chinese, phonetic: t.pinyin, isNew: isNew(t), selectionRole: t.selectionRole || (t.status === 'new' ? 'new' : 'review') })),
   }
   track.trackContext = makeTrackContext({ trackId: listeningTrackId(track), language: 'yue', mode: m, register: track.speechStyle, selectedTargetIds: selected, selectedNewTargetIds: track.selectedNewTargetIds,
@@ -60318,6 +60334,9 @@ function cantoneseTrackCheck(track) {
   pairs.forEach(p => { if (p && p.targetId != null) { if (!byT.has(p.targetId)) byT.set(p.targetId, []); byT.get(p.targetId).push(p) } })
   const want = (track && track.keywords || []).map(k => k.wordId)
   want.forEach(id => { const n = (byT.get(id) || []).length; if (n !== 3) problems.push('target ' + id + ' has ' + n + ' recalls (3 needed)') })
+  // 17 Nov: the track holds the number of targets it was planned with (a short track is short by design; a track meant to hold 30 that lost words is a problem)
+  const _pl = track && track.targetPlan
+  if (_pl && _pl.planned > 0 && want.length !== _pl.planned) problems.push('the track holds ' + want.length + ' targets but was planned with ' + _pl.planned)
   pairs.forEach((p, i) => { const pr = yueLineProblems(p, { id: p.targetId, chinese: p.targetChinese, pinyin: (p.segments || []).find(s => s.vocabId === p.targetId)?.pinyin }, null); if (pr.length) problems.push('line ' + (i + 1) + ': ' + pr[0]) })
   return { ok: !problems.length, targets: want.length, pairs: pairs.length, fromModules: pairs.filter(p => p && p._module).length, problems }
 }
@@ -61695,12 +61714,9 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
           <p style={{ fontSize:13, lineHeight:1.6 }}>This track is built from ready-made lesson modules: <b>no AI request is made</b> and no key is needed. Each word gets three lines (A, B, A) with Yale and a word-by-word breakdown.</p>
           <p style={{ fontSize:11, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>A quality review by a model is not available for Cantonese yet; the track is checked by its structure.</p>
           {(() => {
-            // a short Daily is expected: the belt allows only a few new words a day (5 at White belt) and a new learner has nothing to review yet. Say so, so it does not look like a mistake
-            let nNew = 0
-            try { nNew = (targets || []).filter(t => t.selectionRole === 'new').length } catch (e) {}
-            return (!isRev && nNew > 0 && (targets || []).length < 30 && nNew === (targets || []).length)
-              ? <p data-yue-first-track="1" style={{ fontSize:11, color:'#f59e0b', marginTop:6, lineHeight:1.5 }}>This track is short on purpose: your belt brings {nNew} new words a day, and you have no words to review yet. It grows as you learn words.</p>
-              : null
+            // a short track is expected (the owner's rule, 17 Nov: a track holds min(30, the words that exist)): say so once, so it does not look like a mistake
+            const note = shortTrackNote(targets, isRev)
+            return note ? <p data-yue-first-track="1" data-short-track="1" style={{ fontSize:11, color:'#f59e0b', marginTop:6, lineHeight:1.5 }}>{note}</p> : null
           })()}
         </Card>)}
       <div>

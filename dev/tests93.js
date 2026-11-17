@@ -177,8 +177,14 @@ const fn = (name, body) => { const i = SRC.indexOf(name); return i < 0 ? '' : SR
     const shortDaily = gate({ lang: 'yue', targets: tiny.map(w => ({ ...w, selectionRole: 'new' })), vocab: tiny, trackMode: 'daily', tracks: [] })
     const shortRev = gate({ lang: 'yue', targets: tiny.map(w => ({ ...w, selectionRole: 'review' })), vocab: tiny, trackMode: 'revision', tracks: [] })
     const emptyDaily = gate({ lang: 'yue', targets: [], vocab: tiny, trackMode: 'daily', tracks: [] })
-    T('S1', 'the start gate for Cantonese: a full Daily starts; a SHORT Daily starts too (the belt limit beats the 30, 17 Nov); a Daily with no word at all and a short Revision are blocked with the Thai wording (TRACK_SELECTION_BLOCKED, no track started); a 4th Daily in one day is refused', gate({ lang: 'yue', targets: full, vocab: Vb, trackMode: 'daily', tracks: [] }) === null &&
-      shortDaily === null && !!emptyDaily && emptyDaily.code === 'TRACK_SELECTION_BLOCKED' && !!shortRev && shortRev.code === 'TRACK_SELECTION_BLOCKED' && /vocabulary-data problem/.test(shortRev.message) && (gate({ lang: 'yue', targets: full, vocab: Vb, trackMode: 'daily', tracks: four }) || {}).code === 'DAILY_CAP', { shortDaily, emptyDaily, shortRev })
+    // 17 Nov — the owner's rule extends to a Revision: a Revision holds the learned words that exist (up to 30), so a SHORT Revision starts; what stays blocked is a lesson with no target at all,
+    // and a short list although the bank could fill 30 (a selection that lost words: the data problem the gate was written for)
+    const emptyRev = gate({ lang: 'yue', targets: [], vocab: tiny, trackMode: 'revision', tracks: [] })
+    const learnedBank = Vb.map((w, i) => i < 60 ? { ...w, status: 'learning', lastSeen: '2026-11-01', introducedAt: '2026-10-01', repCount: 3, okStreak: 1, dueDate: '2026-11-12', interval: 3 } : w)
+    const lostWords = gate({ lang: 'yue', targets: learnedBank.slice(0, 12).map(w => ({ ...w, selectionRole: 'review' })), vocab: learnedBank, trackMode: 'revision', tracks: [] })
+    T('S1', 'the start gate for Cantonese: a full Daily starts; a SHORT Daily and a SHORT Revision start too (the belt limit and the words that exist beat the 30, 17 Nov); a lesson with no word at all is blocked (TRACK_SELECTION_BLOCKED, no track started); a short list when the bank holds 30 is still a data problem; a 4th Daily in one day is refused', gate({ lang: 'yue', targets: full, vocab: Vb, trackMode: 'daily', tracks: [] }) === null &&
+      shortDaily === null && shortRev === null && !!emptyDaily && emptyDaily.code === 'TRACK_SELECTION_BLOCKED' && !!emptyRev && emptyRev.code === 'TRACK_SELECTION_BLOCKED' &&
+      !!lostWords && lostWords.code === 'TRACK_SELECTION_BLOCKED' && /vocabulary-data problem/.test(lostWords.message) && /eligible=12 required=30/.test(lostWords.message) && (gate({ lang: 'yue', targets: full, vocab: Vb, trackMode: 'daily', tracks: four }) || {}).code === 'DAILY_CAP', { shortDaily, emptyDaily, shortRev, emptyRev, lostWords })
   }
 
   // ── W ──

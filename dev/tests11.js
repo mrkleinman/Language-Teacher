@@ -20,8 +20,11 @@ const learnerOnly = (c, ids) => { const keep = new Set(ids); return learner(c).m
 function daily(c, vocab, mode = 'daily') {
   const pw = c.pickWords(vocab, mode, [])
   const nPh = pw.targets.filter(w => w._phraseReview).length       // 31 Oct: the due phrases ride on top of the 30 words (the Generator asks for 30 + them)
-  const f = c.freezeThaiTargetSelection({ selected: pw.targets, reserve: pw.reserve, required: 30 + nPh, mode })
-  const cnt = c.thaiTargetCounts({ requested: 30 + nPh, selectedTargets: f.targets, generationTargets: f.targets, unresolved: [], mode,
+  // 17 Nov: the owner's rule — a Daily / Revision holds min(30, the words that exist) and is never padded with unseen or reserve words (the screen passes allowShort + noNewOverflow for them;
+  // a weak track keeps the old contract). This helper mirrors the screen exactly, so the checks below describe what a learner now gets
+  const shortOk = mode === 'daily' || mode === 'revision'
+  const f = c.freezeThaiTargetSelection({ selected: pw.targets, reserve: pw.reserve, required: 30 + nPh, mode, noNewOverflow: mode === 'revision' || shortOk, allowShort: shortOk })
+  const cnt = c.thaiTargetCounts({ requested: f.short ? f.targets.length : 30 + nPh, selectedTargets: f.targets, generationTargets: f.targets, unresolved: [], mode,
     candidateStats: pw.candidateStats, skippedCandidates: pw.skippedCandidates, backfills: f.backfills, blocked: f.blocked, contract: true })
   return { pw, f, cnt, line: c.thaiTargetCountsLine(cnt), log: c.thaiSelectionLogLines(cnt) }
 }
@@ -147,10 +150,15 @@ function daily(c, vocab, mode = 'daily') {
   const vG2 = learnerOnly(c, g27)                                       // the WHOLE learned vocabulary is only 27 eligible words
   const dG2 = daily(c, vG2)
   const unv = t => !c.thaiVocabEligibility({ id: t.id }).ok
-  T('G', 'a priority bucket / the learned pool running short never blocks: 27 eligible learned words ⇒ still 30 (review first; unseen words only as a logged NEW_CEILING_OVERFLOW when no review word exists)',
-    !dG1.f.blocked && dG1.f.targets.length === 30 && !dG2.f.blocked && dG2.f.targets.length === 30 && dG2.cnt.generationTargetCount === 30 &&
-    thirty.slice(0, 27).every(id => dG2.f.targets.some(t => t.id === id)) && !dG2.f.targets.some(unv) && dG2.cnt.newCeilingOverflow === 3 &&
-    /NEW_CEILING_OVERFLOW=3/.test(dG2.line) && !/TRACK_SELECTION_BLOCKED/.test(dG1.line + dG2.line),
+  // 17 Nov — CHANGED, the owner's rule ("for any language that has less than 30 words learnt, just stick with the number of available words ... why would you force a newbie to
+  // learn 30"): this check used to say that 27 learned words still gave 30 targets, the missing 3 being unseen words padded in as NEW_CEILING_OVERFLOW. A Daily now holds the
+  // review words that exist plus the belt's new-word quota and is never padded: 27 learned words ⇒ 27 targets (here no new word is available at all: every other belt is locked),
+  // short by design, never blocked, no overflow. The learner with plenty of review words still gets exactly 30.
+  console.log('DBG', JSON.stringify({b1: dG1.f.blocked, l1: dG1.f.targets.length, b2: dG2.f.blocked, l2: dG2.f.targets.length, short: dG2.f.short, gen: dG2.cnt.generationTargetCount, cons: dG2.cnt.consistent, ov: dG2.cnt.newCeilingOverflow, sbd: dG2.pw.shortByDesign, sf: dG2.pw.shortfall, has27: thirty.slice(0,27).every(id => dG2.f.targets.some(t => t.id === id)), unv: dG2.f.targets.some(unv)}))
+  T('G', 'a priority bucket / the learned pool running short never blocks: plenty of review words ⇒ 30; only 27 eligible learned words ⇒ the 27 (short by design), NO padding with unseen words (no NEW_CEILING_OVERFLOW)',
+    !dG1.f.blocked && dG1.f.targets.length === 30 && !dG2.f.blocked && dG2.f.targets.length === 27 && dG2.f.short === true && dG2.cnt.generationTargetCount === 27 && dG2.cnt.consistent &&
+    thirty.slice(0, 27).every(id => dG2.f.targets.some(t => t.id === id)) && !dG2.f.targets.some(unv) && dG2.cnt.newCeilingOverflow === 0 && !dG2.f.targets.some(t => t._newCeilingOverflow) &&
+    !/NEW_CEILING_OVERFLOW/.test(dG1.line + dG2.line) && !/TRACK_SELECTION_BLOCKED/.test(dG1.line + dG2.line) && dG2.pw.shortByDesign === true && !dG2.pw.shortfall,
     { plentyOfReview: dG1.line, only27Learned: dG2.line })
   // G2: the ONLY remaining block — the whole eligible pool is exhausted. Revision may never use unseen
   // words, so a learner with 27 eligible introduced words in the entire bank cannot have a 30-word Revision.
@@ -159,6 +167,11 @@ function daily(c, vocab, mode = 'daily') {
   T('G2', 'only a WHOLE-pool exhaustion blocks (Revision, 27 introduced eligible words in the entire bank) — scope ELIGIBLE_POOL_EXHAUSTED, never one bucket',
     fG2.blocked && fG2.blocked.scope === 'ELIGIBLE_POOL_EXHAUSTED' && fG2.blocked.eligible === 27 &&
     /if \(_selection\.blocked && !resumeDraft\) \{\s*setPhase\('error'\)/.test(fs.readFileSync('tt.jsx', 'utf8')), fG2.log.slice(-1))
+  // 17 Nov: the app's own Revision call passes allowShort, so a Revision with 27 learned words is 27 targets (short, not blocked); only a bank with NO learned word is blocked
+  const fG2s = c.freezeThaiTargetSelection({ selected: rvG.targets.slice(0, 30), reserve: rvG.targets.slice(30), required: 30, mode: 'revision', noNewOverflow: true, allowShort: true })
+  const fG20 = c.freezeThaiTargetSelection({ selected: [], reserve: [], required: 30, mode: 'revision', noNewOverflow: true, allowShort: true })
+  T('G2b', 'allowShort (what the Thai screen passes for a Daily / Revision): 27 learned words ⇒ 27 targets, short, not blocked; no learned word at all ⇒ still blocked',
+    !fG2s.blocked && fG2s.targets.length === 27 && fG2s.short === true && fG20.blocked && fG20.blocked.eligible === 0 && fG20.targets.length === 0, { s: fG2s.log.slice(-1), z: fG20.log.slice(-1) })
   // E2 (spec E): an unverified candidate is never used merely to fill the quota — even when the pool is starved
   T('E2', 'unverified candidates are never used to fill the quota (starved pool: overflow uses valid unseen words, never the 5 unverified)',
     ![dA, dG1, dG2].some(d => d.f.targets.some(t => five.includes(t.id) || unv(t))) && dG2.pw.skippedCandidates.every(x => five.includes(x.id)))
@@ -239,8 +252,11 @@ function daily(c, vocab, mode = 'daily') {
     .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
   const hDaily = gen(learner(cr), 'daily'), hRev = gen(learner(cr), 'revision', cr.selectThaiRevisionTargets(learner(cr), 30).targets), hBlk = gen(learnerOnly(cr, g27), 'daily')
   const lbl = h => (h.match(/Targeting[^✦↻]{0,120}/) || [''])[0].trim()
-  T('M', 'Generator header: Daily, Revision AND the 27-learned-word learner all show "Targeting 30 words" — never "Targeting 26 of 30", never blocked',
-    [hDaily, hRev, hBlk].every(h => /^Targeting 30 words/.test(lbl(h)) && !/Targeting \d+ of 30/.test(h) && !/TRACK_SELECTION_BLOCKED/.test(h)),
+  // 17 Nov — CHANGED (the owner's rule, see G above): the 27-learned-word learner used to see "Targeting 30 words" (3 padded in); now the header says what the track holds
+  // ("Targeting 27 words") and the screen says once that the track is short on purpose. Daily and Revision of a full learner still show "Targeting 30 words".
+  T('M', 'Generator header: Daily and Revision of a full learner show "Targeting 30 words"; the 27-learned-word learner shows "Targeting 27 words" with the short-on-purpose note — never "Targeting 26 of 30", never blocked',
+    [hDaily, hRev].every(h => /^Targeting 30 words/.test(lbl(h)) && !/Targeting \d+ of 30/.test(h) && !/short on purpose/.test(h)) &&
+    /^Targeting 27 words/.test(lbl(hBlk)) && !/Targeting \d+ of \d+ words/.test(hBlk) && /short on purpose/.test(hBlk) && !/TRACK_SELECTION_BLOCKED/.test(hBlk),
     { daily: lbl(hDaily), revision: lbl(hRev), blocked: lbl(hBlk) })
   console.log(out.join('\n') + '\n\n' + (fails ? fails + ' FAILED' : 'all passed') + ' (' + out.filter(l => /^(PASS|FAIL)/.test(l)).length + ' checks)')
 })().catch(e => { console.error(e); process.exit(1) })

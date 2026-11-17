@@ -168,8 +168,12 @@ async function genOnce(file, opts = {}) {
   // v646: superseded — a short review pool no longer yields a short selection. The cascade fills 30 and any unseen
   // word used beyond the NEW ceiling (no review word left in the whole bank) is counted and logged as NEW_CEILING_OVERFLOW.
   // v683 owner's quota table: Thai Mukyu introduces 3 new words (was 5), so 9 unseen = 3 NEW + 6 overflow
-  T('S', 'v646: a learner with only 21 introduced words still gets 30 targets; the extra unseen words are REPORTED (NEW_CEILING_OVERFLOW), never silent',
-    ps.targets.length === 30 && !ps.shortfall && /NEW_CEILING_OVERFLOW=6/.test(c.thaiTargetCountsLine(cs)), c.thaiTargetCountsLine(cs))
+  // 17 Nov — CHANGED, the owner's rule ("for any language that has less than 30 words learnt, just stick with the number of available words ... why would you force a newbie to
+  // learn 30"): this check used to say that 21 introduced words still gave 30 targets, the other 9 being unseen words padded in (6 of them NEW_CEILING_OVERFLOW). A Daily now holds
+  // the review words that exist plus the belt's new-word quota (3 at Mukyu) and is never padded: 21 + 3 = 24 targets, short by design, no overflow, no shortfall.
+  T('S', 'v646 → 17 Nov: a learner with only 21 introduced words gets 24 targets (21 review + the belt\'s 3 new): short by design, NO padding with unseen words, no NEW_CEILING_OVERFLOW, no shortfall',
+    ps.targets.length === 24 && ps.shortByDesign === true && !ps.shortfall && ps.targets.filter(w => c.ev('isGenuinelyNew')(w)).length === 3 && !ps.targets.some(w => w._newCeilingOverflow) &&
+    !/NEW_CEILING_OVERFLOW/.test(c.thaiTargetCountsLine(cs)), c.thaiTargetCountsLine(cs))
   c.ev('THAI_PHRASE_SPLIT').on = true; c.ev('thaiPhraseSplitApply')(c.ev('RAW_VOCAB'))
   console.log(out.join('\n') + '\n\n' + (fails ? fails + ' FAILED' : 'all passed'))
 })().catch(e => { console.error(e); process.exit(1) })

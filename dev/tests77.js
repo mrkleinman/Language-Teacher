@@ -25,16 +25,26 @@ const learned = (list, k) => list.slice(0, k).map(w => ({ ...w, status: 'learnin
     const Jv = mk('ja', J, 60), Zv = mk('zh', Z, 60)
     const full = (lang, V) => V.slice(0, 30).map(w => ({ ...w, selectionRole: 'review' }))
     T('G1', '30 targets: Japanese and Mandarin start (no block)', gate({ lang: 'ja', targets: full('ja', Jv), vocab: Jv, trackMode: 'daily', tracks: [] }) === null && gate({ lang: 'zh', targets: full('zh', Zv), vocab: Zv, trackMode: 'daily', tracks: [] }) === null)
-    // a bank with only 12 usable words can never hold 30 targets — the same data problem Thai reports
+    // 17 Nov — CHANGED (the owner's rule: "for any language that has less than 30 words learnt, just stick with the number of available words ... why would you force a newbie to
+    // learn 30"). G2 / G3 / G4 used to say that ANY list shorter than 30 is blocked ("a Daily/Revision lesson is 30 targets or nothing"). A track now holds min(30, the words that
+    // exist): a short Daily (the review words that exist + the belt's new-word quota) and a short Revision (the learned words that exist) start. What is STILL a data problem, and
+    // still blocked with Thai's wording: no target at all, and a short list although the bank could fill 30 (a selection that lost words).
     const tinyJ = J.slice(0, 12).map(w => ({ ...w })), tinyZ = Z.slice(0, 12).map(w => ({ ...w }))
     const gj = gate({ lang: 'ja', targets: tinyJ.map(w => ({ ...w, selectionRole: 'new' })), vocab: tinyJ, trackMode: 'daily', tracks: [] })
     const gz = gate({ lang: 'zh', targets: tinyZ.map(w => ({ ...w, selectionRole: 'new' })), vocab: tinyZ, trackMode: 'daily', tracks: [] })
-    T('G2', 'a lesson that cannot hold its 30 targets is blocked with TRACK_SELECTION_BLOCKED (eligible / required), not started short',
-      gj && gj.code === 'TRACK_SELECTION_BLOCKED' && /eligible=12 required=30/.test(gj.message) && gz && gz.code === 'TRACK_SELECTION_BLOCKED' && /eligible=12 required=30/.test(gz.message), { gj, gz })
-    T('G3', 'the wording is Thai\'s: "…not a normal short lesson — no track was started."', gj && /This is a vocabulary-data problem, not a normal short lesson — no track was started\./.test(gj.message) &&
-      /'\\n\\n' \+ _selection\.blocked\.reason \+ '\. This is a vocabulary-data problem, not a normal short lesson/.test(SRC))
+    T('G2', 'a short Daily starts (12 words in the whole bank: nothing to pad with, nothing is blocked); a lesson that lost words although the bank holds 30 is blocked with TRACK_SELECTION_BLOCKED (eligible / required)',
+      gj === null && gz === null &&
+      (g => g && g.code === 'TRACK_SELECTION_BLOCKED' && /eligible=12 required=30/.test(g.message))(gate({ lang: 'ja', targets: full('ja', Jv).slice(0, 12), vocab: Jv, trackMode: 'daily', tracks: [] })) &&
+      (g => g && g.code === 'TRACK_SELECTION_BLOCKED' && /eligible=12 required=30/.test(g.message))(gate({ lang: 'zh', targets: full('zh', Zv).slice(0, 12), vocab: Zv, trackMode: 'daily', tracks: [] })), { gj, gz })
+    const lost = gate({ lang: 'ja', targets: full('ja', Jv).slice(0, 12), vocab: Jv, trackMode: 'daily', tracks: [] })
+    const none = gate({ lang: 'ja', targets: [], vocab: Jv.slice(0, 5), trackMode: 'daily', tracks: [] })
+    T('G3', 'the wording is Thai\'s where a block remains: "…not a normal short lesson — no track was started."; with nothing to practise at all it says so',
+      lost && /This is a vocabulary-data problem, not a normal short lesson — no track was started\./.test(lost.message) && none && none.code === 'TRACK_SELECTION_BLOCKED' && /nothing to practise yet/.test(none.message) &&
+      /'\\n\\n' \+ _selection\.blocked\.reason \+ '\. This is a vocabulary-data problem, not a normal short lesson/.test(SRC), { lost, none })
     const rev = gate({ lang: 'ja', targets: full('ja', Jv).slice(0, 20), vocab: Jv.slice(0, 20), trackMode: 'revision', tracks: [] })
-    T('G4', 'a Revision lesson with fewer than 30 learned words is blocked the same way (Thai: "a Daily/Revision lesson is 30 targets or nothing")', rev && rev.code === 'TRACK_SELECTION_BLOCKED' && /required=30/.test(rev.message), rev)
+    const revLost = gate({ lang: 'ja', targets: full('ja', Jv).slice(0, 20), vocab: Jv, trackMode: 'revision', tracks: [] })
+    T('G4', 'a Revision with fewer than 30 learned words starts (it holds the learned words that exist); a Revision that lost words although the bank holds 30 is blocked the same way as before',
+      rev === null && revLost && revLost.code === 'TRACK_SELECTION_BLOCKED' && /required=30/.test(revLost.message), { rev, revLost })
     // the generators call the gate BEFORE the first paid request, and the apps hand them the track list
     const jaGen = SRC.slice(SRC.indexOf('function JapaneseGenerator('), SRC.indexOf('function JapaneseGenerator(') + 40000)
     const zhGen = SRC.slice(SRC.indexOf('function MandarinGenerator('), SRC.indexOf('function MandarinGenerator(') + 40000)

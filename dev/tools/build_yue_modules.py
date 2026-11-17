@@ -332,4 +332,5 @@ def main():
     print('tt.jsx updated')
 
 
-main()
+if __name__ == '__main__':
+    main()          # (guarded so cantonese-modules/tools/yue_free_words.py can import the Yale validator without rebuilding tt.jsx)

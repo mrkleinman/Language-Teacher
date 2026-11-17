@@ -1,0 +1,387 @@
+# The beginner teaching order of the first 200 words (White 1-100 and Orange 101-200: five new words a day, 40 days) and the sentences that prove it.
+#
+# Read by tools/yue_beginner_order.py, which checks every line and writes beginner-order.csv and BEGINNER-ORDER.md. Format:
+#   day N                       starts a day
+#   words: w1 w2 w3 w4 w5       the five words taught that day, in teaching order; `好@22` names the list row (id) when a spelling has two rows
+#   <tokens> = <English>        one proof sentence: its Cantonese words separated by spaces (punctuation stays on the word before it). Every token must be a
+#                               word of this day or an earlier day, or a free word (free-words.csv). Several short sentences may stand in one line.
+# The tool rejects a sentence that uses a word taught later, a day with fewer than four distinct sentences, a day word that no sentence uses, and any Yale that does not validate.
+# The principle: every day's five words combine with everything before them into things a person really says; greetings and politeness first, then the words that build
+# sentences (pronouns, be, not, want, have, where, how much), then food, family, places, time; Hong Kong colloquial throughout (no Mandarin forms).
+
+day 1
+words: 你好 我 你 係 唔
+你好！ = Hello!
+你好，我係阿明。 = Hello, I am Ah Ming.
+我係阿欣。 = I am Ah Yan.
+你係阿明呀？ = Oh, you are Ah Ming?
+我唔係阿明。 = I am not Ah Ming.
+你係唔係阿欣？ = Are you Ah Yan?
+
+day 2
+words: 早晨 多謝 唔該 對唔住 再見
+早晨！ = Good morning!
+早晨，阿明！ = Good morning, Ah Ming!
+多謝你。 = Thank you.
+唔該！ = Thank you! / Excuse me! / Please!
+對唔住，我唔係阿欣。 = Sorry, I am not Ah Yan.
+多謝，再見！ = Thanks, goodbye!
+再見，阿明！ = Goodbye, Ah Ming!
+
+day 3
+words: 佢 朋友 學生 嘅 唔緊要
+佢係我朋友。 = He (she) is my friend.
+我係學生。 = I am a student.
+佢唔係學生。 = He (she) is not a student.
+阿明係我嘅朋友。 = Ah Ming is my friend.
+佢係唔係你嘅朋友？ = Is she your friend?
+對唔住！ 唔緊要！ = Sorry! Never mind!
+
+day 4
+words: 好@22 開心 忙 累 餓
+我好開心。 = I am very happy.
+佢好忙。 = He is very busy.
+我好累。 = I am very tired.
+我好餓。 = I am very hungry.
+你忙唔忙？ = Are you busy?
+你餓唔餓？ = Are you hungry?
+
+day 5
+words: 想 食 飲 水 茶
+我想食。 = I want to eat.
+我想飲水。 = I would like some water.
+我想飲茶。 = I would like some tea.
+你想唔想飲茶？ = Would you like some tea?
+我唔想食。 = I do not want to eat.
+唔該，我想飲水。 = Excuse me, I would like some water, please.
+
+day 6
+words: 要 飯 麵 咖啡 奶茶
+我要咖啡，唔該。 = A coffee, please.
+我要奶茶，唔該。 = A milk tea, please.
+你要唔要飯？ = Do you want rice?
+我想食麵。 = I want to eat noodles.
+我唔要咖啡，我要奶茶。 = I do not want coffee, I want milk tea.
+佢想食飯，我想食麵。 = He wants rice, I want noodles.
+
+day 7
+words: 呢個 嗰個 乜嘢 好食 係咪
+呢個係乜嘢？ = What is this?
+嗰個係乜嘢？ = What is that?
+你想食乜嘢？ = What do you want to eat?
+你想飲乜嘢？ = What do you want to drink?
+呢個好食。 = This is tasty.
+嗰個唔好食。 = That is not tasty.
+呢個係咪麵？ = Is this noodles?
+
+day 8
+words: 去 嚟 返 屋企 學校
+我去學校。 = I am going to school.
+我想返屋企。 = I want to go home.
+你去唔去學校？ = Are you going to school?
+阿明嚟我屋企。 = Ah Ming is coming to my home.
+你嚟唔嚟我屋企？ = Are you coming to my home?
+佢返屋企，我去學校。 = He goes home, I go to school.
+
+day 9
+words: 邊度 喺 呢度 嗰度 有
+你去邊度？ = Where are you going?
+你喺邊度？ = Where are you?
+我喺屋企。 = I am at home.
+阿明喺呢度。 = Ah Ming is here.
+學校喺嗰度。 = The school is over there.
+呢度有水。 = There is water here.
+嗰度有咖啡。 = There is coffee over there.
+
+day 10
+words: 冇 有冇 錢 蚊 一
+我冇錢。 = I have no money.
+你有冇錢？ = Do you have any money?
+呢度冇水。 = There is no water here.
+嗰度有冇咖啡？ = Is there any coffee over there?
+我有一蚊。 = I have one dollar.
+呢個一蚊。 = This one is one dollar.
+
+day 11
+words: 個 兩 三 四 五
+我要一個。 = I would like one.
+我要三個，唔該。 = Three, please.
+我有兩個朋友。 = I have two friends.
+呢個五蚊。 = This one is five dollars.
+嗰個四蚊。 = That one is four dollars.
+我有四蚊。 = I have four dollars.
+
+day 12
+words: 六 七 八 九 十
+呢個六蚊。 = This one is six dollars.
+嗰個八蚊。 = That one is eight dollars.
+我要七個，唔該。 = Seven, please.
+我有十個朋友。 = I have ten friends.
+我有九蚊。 = I have nine dollars.
+十蚊，唔該。 = Ten dollars, please.
+
+day 13
+words: 百 幾多 貴 平 大
+呢個幾多錢？ = How much is this?
+嗰個幾多錢？ = How much is that?
+一百蚊。 = A hundred dollars.
+呢個好貴。 = This is very expensive.
+嗰個好平。 = That is very cheap.
+你有幾多錢？ = How much money do you have?
+呢個好大。 = This is very big.
+
+day 14
+words: 細 多 人 少少 舊
+呢度好多人。 = There are many people here.
+我有好多朋友。 = I have many friends.
+我有少少錢。 = I have a little money.
+我屋企好細。 = My home is very small.
+我嘅學校好舊。 = My school is very old.
+呢個大，嗰個細。 = This one is big, that one is small.
+嗰個人係我朋友。 = That person is my friend.
+
+day 15
+words: 今日 聽日 琴日 而家 幾點
+我今日好忙。 = I am very busy today.
+琴日我好累。 = I was very tired yesterday.
+你聽日去唔去學校？ = Are you going to school tomorrow?
+我而家想返屋企。 = I want to go home now.
+而家幾點？ = What time is it now?
+你今日想食乜嘢？ = What do you want to eat today?
+
+day 16
+words: 媽媽 爸爸 哥哥 姐姐 弟弟
+佢係我媽媽。 = She is my mum.
+我爸爸好忙。 = My dad is very busy.
+你有冇哥哥？ = Do you have an older brother?
+我有一個姐姐。 = I have an older sister.
+我弟弟係學生。 = My younger brother is a student.
+我媽媽喺屋企。 = My mum is at home.
+你爸爸今日去邊度？ = Where is your dad going today?
+
+day 17
+words: 妹妹 醫生 老師 香港 公司
+我妹妹係醫生。 = My younger sister is a doctor.
+我爸爸係老師。 = My dad is a teacher.
+我係香港人。 = I am from Hong Kong.
+你係唔係香港人？ = Are you from Hong Kong?
+我哥哥喺公司。 = My older brother is at the office.
+你嘅公司喺邊度？ = Where is your company?
+你妹妹係老師呀？ = Your younger sister is a teacher?
+
+day 18
+words: 唔好意思 洗手間 超市 茶餐廳 醫院
+唔好意思，洗手間喺邊度？ = Excuse me, where is the toilet?
+唔好意思，茶餐廳喺邊度？ = Excuse me, where is the cha chaan teng?
+超市喺嗰度。 = The supermarket is over there.
+我想去超市。 = I want to go to the supermarket.
+我媽媽喺醫院。 = My mum is in the hospital.
+你去唔去茶餐廳？ = Are you going to the cha chaan teng?
+
+day 19
+words: 巴士 地鐵 的士 搭 點樣
+你點樣去學校？ = How do you get to school?
+我搭巴士。 = I take the bus.
+我搭地鐵返屋企。 = I take the MTR home.
+你想搭的士？ = Do you want to take a taxi?
+我想搭的士去醫院。 = I want to take a taxi to the hospital.
+佢點樣去公司？ = How does he get to the office?
+
+day 20
+words: 拜拜 聽日見 冇問題 多謝晒 唔該晒
+拜拜！ = Bye bye!
+聽日見！ = See you tomorrow!
+冇問題！ = No problem!
+多謝晒！ = Thanks a lot!
+唔該晒！ = Thank you very much!
+多謝晒，拜拜！ = Thanks a lot, bye!
+冇問題，聽日見！ = No problem, see you tomorrow!
+
+day 21
+words: 我哋 你哋 佢哋 同 一起
+我哋一起去。 = Let us go together.
+我哋一起食飯。 = We eat together.
+我同朋友一起去超市。 = I am going to the supermarket with a friend.
+你哋想食乜嘢？ = What do you want to eat?
+佢哋係我朋友。 = They are my friends.
+你同我一起去。 = You come with me.
+我哋今日去茶餐廳。 = We are going to the cha chaan teng today.
+
+day 22
+words: 講 識 廣東話 英文 明白
+我識講少少廣東話。 = I can speak a little Cantonese.
+你識唔識講英文？ = Can you speak English?
+佢識講廣東話。 = He can speak Cantonese.
+我唔明白。 = I do not understand.
+你明白唔明白？ = Do you understand?
+我唔識講廣東話。 = I cannot speak Cantonese.
+
+day 23
+words: 再 次 慢慢 唔知 知
+唔該，再講一次。 = Please say it once more.
+唔該，慢慢講。 = Please speak slowly.
+我唔知。 = I do not know.
+你知唔知洗手間喺邊度？ = Do you know where the toilet is?
+我聽日再嚟。 = I will come again tomorrow.
+對唔住，我唔知。 = Sorry, I do not know.
+
+day 24
+words: 咩 叫 名字 邊個 歲
+你叫咩名字？ = What is your name?
+我叫阿明。 = My name is Ah Ming.
+你係邊個呀？ = Who are you?
+佢係邊個？ = Who is he?
+你幾多歲？ = How old are you?
+我二十歲。 = I am twenty.
+你朋友叫咩名字？ = What is your friend called?
+
+day 25
+words: 會 可以 唔可以 坐 得唔得
+我會講廣東話。 = I can speak Cantonese.
+你會唔會講英文？ = Can you speak English?
+我坐呢度，得唔得？ = Is it all right if I sit here?
+呢度唔可以坐。 = You cannot sit here.
+你可以食呢個。 = You can eat this one.
+我唔會講。 = I cannot speak it.
+
+day 26
+words: 買 等 問 搵 做
+我想買奶茶。 = I want to buy a milk tea.
+你想買乜嘢？ = What do you want to buy?
+我等朋友。 = I am waiting for a friend.
+你等邊個？ = Who are you waiting for?
+我想問你。 = I would like to ask you something.
+我搵洗手間。 = I am looking for the toilet.
+你今日做咩？ = What are you doing today?
+
+day 27
+words: 住 返工 學 玩 瞓覺
+我住喺香港。 = I live in Hong Kong.
+你住喺邊度？ = Where do you live?
+我聽日返工。 = I am going to work tomorrow.
+你今日返唔返工？ = Are you going to work today?
+我想學廣東話。 = I want to learn Cantonese.
+我哋一起玩。 = Let us play together.
+我而家想瞓覺。 = I want to sleep now.
+
+day 28
+words: 星期 朝早 晚上 點鐘 早唞
+我星期五返工。 = I go to work on Friday.
+我朝早七點鐘返工。 = I go to work at seven in the morning.
+我晚上十點鐘瞓覺。 = I go to bed at ten in the evening.
+而家十點鐘。 = It is ten o'clock now.
+你朝早食咩？ = What do you eat in the morning?
+早唞！ = Good night!
+早唞，阿明！ = Good night, Ah Ming!
+
+day 29
+words: 早餐 多士 蛋撻 菠蘿包 麵包
+我朝早食早餐。 = I have breakfast in the morning.
+我想食多士。 = I want to eat toast.
+我要一個蛋撻，唔該。 = One egg tart, please.
+呢個菠蘿包好食。 = This pineapple bun is tasty.
+你想食麵包？ = Do you want bread?
+我哋一起食早餐。 = We have breakfast together.
+
+day 30
+words: 粥 湯 肉 魚 菜
+我想食粥。 = I want to eat congee.
+呢個湯好食。 = This soup is tasty.
+我唔食肉。 = I do not eat meat.
+我食魚。 = I eat fish.
+你想食菜？ = Do you want vegetables?
+我要一個湯，唔該。 = One soup, please.
+
+day 31
+words: 生果 蘋果 雞蛋 汽水 可樂
+我想食蘋果。 = I want to eat an apple.
+你想飲汽水？ = Do you want a soft drink?
+我要可樂，唔該。 = A cola, please.
+我朝早食雞蛋。 = I eat eggs in the morning.
+你想食生果？ = Do you want some fruit?
+我要一個蘋果。 = I would like one apple.
+
+day 32
+words: 呢 嗰 杯 熱 凍
+我要熱奶茶。 = I want a hot milk tea.
+我要凍咖啡。 = I want an iced coffee.
+我要一杯熱茶。 = I would like a cup of hot tea.
+呢杯好熱。 = This cup is very hot.
+嗰杯好凍。 = That cup is very cold.
+呢杯係乜嘢？ = What is this cup?
+我要呢杯，唔該。 = I will take this cup, please.
+
+day 33
+words: 鍾意 太 咁 真係 最
+我鍾意奶茶。 = I like milk tea.
+你鍾意食乜嘢？ = What do you like to eat?
+呢杯太熱。 = This cup is too hot.
+咁貴呀？ = So expensive?
+呢度真係好食。 = The food here is really good.
+我最鍾意食麵。 = I like noodles most.
+佢真係好開心。 = He is really happy.
+
+day 34
+words: 睇@36 聽 電話 手機 書
+我想睇書。 = I want to read a book.
+你睇乜嘢？ = What are you looking at?
+我嘅手機好舊。 = My phone is very old.
+電話喺嗰度。 = The phone is over there.
+你鍾意睇書？ = Do you like reading?
+我今日睇書。 = I read today.
+你聽電話。 = You answer the phone.
+
+day 35
+words: 衫 新 靚 件 買嘢
+我想買新衫。 = I want to buy new clothes.
+呢件衫好靚。 = This top is very pretty.
+嗰件幾多錢？ = How much is that one?
+我今日去買嘢。 = I am going shopping today.
+你鍾意呢件衫？ = Do you like this top?
+呢件好貴，嗰件好平。 = This one is expensive, that one is cheap.
+
+day 36
+words: 咗 過 已經 未 仲
+我食咗飯。 = I have eaten.
+你食咗飯未？ = Have you eaten yet?
+我未食飯。 = I have not eaten yet.
+我去過香港。 = I have been to Hong Kong.
+佢已經返咗屋企。 = He has already gone home.
+你仲喺度呀？ = You are still here?
+
+day 37
+words: 先 都@113 又 好啦 好似
+你先食。 = You go ahead and eat.
+我都想去。 = I want to go too.
+佢又嚟呀？ = He is coming again?
+好啦，我哋一起去。 = OK then, let us go together.
+呢個好似好食。 = This looks tasty.
+佢好似好忙。 = He seems very busy.
+我先去洗手間。 = I will go to the toilet first.
+
+day 38
+words: 點解 幾時 幾 幾耐 做咩
+點解你唔食？ = Why are you not eating?
+你幾時返屋企？ = When are you going home?
+你要幾個？ = How many do you want?
+你住咗幾耐？ = How long have you lived here?
+你做咩呀？ = What are you doing?
+我哋幾時去？ = When are we going?
+
+day 39
+words: 左邊 右邊 前面 後面 旁邊
+洗手間喺左邊。 = The toilet is on the left.
+超市喺右邊。 = The supermarket is on the right.
+學校喺前面。 = The school is ahead.
+醫院喺後面。 = The hospital is behind.
+茶餐廳喺旁邊。 = The cha chaan teng is next door.
+唔好意思，洗手間喺左邊呀？ = Excuse me, is the toilet on the left?
+
+day 40
+words: 快 慢 小巴 地鐵站 巴士站
+地鐵好快。 = The MTR is very fast.
+巴士好慢。 = The bus is very slow.
+小巴好快。 = The minibus is very fast.
+地鐵站喺邊度？ = Where is the MTR station?
+巴士站喺前面。 = The bus stop is ahead.
+我哋喺地鐵站等。 = We wait at the MTR station.

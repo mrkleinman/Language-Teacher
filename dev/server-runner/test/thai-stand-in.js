@@ -8,7 +8,7 @@ const first = g => String(g || 'it').split(/[,;/(]/)[0].replace(/^to\s+/, '').tr
 
 const FRAMES = [
   ['A', 'ผมชอบ{T}มากครับ', 'I really like {g}.', 'He says he really likes {g}'],
-  ['B', 'ฉันชอบ{T}ค่ะ', 'I like {g} too.', 'She says she likes {g} too'],
+  ['B', 'ชอบ{T}ค่ะ', 'I like {g} too.', 'She says she likes {g} too'],
   ['A', '{T}ดีมากครับ', '{g} is very good.', 'He says {g} is very good'],
 ]
 
@@ -86,8 +86,8 @@ function thaiHandlers(seen) {
     return JSON.stringify(FRAMES.map(f => ({ speaker: f[0], thai: f[1].replace('{T}', T), phonetic: '', english: f[2].replace('{g}', g), prompt: f[3].replace(/\{g\}/g, g), words: [{ p: T, e: g }, { p: f[0] === 'A' ? 'ครับ' : 'ค่ะ', e: '-' }] })))
   })
   // quota recovery: N new sentences, each with the target
-  const REC = [['A', 'ผมชอบ{T}มากครับ', 'I really like {g}.', 'Say you really like {g}.'], ['B', 'ฉันชอบ{T}ค่ะ', 'I like {g} too.', 'Say you like {g} too.'], ['A', '{T}ดีมากครับ', '{g} is very good.', 'Say {g} is very good.'],
-    ['B', 'ฉันมี{T}ค่ะ', 'I have {g}.', 'Say you have {g}.'], ['A', 'ผมไม่มี{T}ครับ', 'I do not have {g}.', 'Say you do not have {g}.'], ['B', '{T}ก็ดีค่ะ', '{g} is good too.', 'Say {g} is good too.'],
+  const REC = [['A', 'ผมชอบ{T}มากครับ', 'I really like {g}.', 'Say you really like {g}.'], ['B', 'ชอบ{T}ค่ะ', 'I like {g} too.', 'Say you like {g} too.'], ['A', '{T}ดีมากครับ', '{g} is very good.', 'Say {g} is very good.'],
+    ['B', 'มี{T}ค่ะ', 'I have {g}.', 'Say you have {g}.'], ['A', 'ผมไม่มี{T}ครับ', 'I do not have {g}.', 'Say you do not have {g}.'], ['B', '{T}ก็ดีค่ะ', '{g} is good too.', 'Say {g} is good too.'],
     ['A', 'ผมอยากได้{T}ครับ', 'I want {g}.', 'Say you want {g}.'], ['B', '{T}ดีไหมคะ', 'Is {g} good?', 'Ask if {g} is good.']]
   list.push(ctx => {
     if (!/Return ONLY a JSON array: \[\{"targetId":/.test(ctx.q)) return undefined

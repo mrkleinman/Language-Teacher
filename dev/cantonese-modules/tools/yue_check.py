@@ -27,6 +27,8 @@ Everything else is checked as for any module (slots, English, prompts, particles
     tier (the words beyond position 200, and any word the lines do not suit) goes into exclude_ids, exactly as the TV top-up writers did. `starter-allowed` prints that list.
   - the module tier may be higher than the lowest fitting word (a T2 target needs a T2-or-higher module) but never lower: a module only fits words of its own tier or below.
   - no Latin letters in a line.
+  - a starter module that fits exactly ONE word may write its English and prompts literally, with no {E}: the slot English of a function word ('be', 'not', 'want to', 'of') fits no real sentence
+    ("I be Ah Ming"), and a one-word module has no other word to be right for. With two or more fitting words {E} / {Es} are required as for every module.
 `starter-allowed` prints the exact vocabulary a writer may use for a target (a word id) or for an existing starter module (its id).
 Tools that cut a module's lines into words (the app's build) should call module_cut(row, chunk): it uses this rule for a starter module and the tier list for every other module.
 """
@@ -188,8 +190,9 @@ def check_row(r, problems, seen_open):
         if '{M}' in zh and any(not w.get('classifier') for w in fw): problems.append((mid, f, '{M} used but some fitting word has no classifier'))
         for tok in re.findall(r'\{[^}]*\}', zh):
             if tok not in ('{W}', '{M}'): problems.append((mid, f, 'unknown Mandarin token ' + tok))
-        if not re.search(r'\{Es?\}', en): problems.append((mid, f, 'no {E} or {Es} in English'))
-        if not re.search(r'\{Es?\}', pr): problems.append((mid, f, 'note: no {E} in prompt'))
+        lit = st and len(fw) == 1                 # a starter module that fits ONE word writes its English literally ("I am Ah Ming"): the slot English of a function word (be, not, want to) fits no frame
+        if not lit and not re.search(r'\{Es?\}', en): problems.append((mid, f, 'no {E} or {Es} in English'))
+        if not lit and not re.search(r'\{Es?\}', pr): problems.append((mid, f, 'note: no {E} in prompt'))
         for tok in re.findall(r'\{[^}]*\}', en + pr):
             if tok not in ('{E}', '{Es}', '{a}'): problems.append((mid, f, 'unknown English token ' + tok))
         if re.search(r'\b[Aa]n? \{Es?\}', en + ' ' + pr): problems.append((mid, f, 'literal a/an before {E}: use {a}'))

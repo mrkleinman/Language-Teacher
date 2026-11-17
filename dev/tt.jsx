@@ -16416,6 +16416,7 @@ function pickWords(vocab, mode, todayNewWords, popts) {
     return false
   }
   let ordered
+  const padIds = new Set()          // the reserve tiers that only pad a short list (new-reserve · bank-reserve): never targets of a Daily
   // NEW filter positions are passed per NEW slot; later stages pass out.length (the slot the candidate would take)
   if (mode === 'weak') {
     let weak = vocab.filter(w => w.difficulty === 'hard' || w.status === 'lapsed' || w.lapses >= 2)
@@ -16450,6 +16451,9 @@ function pickWords(vocab, mode, todayNewWords, popts) {
     rest.forEach(w => { w._selectorStage = 'bank-reserve' })
     // a short ranked order (tiny learner, most of the bank ineligible) continues into the tiers in order
     ordered = ordered.concat(learned, unseen, rest)
+    // 17 Nov (the owner's rule): the two padding tiers stay in the ORDER (they are the reserve that replaces a NEW word that fails the freeze with another NEW word),
+    // but a Daily is never padded with them: it holds the review words that exist plus the belt's new-word quota, however few that is (see targets below)
+    unseen.concat(rest).forEach(w => padIds.add(w.id))
   }
   // v681 — function-word targets (THAI_FUNCTION_TARGET_GUIDE) in PRIORITY order: the first THAI_FUNCTION_TARGETS_PER_TRACK keep their
   // slot; any further one is skipped (logged, still due) so a lesson is never mostly particles
@@ -16471,7 +16475,7 @@ function pickWords(vocab, mode, todayNewWords, popts) {
     if (qAll.length) {
       let limit = 5; try { limit = getBeltConfig(currentRankName(rankV)).newWordLimit } catch (e) {}
       const qNew = qAll.filter(w => isGenuinelyNew(w)).slice(0, limit), qOld = qAll.filter(w => !isGenuinelyNew(w))
-      const picks = qNew.concat(qOld).slice(0, N).map(w => { w._selectorStage = 'queued'; return w })
+      const picks = qNew.concat(qOld).slice(0, N).map(w => { w._selectorStage = 'queued'; padIds.delete(w.id); return w })
       const pickIds = new Set(picks.map(w => w.id)); let newLeft = Math.max(0, limit - qNew.length)
       const rest = ordered.filter(w => !pickIds.has(w.id)).filter(w => { if (!isGenuinelyNew(w)) return true; if (newLeft > 0) { newLeft--; return true } return false })
       ordered = picks.concat(rest)
@@ -16494,7 +16498,10 @@ function pickWords(vocab, mode, todayNewWords, popts) {
   }
   // a NEW phrase takes one of the NEW places of the 30 (the last new word gives way; with no new word in the 30 it takes the last place)
   const nWords = N
-  let targets = ordered.slice(0, nWords)
+  // a Daily takes the words that exist (never the padding tiers); Revision / weak lists are not built here
+  const body = mode === 'daily' ? ordered.filter(w => !padIds.has(w.id)) : ordered
+  let targets = body.slice(0, nWords)
+  const shortByDesign = mode === 'daily' && body.length < nWords
   phraseNew.forEach(pn => {
     // never at the expense of a word the learner queued by hand: the phrase takes the last NEW word that was not queued; a phrase the learner queued may also take the last non-queued place
     let at = -1; targets.forEach((w, i) => { if (isGenuinelyNew(w) && w._selectorStage !== 'queued') at = i })
@@ -16504,7 +16511,8 @@ function pickWords(vocab, mode, todayNewWords, popts) {
   })
   targets = targets.concat(phraseReview)          // the due phrases ride on top of the 30
   const tIds = new Set(targets.map(w => w.id))
-  const reserve = ordered.slice(nWords).filter(w => !tIds.has(w.id))
+  const bodyIds = new Set(body.slice(0, nWords).map(w => w.id))
+  const reserve = ordered.filter(w => !bodyIds.has(w.id) && !tIds.has(w.id))
   const targetIds = new Set(targets.map(w => w.id))
   const anchors = vocab
     .filter(w => (w.status === 'known' || w.status === 'learning') && !targetIds.has(w.id))
@@ -16554,13 +16562,14 @@ function pickWords(vocab, mode, todayNewWords, popts) {
   // a short selection is never silent: freezeThaiTargetSelection turns it into TRACK_SELECTION_BLOCKED
   const shortfall = targets.length < N ? { requested: N, selected: targets.length,
     reason: 'eligible candidate pool exhausted (' + ordered.length + ' eligible)' } : null
+  // 17 Nov: a Daily that is short because there are fewer review words than 30 (+ the belt's new quota) is short ON PURPOSE, never a shortfall to be filled
   // an unseen word selected from the reserve tiers exceeds the NEW ceiling — only possible when
   // no eligible introduced word is left in the whole bank; flagged, counted as NEW, logged
   const overflowWords = targets.filter(w => /^(new-reserve|bank-reserve)$/.test(w._selectorStage || '') && isGenuinelyNew(w))
   overflowWords.forEach(w => { w._newCeilingOverflow = true })
   targets = targets.map(w => overflowWords.includes(w) ? { ...w, _newCeilingOverflow: true } : w)
   if (overflowWords.length) candidateStats.newCeilingOverflow = overflowWords.length
-  return { targets, anchors, reserve, skippedCandidates, selectionBackfills, candidateStats, shortfall, framing: (framing.open || framing.close) ? framing : null }
+  return { targets, anchors, reserve, skippedCandidates, selectionBackfills, candidateStats, shortfall, shortByDesign, framing: (framing.open || framing.close) ? framing : null }
 }
 
 // Freezes the lesson selection (v645.1). Every selected target is resolved against the
@@ -16573,7 +16582,10 @@ function pickWords(vocab, mode, todayNewWords, popts) {
 //                 when no eligible review word is left anywhere → 5 bank-reserve
 // The count is then restored to 30 and frozen again. The track is blocked ONLY when the
 // entire eligible reserve is exhausted (whole-bank, not one bucket).
-function freezeThaiTargetSelection({ selected, reserve, required, mode, onLog, noNewOverflow, feasibility } = {}) {
+// 17 Nov (the owner's rule): `allowShort` — a Daily / Revision holds min(30, the words that exist). The reserve is still used to replace a failed word with
+// the same kind of word (NEW by NEW, review by review) but never to pad: when it runs dry the track stays short, and it is blocked only when it holds NO
+// target at all. Callers that pass allowShort also pass noNewOverflow (a short Daily is never padded with extra NEW words).
+function freezeThaiTargetSelection({ selected, reserve, required, mode, onLog, noNewOverflow, feasibility, allowShort } = {}) {
   const need = required || THAI_TRACK_TARGET_COUNT
   const lines = [], out = [], used = new Set(), backfills = [], deferred = []
   const log = m => { lines.push(m); try { onLog && onLog(m) } catch (e) {} ; try { console.info('[thai-target] ' + m) } catch (e) {} }
@@ -16607,7 +16619,7 @@ function freezeThaiTargetSelection({ selected, reserve, required, mode, onLog, n
       if (rep) return rep
     }
     const review = pool.filter(w => !isGenuinelyNew(w))
-    const rep = (bucket ? takeFrom(review.filter(w => bucketOf(w) === bucket)) : null) || takeFrom(review.filter(w => !isOverflowTier(w))) || takeFrom(review)
+    const rep = (bucket ? takeFrom(review.filter(w => bucketOf(w) === bucket)) : null) || takeFrom(review.filter(w => !isOverflowTier(w))) || takeFrom(noNewOverflow ? review.filter(w => !isOverflowTier(w)) : review)
     if (rep || noNewOverflow) return rep
     const ov = takeFrom(pool.filter(w => isGenuinelyNew(w)))
     return ov ? { ...ov, newOverflow: true } : null
@@ -16640,12 +16652,16 @@ function freezeThaiTargetSelection({ selected, reserve, required, mode, onLog, n
       replacementBucket: rep.bucket, bucket: '-', newCeilingOverflow: !!rep.newOverflow, stage: 'freeze' })
   }
   // blocked ONLY when the whole eligible reserve is exhausted (never because one bucket ran out)
-  const blocked = out.length < need ? { code: 'TRACK_SELECTION_BLOCKED', eligible: out.length, required: need, mode: mode || 'daily',
+  const blocked = out.length < (allowShort ? 1 : need) ? { code: 'TRACK_SELECTION_BLOCKED', eligible: out.length, required: allowShort ? 1 : need, mode: mode || 'daily',
     scope: 'ELIGIBLE_POOL_EXHAUSTED',
-    reason: 'the entire eligible ' + (mode === 'revision' ? 'introduced-word pool (revision never uses unseen words)' : 'vocabulary bank') + ' holds only ' + out.length + ' valid targets (required ' + need + ')' } : null
+    reason: allowShort ? 'the entire eligible ' + (mode === 'revision' ? 'introduced-word pool (revision never uses unseen words)' : 'vocabulary bank') + ' holds no valid target at all'
+      : 'the entire eligible ' + (mode === 'revision' ? 'introduced-word pool (revision never uses unseen words)' : 'vocabulary bank') + ' holds only ' + out.length + ' valid targets (required ' + need + ')' } : null
   if (blocked) log('TRACK_SELECTION_BLOCKED eligible=' + blocked.eligible + ' required=' + blocked.required + ' scope=' + blocked.scope + ' mode=' + blocked.mode)
   const selectedTargetIds = Object.freeze(out.map(t => t.id))
-  return { targets: out.slice(0, need), selectedTargetIds, backfills, blocked, log: lines, deferred }
+  // short by design: fewer than asked, and nothing left in the reserve to replace a word with (never padded)
+  const short = !blocked && out.length < need
+  if (short && allowShort) log('SHORT_BY_DESIGN ' + out.length + ' target(s): the words that exist (review words + the belt\'s new-word quota) — no padding with unseen or reserve words')
+  return { targets: out.slice(0, need), selectedTargetIds, backfills, blocked, log: lines, deferred, short: short && !!allowShort }
 }
 // Thai Revision through the same eligibility layer (the selector itself is shared and
 // language-neutral; eligibility is passed in, so Japanese/Mandarin are unaffected).
@@ -31722,7 +31738,22 @@ const TRACK_CONTRACT = Object.freeze({ TARGETS: 30, PAIRS_PER_TARGET: 3, QUOTA_R
 // A Thai Daily carries 30 words PLUS the review phrases that are due (phrase scheduling, v742: up to 5 on top of the 30). The finaliser used to demand
 // exactly 30 targets / 90 pairs, so every such track was marked NOT_READY ("SELECTED_TARGETS=35 (required 30)", 12 Nov). A review phrase is a Thai phrase entry
 // that is not new (a NEW phrase is taught inside the 30 new-word places). Other languages and tracks without phrase extras keep the plain 30.
-function trackTargetsRequired(lang, kws, newIds) {
+// 17 Nov (the owner's rule): "for any language that has less than 30 words learnt, just stick with the number of available words". A Daily holds the review words that
+// exist plus the belt's new-word quota; a Revision the learned words that exist. The number a track was PLANNED with is written on the track when it is created
+// (track.targetPlan = { planned, shortByDesign, wordCap }); only a track that was short by design is judged against that number (and only when it still holds exactly
+// that many). A track that was meant to hold 30 and lost words (the live 30 -> 26) has no such plan and is still NOT_READY.
+function makeTargetPlan(planned, shortByDesign) {
+  const n = Number(planned) || 0
+  return { planned: n, shortByDesign: !!shortByDesign && n > 0, wordCap: TRACK_CONTRACT.TARGETS }
+}
+// the plan for a list of selected targets (review phrases ride on top of the 30 words and are not counted as words)
+function targetPlanFor(targets) {
+  const list = (targets || []).filter(Boolean)
+  const words = list.filter(w => !w._phraseReview).length
+  return makeTargetPlan(list.length, words < TRACK_CONTRACT.TARGETS)
+}
+function trackTargetsRequired(lang, kws, newIds, plan) {
+  if (plan && plan.shortByDesign && plan.planned > 0) return plan.planned
   let n = TRACK_CONTRACT.TARGETS
   const nw = new Set(newIds || [])
   if (lang === 'th' && THAI_PHRASE_SPLIT.on) n += (kws || []).filter(k => k && THAI_PHRASE_IDS.has(k.wordId) && !k.isNew && !nw.has(k.wordId)).length
@@ -32216,7 +32247,7 @@ function trackPairValidity(p, kw, adapter, ctx) {
     if (_an.overHardMax) reasons.push('LEVEL_COMPLEXITY_FAIL: ' + _an.units + ' ' + _cc.unitName + ' > hardMax ' + _cc.hardMax + ' (belt ' + _cc.belt + ')') }
   return { valid: reasons.length === 0, reasons }
 }
-function trackQuotaReport(pairs, keywords, adapter, ctx) {
+function trackQuotaReport(pairs, keywords, adapter, ctx, plan) {
   const need = TRACK_CONTRACT.PAIRS_PER_TARGET
   const rows = (keywords || []).map(kw => ({ targetId: kw.wordId, target: adapter.surfaceOf(kw), valid: 0, validPairIds: [], invalid: [], deficit: need, unresolvedAtSelection: !!kw.unresolved }))
   const byId = new Map(rows.map(r => [r.targetId, r]))
@@ -32240,7 +32271,8 @@ function trackQuotaReport(pairs, keywords, adapter, ctx) {
   rows.forEach(r => { r.deficit = Math.max(0, need - r.valid) })
   const quotaMet = rows.reduce((n, r) => n + Math.min(need, r.valid), 0)
   return { rows, required: rows.length * need, quotaMet, targetLines, bridges, framing, playable: (pairs || []).filter(Boolean).length,
-    wordsCovered: rows.filter(r => r.valid > 0).length, complete: rows.length >= TRACK_CONTRACT.TARGETS && rows.every(r => r.deficit === 0) }
+    wordsCovered: rows.filter(r => r.valid > 0).length,
+    complete: rows.length >= (plan && plan.shortByDesign && plan.planned > 0 ? plan.planned : TRACK_CONTRACT.TARGETS) && rows.every(r => r.deficit === 0) }
 }
 // Where a recovered TARGET PAIR goes: right after what remains of its word's group,
 // otherwise before the closing FRAMING lines.
@@ -33450,7 +33482,8 @@ async function finaliseMainTrack(track, adapter, ctx) {
       }
       log && log('  ♻️ FINAL_RECOVERY ' + rv.dropped.length + ' line(s) removed by the final cue revalidation · ' + ((qf.recovered || []).length) + ' replaced')
     } } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
-  const quota = trackQuotaReport(t.pairs, kws, adapter, c)
+  const _plan = t.targetPlan || track.targetPlan || null          // 17 Nov: what the track was planned with (short by design, or meant to hold 30)
+  const quota = trackQuotaReport(t.pairs, kws, adapter, c, _plan)
   const status = adapter.qcStatus(t, c)
   const inv = {
     SELECTED_TARGETS: kws.length,
@@ -33516,7 +33549,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (_prov && !_prov.ok) reasons.push('TARGET_PAIR_PROVENANCE=' + inv.TARGET_PAIR_PROVENANCE)
   if (_tc && _tc.mode === 'daily' && _tc.expectedNewCount != null && _tc.selectedNewTargetIds.length !== _tc.expectedNewCount && !_tc.newCountException)
     reasons.push('NEW_COUNT_MISMATCH=' + inv.SELECTED_NEW)
-  const _reqT = trackTargetsRequired(adapter.lang, kws, (_tc && _tc.selectedNewTargetIds) || t.selectedNewTargetIds)
+  const _reqT = trackTargetsRequired(adapter.lang, kws, (_tc && _tc.selectedNewTargetIds) || t.selectedNewTargetIds, _plan)
   if (inv.SELECTED_TARGETS !== _reqT) reasons.push('SELECTED_TARGETS=' + inv.SELECTED_TARGETS + ' (required ' + _reqT + ')')
   if (quota.quotaMet !== _reqT * TRACK_CONTRACT.PAIRS_PER_TARGET) reasons.push('TARGET_PAIR_QUOTA=' + inv.TARGET_PAIR_QUOTA + ' (required ' + _reqT * TRACK_CONTRACT.PAIRS_PER_TARGET + '/' + _reqT * TRACK_CONTRACT.PAIRS_PER_TARGET + ')')
   if (inv.STATE_CONTRADICTIONS) reasons.push('STATE_CONTRADICTIONS=' + inv.STATE_CONTRADICTIONS + ' (' + inv.STATE_CONTRADICTIONS_DETAIL + ')')
@@ -33975,6 +34008,7 @@ function makeTrackContext(o) {
     register: c.register || null, selectedTargetIds: sel, selectedNewTargetIds: newIds,
     requiredReviewTargetIds: sel.filter(id => !newIds.includes(id)),
     expectedNewCount: c.expectedNewCount != null ? c.expectedNewCount : null, newCountException: c.newCountException || null,
+    ...(c.targetPlan ? { targetPlan: c.targetPlan } : {}),        // 17 Nov: how many targets the track was planned with (short by design, or meant to hold 30)
     generationRunId: c.generationRunId || null, pipelineVersion: PIPELINE_VERSION }
 }
 function assertTrackContext(tc) {
@@ -34219,7 +34253,8 @@ async function jazhQcFinaliseAndListen(track, lang, o) {
 function trackReadiness(track) {
   const g = track && track.integrity
   const lb = track && track.listeningBuild
-  const base = { selectedTargets: 0, expectedTargetPairs: TRACK_CONTRACT.TARGETS * TRACK_CONTRACT.PAIRS_PER_TARGET, validTargetPairs: 0,
+  const _pl = track && track.targetPlan
+  const base = { selectedTargets: 0, expectedTargetPairs: (_pl && _pl.shortByDesign && _pl.planned > 0 ? _pl.planned : TRACK_CONTRACT.TARGETS) * TRACK_CONTRACT.PAIRS_PER_TARGET, validTargetPairs: 0,
     targetCoverage: '0/0', semanticQcState: 'NOT_RUN', naturalnessQcState: 'NOT_RUN', closedVocabularyPass: false, pronunciationAlignmentIssues: null,
     unverifiedFinalPairs: null, unresolvedTargetIds: [], perTarget: [], playableLines: ((track && track.pairs) || []).length,
     listeningState: lb && lb.status ? lb.status : 'NOT_BUILT', mainTrackState: 'NOT_FINALISED', ready: false, reasons: ['FINAL_TRACK not built'] }
@@ -35883,20 +35918,19 @@ function enforceTrackTargetContract(selection, o) {
   const learned = vocab.filter(w => !used.has(w.id) && jazhTargetEligible(w, lang) && (typeof revisionEligible === 'function' ? revisionEligible(w) : hasBeenIntroduced(w)))
     .sort((a, b) => due(a).localeCompare(due(b)) || String(a.lastSeen || '').localeCompare(String(b.lastSeen || '')) || (a.id - b.id))
   for (const w of learned) { if (out.length >= need) break; out.push({ ...w, selectionRole: 'reinforce', _selectorStage: 'fallback-learned' }); used.add(w.id); log.push('BACKFILL slot=' + out.length + ' fallback-learned ' + w.id) }
-  // Cantonese (17 Nov): the belt's new-word limit is a rule, not a preference. The overflow below pads a Daily with extra NEW words to reach 30 when there is not enough to
-  // review (a new learner would get 30 new words at White belt, whose limit is 5): for Cantonese a short Daily is accepted instead, and it grows as words are learned
-  if (out.length < need && mode === 'daily' && lang !== 'yue') {
-    const byOrder = (a, b) => (a.unlockOrder || a.id) - (b.unlockOrder || b.id)
-    const unseen = vocab.filter(w => !used.has(w.id) && jazhTargetEligible(w, lang) && isGenuinelyNew(w)).sort(byOrder)
-    for (const w of unseen) { if (out.length >= need) break; out.push({ ...w, selectionRole: 'new', _newCeilingOverflow: true, _selectorStage: 'new-reserve' }); used.add(w.id); log.push('BACKFILL slot=' + out.length + ' NEW_CEILING_OVERFLOW ' + w.id) }
-  }
+  // 17 Nov (the owner's rule: "for any language that has less than 30 words learnt, just stick with the number of available words"): a track holds
+  // min(30, the words that exist), for Japanese, Mandarin and Cantonese alike. A Daily is the review words that exist plus the belt's new-word quota (the
+  // selector already placed those): it is NEVER padded with extra NEW words to reach 30 (a new learner would get 30 new words at a belt whose limit is 5),
+  // and a Revision never had new words. The old NEW_CEILING_OVERFLOW tier (new-reserve) is gone; a short track is accepted and grows as words are learned.
   const targets = out.slice(0, need).map((w, i) => ({ ...w, targetIndex: i }))
-  const blocked = targets.length < need && !(lang === 'yue' && mode === 'daily' && targets.length > 0) ? { code: 'TRACK_SELECTION_BLOCKED', eligible: targets.length, required: need, mode,
-    reason: 'the entire eligible ' + (mode === 'revision' ? 'introduced-word pool (revision never uses unseen words)' : lang + ' vocabulary bank') + ' holds only ' + targets.length + ' valid targets (required ' + need + ')' } : null
+  // blocked only when there is nothing at all to practise (no learned word to review and no new word available)
+  const blocked = targets.length === 0 ? { code: 'TRACK_SELECTION_BLOCKED', eligible: 0, required: 1, mode,
+    reason: 'the entire eligible ' + (mode === 'revision' ? 'introduced-word pool (revision never uses unseen words)' : lang + ' vocabulary bank') + ' holds no valid target at all' } : null
   const counts = { ...(selection && selection.counts || {}), total: targets.length,
     new: targets.filter(w => w.selectionRole === 'new' || w._newCeilingOverflow).length,
     overflowNew: targets.filter(w => w._newCeilingOverflow).length }
-  return { ...(selection || {}), targets, counts, blocked, skippedCandidates: skipped, backfillLog: log, contract: need, expectedRecalls: targets.length * 3 }
+  return { ...(selection || {}), targets, counts, blocked, skippedCandidates: skipped, backfillLog: log, contract: need, expectedRecalls: targets.length * 3,
+    short: targets.length > 0 && targets.length < need, bankCanFill: targets.length >= need }
 }
 
 
@@ -35922,13 +35956,16 @@ function jazhStartGate(o) {
   let blocked = null
   try {
     const mode = opts.trackMode === 'revision' || opts.trackMode === 'srs' ? 'revision' : 'daily'
-    blocked = enforceTrackTargetContract({ targets }, { lang, vocab: opts.vocab || [], mode }).blocked
-    // the targets given are already the contracted list: a short list that the whole bank could not fill is a data problem
-    if (!blocked && targets.length < TRACK_CONTRACT.TARGETS && !(lang === 'yue' && mode === 'daily' && targets.length > 0)) blocked = { code: 'TRACK_SELECTION_BLOCKED', eligible: targets.length, required: TRACK_CONTRACT.TARGETS, mode,
-      reason: 'only ' + targets.length + ' valid targets were selected (required ' + TRACK_CONTRACT.TARGETS + ')' }
+    const r = enforceTrackTargetContract({ targets }, { lang, vocab: opts.vocab || [], mode })
+    blocked = r.blocked
+    // 17 Nov: a short list is a normal lesson (a track holds min(30, the words that exist): the review words that exist plus the belt's new-word quota, a Revision the
+    // learned words). What is still a data problem: no target at all, or a short list although the bank could fill all 30 (a selection that lost words)
+    if (!blocked && !targets.length) blocked = { code: 'TRACK_SELECTION_BLOCKED', eligible: 0, required: 1, mode, reason: 'no valid target was selected' }
+    else if (!blocked && targets.length < TRACK_CONTRACT.TARGETS && r.bankCanFill) blocked = { code: 'TRACK_SELECTION_BLOCKED', eligible: targets.length, required: TRACK_CONTRACT.TARGETS, mode,
+      reason: 'only ' + targets.length + ' valid targets were selected (the bank holds enough words for ' + TRACK_CONTRACT.TARGETS + ')' }
   } catch (e) { blocked = null }        // a failure of the check itself never blocks a lesson
   if (blocked) return { code: 'TRACK_SELECTION_BLOCKED', blocked, message: 'TRACK_SELECTION_BLOCKED eligible=' + blocked.eligible + ' required=' + blocked.required +
-    '\n\n' + blocked.reason + '. This is a vocabulary-data problem, not a normal short lesson — no track was started.' }
+    '\n\n' + blocked.reason + (blocked.eligible === 0 ? '. There is nothing to practise yet — no track was started.' : '. This is a vocabulary-data problem, not a normal short lesson — no track was started.') }
   return null
 }
 // A due greeting / parting word from the bank that the track's opening or closing line happens to be: it is rated with the
@@ -40647,10 +40684,11 @@ function selectRevisionTargets(lang, vocab) {
     const rvAll = selectThaiRevisionTargets(V, 100000)
     const ids30 = new Set(rv30.targets.map(w => w.id))
     const frozen = freezeThaiTargetSelection({ selected: rv30.targets, reserve: rvAll.targets.filter(w => !ids30.has(w.id)), required: THAI_TRACK_TARGET_COUNT, mode: 'revision', noNewOverflow: true,
+      allowShort: true,        // 17 Nov: a Revision holds the learned words that exist (up to 30); it is blocked only when there is none at all
       feasibility: thaiSelectionFeasibility(thaiAuthorisedSurfaces(V, rv30.targets)) })   // v671 §B2 — the same pre-freeze sense feasibility
     const skippedCandidates = (rvAll.skippedCandidates || []).filter(x => x.position < THAI_TRACK_TARGET_COUNT)
     return { language: 'th', rule: 'revision', selector: 'selectRevisionTargets(th) = selectThaiRevisionTargets → freezeThaiTargetSelection',
-      selection: rv30, raw: rv30.targets, targets: frozen.targets, targetIds: frozen.targets.map(w => w.id), counts: rv30.counts, blocked: frozen.blocked || null,
+      selection: rv30, raw: rv30.targets, targets: frozen.targets, targetIds: frozen.targets.map(w => w.id), counts: rv30.counts, blocked: frozen.blocked || null, short: !!frozen.short,
       reserve: rvAll.targets.filter(w => !ids30.has(w.id)), skippedCandidates, selectionBackfills: (rv30.selectionBackfills || []).concat(frozen.backfills || []),
       candidateStats: rvAll.candidateStats ? { ...rvAll.candidateStats, skippedBeforeSelection: skippedCandidates.length } : null, frozen }
   }
@@ -45118,18 +45156,20 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     if (!_contract) { const r = resolveThaiTargetSet(_rawTargets, _rawAnchors); return { ...r, backfills: [], blocked: null } }
     if (_revCanon) {   // v659: Revision uses the canonical selection AS IS (its freeze already ran inside selectRevisionTargets)
       const a = resolveThaiTargetSet([], _rawAnchors)
-      return { targets: _revCanon.targets, anchors: a.anchors, skipped: [], backfills: _revCanon.selectionBackfills, blocked: _revCanon.blocked, selectedTargetIds: _revCanon.targetIds }
+      return { targets: _revCanon.targets, anchors: a.anchors, skipped: [], backfills: _revCanon.selectionBackfills, blocked: _revCanon.blocked, selectedTargetIds: _revCanon.targetIds, short: !!_revCanon.short }
     }
     const _auth = thaiAuthorisedSurfaces(vocab, _rawTargets || [])
-    const f = freezeThaiTargetSelection({ selected: _rawTargets, reserve: _reserve, required: THAI_TRACK_TARGET_COUNT + (_rawTargets || []).filter(w => w && w._phraseReview).length, mode, noNewOverflow: mode === 'revision',
+    // 17 Nov (the owner's rule): a Daily / Revision holds min(30, the words that exist) — never padded with unseen or reserve words; a topic or weak track keeps its own contract
+    const _shortOk = (mode === 'daily' || mode === 'revision') && !topic
+    const f = freezeThaiTargetSelection({ selected: _rawTargets, reserve: _reserve, required: THAI_TRACK_TARGET_COUNT + (_rawTargets || []).filter(w => w && w._phraseReview).length, mode, noNewOverflow: mode === 'revision' || _shortOk, allowShort: _shortOk,
       feasibility: thaiSelectionFeasibility(_auth) })
     const a = resolveThaiTargetSet([], _rawAnchors)
-    return { targets: f.targets, anchors: a.anchors, skipped: [], backfills: (_selBackfills || []).concat(f.backfills), blocked: f.blocked, selectedTargetIds: f.selectedTargetIds }
+    return { targets: f.targets, anchors: a.anchors, skipped: [], backfills: (_selBackfills || []).concat(f.backfills), blocked: f.blocked, selectedTargetIds: f.selectedTargetIds, short: !!f.short }
   }, [_rawTargets, _rawAnchors, _reserve, _contract, mode, _selBackfills, _revCanon, vocab])
   const { targets, anchors, skipped: _skippedTargets } = _selection
   // v642: one named-count record for this lesson (log, UI, track, export)
   const targetCounts = useMemo(() => thaiTargetCounts({
-    requested: customTargets && customTargets.length && !_contract ? customTargets.length : THAI_TRACK_TARGET_COUNT + (_contract ? (_rawTargets || []).filter(w => w && w._phraseReview).length : 0),   // the phrases due ride on top of the 30
+    requested: customTargets && customTargets.length && !_contract ? customTargets.length : _selection.short ? targets.length : THAI_TRACK_TARGET_COUNT + (_contract ? (_rawTargets || []).filter(w => w && w._phraseReview).length : 0),   // the phrases due ride on top of the 30; a track that is short by design asks for what exists
     selectedTargets: _contract ? targets : (_rawTargets || []),
     generationTargets: targets, unresolved: _skippedTargets, mode, shortfall: _selShortfall, lockedByUnratedTracks: _lockedByUnrated,
     candidateStats: _candidateStats, skippedCandidates: _skippedCandidates, backfills: _selection.backfills, blocked: _selection.blocked, contract: !!_contract,
@@ -45492,6 +45532,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           targetCounts,
           framingWords: thaiFramingKeywords(activeTargets && activeTargets._framingWords, _kwOf),
           selectedTargetIds: keywords.map(k => k.wordId),
+          targetPlan: makeTargetPlan(keywords.length, _selection.short && !topic && (mode === 'daily' || mode === 'revision')),     // 17 Nov: short by design (the words that exist), or meant to hold 30
           unresolvedTargets: keywords.filter(k => k.unresolved).map(k => ({ wordId: k.wordId, thai: k.thai, reason: k.unresolvedReason })),
           skippedCandidates: (targetCounts && targetCounts.skippedCandidates) || [],
           selectionBackfills: (targetCounts && targetCounts.backfills) || [],

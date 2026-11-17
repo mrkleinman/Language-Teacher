@@ -9519,10 +9519,15 @@ function yueTaughtSurfaces(vocab) {
   return s
 }
 // the allowed set of ONE track: taught words + the free words + every target of the track (new and review)
+// 17 Nov: a word of the list that is made of two words the learner already has, with the meaning of the two put together (go + home), may be used from the day its parts are taught.
+// 學校 (school), 的士 (taxi) and 拜拜 (bye) had NO lesson for a beginner because every lesson for them said 返屋企 ("go home", a word of the 239th place) instead of 返 + 屋企 (both taught on
+// day 8), so they were planned and skipped every day and never taught. Only compounds listed here count; nothing else is inferred.
+const YUE_COMPOUNDS = Object.freeze({ '返屋企': ['返', '屋企'] })
 function yueAllowedSet(vocab, targets) {
   const s = yueTaughtSurfaces(vocab)
   YUE_FREE_SET.forEach(w => s.add(w))
   ;(targets || []).forEach(t => { if (t && t.chinese) s.add(t.chinese) })
+  Object.keys(YUE_COMPOUNDS).forEach(k => { if (YUE_COMPOUNDS[k].every(p => s.has(p))) s.add(k) })
   return s
 }
 // every fixed word of a module (punctuation has no Yale and is not a word) and whether it needs the classifier; cached on the module
@@ -10615,7 +10620,9 @@ function gateTargetsByFeasibility(targets, pool, isTeachable, isNew) {
     const want = isNew(t)
     const sub = (pool || []).find(w => !used.has(w.id) && isNew(w) === want && isTeachable(w))
     deferred.push({ target: t, replacedBy: sub || null })
-    if (sub) { used.add(sub.id); out.push(sub) }
+    // 17 Nov: the replacement takes the ROLE of the word it replaces. A plain word from the pool has no role, so the plan counted a replacement NEW word as a review word ("3 NEW" with
+    // two words rated "didn't appear", then 5 once generation started and read the words themselves): the replacement is a NEW target exactly when the deferred one was.
+    if (sub) { used.add(sub.id); out.push({ ...sub, selectionRole: t.selectionRole || (want ? 'new' : 'reinforce'), originalSrsStatus: sub.status, ...(t.targetIndex != null ? { targetIndex: t.targetIndex } : {}) }) }
   }
   return { targets: out, deferred }
 }

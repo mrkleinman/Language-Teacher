@@ -35881,12 +35881,14 @@ const TRACK_ADAPTERS = {
   },
 }
 
-// §2 — the HARD 30-TARGET CONTRACT for Japanese and Mandarin (Thai keeps its own v646
-// cascade, which already implements it). Ranked selection → eligibility → skip a bad
-// candidate → continue through the ranked pool → exactly 30 → freeze. A preferred bucket
-// that runs out widens through the ranked eligible pool: other introduced words (most
-// due first), then — Daily only, and only when no introduced word is left — the
-// language's next unseen words, flagged NEW_CEILING_OVERFLOW and counted as NEW.
+// §2 — the 30-TARGET CONTRACT for Japanese, Mandarin and Cantonese (Thai keeps its own v646
+// cascade). Ranked selection → eligibility → skip a bad candidate → continue through the
+// ranked pool → up to 30 → freeze. A preferred bucket that runs out widens through the
+// ranked eligible pool: other introduced words (most due first).
+// 17 Nov (the owner's rule): a track holds min(30, the words that exist). The old last step
+// — padding a Daily with the language's next unseen words (NEW_CEILING_OVERFLOW) — is gone:
+// a Daily is the review words that exist + the belt's new-word quota, a Revision the learned
+// words that exist; the contract is blocked only when there is nothing to practise at all.
 function jazhTargetEligible(w, lang) {
   if (!w || w.id == null || w.duplicateOf || w.status === 'locked') return false
   const s = lang === 'ja' ? w.japanese : w.chinese
@@ -57221,6 +57223,7 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
         <span>{describeTargetSelection((selection && selection.counts) || { total:(targets||[]).length, new:newCount, due:0, reinforce:0 }, targets)}</span>
         <span style={{ color:'var(--muted)' }}>{'\u00B7'} {allowCtx.all.length} content words available</span>
       </p>
+      {shortTrackNote(targets, trackMode === 'revision') && <p data-short-track="1" style={{ fontSize:11, color:'#f59e0b', marginBottom:8, lineHeight:1.5 }}>{shortTrackNote(targets, trackMode === 'revision')}</p>}
       <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
         {(targets || []).map((w, i) => (
           <JapaneseTargetPill key={w.id} w={w} state={targetState(i, w.id)} srcColor={targetColor(w.id)} recalls={targetRecalls(w.id)} histories={targetHistories(w.id)} />

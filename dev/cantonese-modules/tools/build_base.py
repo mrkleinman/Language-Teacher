@@ -2,7 +2,7 @@
 """Build cantonese-word-base.csv and cantonese-word-tags.csv from the tagging passes.
 
 Inputs : drafts/classify/ALL-tags.csv (use class A-D, tier hint, group, slots, notes) and drafts/classify/H0N-cells.csv (the merged cells; frame may be revised there).
-Order  : the 80/20 rule. Words that are used in a module-able way come first by use class (A core -> B common -> C useful -> D rare), inside a class by tier hint then by the deck's own
+Order  : the first 200 positions follow beginner-order.csv (the beginner teaching order, see BEGINNER-ORDER.md); after them, the 80/20 rule. Words that are used in a module-able way come first by use class (A core -> B common -> C useful -> D rare), inside a class by tier hint then by the deck's own
          order; skipped words (written-style, exam-only, fragments ...) come last. Position = rank 1..N; the belt follows the position through the usual eleven belts (100, 100, 200,
          200, 200, 200, 200, 325, 325, 325, 325); the tier follows the position: T1 1-200, T2 201-800, T3 801-1200, T4 1201-1850, T5 beyond.
 Output : the id of a word is its position (as in the Mandarin and Japanese lists); `key` keeps the deck's own number.
@@ -89,6 +89,22 @@ def main():
             if r['key'] in lock: r['_id'] = lock[r['key']][0]
             else: nid += 1; r['_id'] = nid
     order = inter + skipped
+    # the beginner teaching order (2026-11): the first 200 positions are NOT the 80/20 usage order but the hand-made order of beginner-order.csv (tools/yue_beginner_order.py proves that every
+    # day's five words build real sentences with the earlier days' words); the words that are not in it keep their present relative order after position 200, ids and tiers are untouched
+    # (the pin is by id), belts follow the position as before, ranks stay contiguous and the live count stays exactly 2,500
+    BEGINNER = f'{HERE}/beginner-order.csv'
+    if os.path.exists(BEGINNER):
+        pins = sorted(rd(BEGINNER), key=lambda p: int(p['position']))
+        assert [int(p['position']) for p in pins] == list(range(1, len(pins) + 1)), 'beginner-order.csv positions must be 1..N'
+        by_id = {str(r['_id']): r for r in order if '_id' in r}
+        first = []
+        for p in pins:
+            r = by_id.get(p['id'])
+            assert r is not None and not r['skip'] and r['word'] == p['word'], ('beginner-order.csv names a word that is not live', p['id'], p['word'])
+            assert all(r is not q for q in first), ('beginner-order.csv names a word twice', p['id'], p['word'])
+            first.append(r)
+        taken = {id(r) for r in first}
+        order = first + [r for r in order if id(r) not in taken]
     # slot English that cannot stand in 'this {E}' / '{Es}': (word, english_slot, english_plural)
     SLOT_FIX = {'衫': ('top', 'tops'), '牛仔褲': ('jeans', 'jeans'), '物理': ('physics', 'physics')}
     # from the W01 writer's report: slots that read badly in 'I am so {E}' / 'is it {E}'

@@ -9428,17 +9428,21 @@ function yueModuleMissing(m, tag, has) {
   if (m._usesM && !(tag.measure && (tag.measure === tag.word || has(tag.measure)))) miss.push(tag.measure || '{M}')
   return miss
 }
-// TEACHABILITY: can ONE module serve this word for this learner, given the words taught + the free words + the word itself (the day's other picks only widen the set at build
-// time, so a word that passes here can always be built)? The context caches the answer per word. With the rule off, or while the module data is not unpacked yet (the
-// writer will say so itself), a word is as teachable as it always was.
+// TEACHABILITY: can ONE module serve this word for this learner, given the words taught + the free words + the word itself + the other words picked for the same day (they are
+// taught together in one track, so a lesson for one may use another: the build allows every target of the track)? The context caches the answer per word and day. With the rule
+// off, or while the module data is not unpacked yet (the writer will say so itself), a word is as teachable as it always was. `day` is yueDay(list), or nothing.
+function yueDay(list) {
+  const set = new Set((list || []).map(w => w && w.chinese).filter(Boolean))
+  return { set, sig: [...set].sort().join('|') }
+}
 function yueTeachCtx(vocab) {
   const strict = YUE_STRICT.on, d = strict ? YUE_MODULES.data : null
   const base = d ? yueAllowedSet(vocab, []) : null
   const tier = d ? jaModuleLearnerTier(vocab) : 1
   const cache = new Map()
-  const probe = w => {
+  const probe = (w, day) => {
     const tag = yueModuleTagOf(w); if (!tag) return { ok: false, why: 'no module can fill this word yet' }
-    const has = s => s === w.chinese || base.has(s)
+    const has = s => s === w.chinese || base.has(s) || (day && day.set.has(s))
     const pool = yueModulePool(tag, w, tier)
     let near = null
     for (const m of pool) {
@@ -9449,20 +9453,36 @@ function yueTeachCtx(vocab) {
     }
     return { ok: false, why: 'no lesson yet uses only words you know plus this one' + (near && near.length ? ' (the nearest still needs ' + near.slice(0, 4).join(' ') + ')' : '') }
   }
-  const get = w => { const k = w && w.id; if (k == null) return { ok: false, why: '' }; if (!cache.has(k)) cache.set(k, probe(w)); return cache.get(k) }
+  const get = (w, day) => { const k = w && w.id; if (k == null) return { ok: false, why: '' }; const key = k + '#' + (day ? day.sig : ''); if (!cache.has(key)) cache.set(key, probe(w, day)); return cache.get(key) }
   return {
     strict: !!d,
-    teachable: w => !!w && yueTargetHasModule(w) && (!d || get(w).ok),
-    why: w => !w ? '' : !yueTargetHasModule(w) ? 'no module can fill this word yet' : (d ? get(w).why : ''),
+    teachable: (w, day) => !!w && yueTargetHasModule(w) && (!d || get(w, day).ok),
+    why: (w, day) => !w ? '' : !yueTargetHasModule(w) ? 'no module can fill this word yet' : (d ? get(w, day).why : ''),
   }
 }
-function yueTargetTeachable(w, vocab) { return yueTeachCtx(vocab).teachable(w) }
+function yueTargetTeachable(w, vocab, day) { return yueTeachCtx(vocab).teachable(w, day) }
 // the same swap as Mandarin (gateTargetsByFeasibility): a word no module can serve for this learner is replaced by the next teachable word OF THE SAME KIND (a new word by a
-// new word, a learned word by a learned word), so the NEW count cannot change; one that finds no substitute is left out and named in `deferred` with the reason
+// new word, a learned word by a learned word), so the NEW count cannot change; one that finds no substitute is left out. A swap changes the day's words, so the pass is run
+// again until every word of the list is teachable together with the others (at most 4 passes; what is still not teachable then is left out). `deferred` names each word that
+// was swapped or left out with the reason (a chain of swaps is shown as its first word → its last).
 function yueGateTargets(raw, vocab, pool) {
-  const ctx = yueTeachCtx(vocab)
-  const g = gateTargetsByFeasibility(raw, pool, w => ctx.teachable(w), w => !hasBeenIntroduced(w))
-  return { targets: g.targets, deferred: g.deferred.map(d => ({ ...d, why: ctx.why(d.target) })), ctx }
+  const ctx = yueTeachCtx(vocab), isNew = w => !hasBeenIntroduced(w)
+  let list = raw || [], all = []
+  for (let i = 0; i < 4; i++) {
+    const day = yueDay(list)
+    const g = gateTargetsByFeasibility(list, pool, w => ctx.teachable(w, day), isNew)
+    all = all.concat(g.deferred.map(d => ({ ...d, why: ctx.why(d.target, day) })))
+    const same = g.targets.length === list.length && g.targets.every((w, k) => w.id === list[k].id)
+    list = g.targets
+    if (same) break
+  }
+  const dayEnd = yueDay(list), stuck = list.filter(w => !ctx.teachable(w, dayEnd))
+  if (stuck.length) { all = all.concat(stuck.map(w => ({ target: w, replacedBy: null, why: ctx.why(w, dayEnd) }))); list = list.filter(w => !stuck.includes(w)) }
+  // collapse a chain of swaps (A → B, B → C) into one line (A → C); a word that was only ever a substitute is not shown as a target
+  const byT = new Map(all.map(d => [d.target.id, d])), subs = new Set(all.filter(d => d.replacedBy).map(d => d.replacedBy.id))
+  const last = d => { let r = d.replacedBy, n = 0; while (r && byT.has(r.id) && n++ < 8) r = byT.get(r.id).replacedBy; return r && list.some(x => x.id === r.id) ? r : null }
+  const deferred = all.filter(d => !subs.has(d.target.id)).map(d => ({ ...d, replacedBy: d.replacedBy ? last(d) : null }))
+  return { targets: list, deferred, ctx }
 }
 // the Daily of the Cantonese screen, in the Thai / Mandarin order: swap what cannot be taught → the contract (function-word cap, queued words, backfill) → drop what cannot be
 // taught (a word queued by hand, a backfilled review word) so no target is ever left that no lesson can serve
@@ -9473,9 +9493,9 @@ function yueDailyTargets(raw, vocab) {
     const wv = jazhWordsOnly(vocab)
     const pool = [...wv].sort((a, b) => (a.unlockOrder || 0) - (b.unlockOrder || 0))
     const g = yueGateTargets(list, vocab, pool)
-    const t = jazhDailyTargets(g.targets, vocab, 'yue')
-    const kept = t.filter(w => g.ctx.teachable(w)), lost = t.filter(w => !g.ctx.teachable(w))
-    return { targets: kept.length === t.length ? t : kept.map((w, i) => ({ ...w, targetIndex: i })), deferred: g.deferred.concat(lost.map(w => ({ target: w, replacedBy: null, why: g.ctx.why(w) }))) }
+    const t = jazhDailyTargets(g.targets, vocab, 'yue'), day = yueDay(t)
+    const kept = t.filter(w => g.ctx.teachable(w, day)), lost = t.filter(w => !g.ctx.teachable(w, day))
+    return { targets: kept.length === t.length ? t : kept.map((w, i) => ({ ...w, targetIndex: i })), deferred: g.deferred.concat(lost.map(w => ({ target: w, replacedBy: null, why: g.ctx.why(w, day) }))) }
   } catch (e) { return { targets: list, deferred: [] } }
 }
 // NEW words for a Cantonese Daily: the same rule as Mandarin (the ONE configured count, carried slots never exceed it), words without a module are passed over

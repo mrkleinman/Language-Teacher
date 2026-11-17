@@ -61658,7 +61658,7 @@ function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack,
                    textAlign:'center', color:'var(--text)', opacity:(targets && targets.length) ? 1 : 0.55 }}>
           <Icon name="sparkles" size={22} color="#10b981" />
           <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Daily Track</div>
-          <div style={{ fontSize:11, color:'#4a9960', marginTop:2 }}>{(targets && targets.length) ? 'Learn + review' : ((held || []).length ? 'No lesson fits yet' : 'No targets')}</div>
+          <div style={{ fontSize:11, color:'#4a9960', marginTop:2 }}>{(targets && targets.length) ? 'Learn + review' : 'No targets'}</div>
           {(targets && targets.length) ? <div style={{ fontSize:11, color:'var(--text-2)', marginTop:4 }}>{'~45 min \u00b7 ' + stats.due + ' due'}</div> : null}   {/* same line as the Thai and Japanese Daily buttons */}
         </button>
         {/* Revision Track — shared component, identical in every language */}
@@ -62429,7 +62429,7 @@ function CantoneseDashboard({ vocab, tracks, targets, trackTargets, held, onStar
                    padding:'18px 12px', cursor:(targets && targets.length) ? 'pointer' : 'not-allowed', textAlign:'center', color:'var(--text)', opacity:(targets && targets.length) ? 1 : 0.55 }}>
           <Icon name="sparkles" size={22} color="#10b981" />
           <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Daily Track</div>
-          <div style={{ fontSize:11, color:'#4a9960', marginTop:2 }}>{(targets && targets.length) ? 'Learn + review' : 'No targets'}</div>
+          <div style={{ fontSize:11, color:'#4a9960', marginTop:2 }}>{(targets && targets.length) ? 'Learn + review' : ((held || []).length ? 'No lesson fits yet' : 'No targets')}</div>
           {(targets && targets.length) ? <div style={{ fontSize:11, color:'var(--text-2)', marginTop:4 }}>{'~45 min · ' + stats.due + ' due'}</div> : null}
         </button>
         <RevisionTrackButton selection={revisionSelection} onStart={onStartSrsTrack} />

@@ -250,20 +250,24 @@ const html = el => RDS.renderToStaticMarkup(el).replace(/<[^>]+>/g, ' ').replace
     // the module writer is switched on with the data, as tests93 does
     const zlib = require('zlib'); const DATA = JSON.parse(zlib.gunzipSync(Buffer.from(ev('YUE_MODULES_GZ'), 'base64')).toString('utf8'))
     c.yueModulesUseData(DATA); c.yueModulesSetEnabled(true)
+    c.yueStrictVocabSetEnabled(false)     // starter modules not merged yet: remove this switch when they are (a learner who has been taught 12 words builds a Daily of 17 words, which only the old rule can write)
     const res = await c.generateCantoneseTrack(d.targets, Vy, () => {}, () => {}, { cancelled: false }, { startedAt: '2026-11-17T08:00:00.000Z' })
     const tr = c.cantoneseBuildTrack(res, d.targets, 'daily', '2026-11-17T08:00:00.000Z'), ck = c.cantoneseTrackCheck(tr)
+    // 18 Nov (stage B-1): every track carries 4 greeting / parting pairs on top of its lesson pairs (17 x 3 = 51 + 4 = 55; 12 x 3 = 36 + 4 = 40); the structure check counts the lesson pairs (ck.pairs)
     T('F1', 'Cantonese: a 12-learned-word Daily builds a track of ' + d.targets.length + ' targets × 3 recalls, carries its plan (short by design) and passes the structure check',
-      d.targets.length === 17 && tr.pairs.length === 51 && tr.targetPlan && tr.targetPlan.planned === 17 && tr.targetPlan.shortByDesign === true && ck.ok && ck.targets === 17 && ck.pairs === 51, { n: d.targets.length, plan: tr.targetPlan, problems: ck.problems })
+      d.targets.length === 17 && tr.pairs.length === 55 && tr.pairs.filter(p => !p._framing).length === 51 && tr.targetPlan && tr.targetPlan.planned === 17 && tr.targetPlan.shortByDesign === true && ck.ok && ck.targets === 17 && ck.pairs === 51, { n: d.targets.length, plan: tr.targetPlan, problems: ck.problems })
     const lost = { ...tr, keywords: tr.keywords.slice(0, 16), targetPlan: { planned: 30, shortByDesign: false, wordCap: 30 } }
     const lostShort = { ...tr, keywords: tr.keywords.slice(0, 16) }
     T('F2', 'Cantonese: a track meant to hold 30 (plan 30) that holds 16, and a short track (plan 17) that lost one word, both fail the structure check; the 3-recall rule still applies',
       !c.cantoneseTrackCheck(lost).ok && /planned with 30/.test(c.cantoneseTrackCheck(lost).problems.join('|')) && !c.cantoneseTrackCheck(lostShort).ok && /planned with 17/.test(c.cantoneseTrackCheck(lostShort).problems.join('|')) &&
-      !c.cantoneseTrackCheck({ ...tr, pairs: tr.pairs.slice(1) }).ok)
+      !c.cantoneseTrackCheck({ ...tr, pairs: tr.pairs.filter((p, i) => i !== 2) }).ok &&
+      // 18 Nov (stage B-1): pairs[0] is now the opening greeting, so the recall that this check drops is the first LESSON pair (index 2); it must be the 3-recall rule that fails, not the framing rule
+      /recalls \(3 needed\)/.test(c.cantoneseTrackCheck({ ...tr, pairs: tr.pairs.filter((p, i) => i !== 2) }).problems.join('|')))
     const rev = revision('yue', Vy), res2 = await c.generateCantoneseTrack(rev.targets, Vy, () => {}, () => {}, { cancelled: false }, { startedAt: '2026-11-17T08:00:00.000Z' })
     const tr2 = c.cantoneseBuildTrack(res2, rev.targets, 'revision', '2026-11-17T08:00:00.000Z')
     T('F3', 'Cantonese: a 12-word Revision builds 12 × 3 = 36 recalls, 0 new words, plan 12 (short by design), structure check passes',
-      rev.targets.length === 12 && tr2.pairs.length === 36 && tr2.selectedNewTargetIds.length === 0 && tr2.targetPlan.planned === 12 && tr2.targetPlan.shortByDesign && c.cantoneseTrackCheck(tr2).ok, { n: rev.targets.length, plan: tr2.targetPlan })
-    c.yueModulesSetEnabled(false)
+      rev.targets.length === 12 && tr2.pairs.length === 40 && tr2.pairs.filter(p => !p._framing).length === 36 && tr2.selectedNewTargetIds.length === 0 && tr2.targetPlan.planned === 12 && tr2.targetPlan.shortByDesign && c.cantoneseTrackCheck(tr2).ok, { n: rev.targets.length, plan: tr2.targetPlan })
+    c.yueModulesSetEnabled(false); c.yueStrictVocabSetEnabled(true)
   }
 
   console.log((fails ? 'FAIL ' : 'ALL PASS ') + (n - fails) + '/' + n)

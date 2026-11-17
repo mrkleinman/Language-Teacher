@@ -19,7 +19,7 @@ function wrapScript() {
       if (f.__ltWrapped) { out[name] = 'already'; return }
       const w = function () {
         const args = Array.prototype.slice.call(arguments)
-        if (typeof args[pi] === 'function') { const o = args[pi]; args[pi] = function (d, t) { try { if (Number.isFinite(d)) R.done = d; if (Number.isFinite(t)) R.total = t } catch (e) {} return o.apply(this, arguments) } }
+        if (typeof args[pi] === 'function') { const o = args[pi]; args[pi] = function (d, t, meta) { try { if (Number.isFinite(d)) R.done = d; if (Number.isFinite(t)) R.total = t; if (meta && typeof meta.apiError === 'string') { R.lines.push(meta.apiError.slice(0, 300)); if (R.lines.length > 600) R.lines.splice(0, R.lines.length - 600) } } catch (e) {} return o.apply(this, arguments) } }
         if (typeof args[li] === 'function') { const o = args[li]; args[li] = function (m) { try { R.lines.push(String(m).slice(0, 300)); if (R.lines.length > 600) R.lines.splice(0, R.lines.length - 600) } catch (e) {} return o.apply(this, arguments) } }
         return f.apply(this, args)
       }
@@ -109,10 +109,68 @@ const yue = {
   },
 }
 
-// Thai, Japanese, Mandarin: see the notes in README.md ("Languages"); added as they are verified.
+// wait until nothing more is being written: the saved lists stop changing, no model request is in flight, and a new track is there
+async function settle(ctx, { quietMs = 4000, timeout = 15 * 60 * 1000 } = {}) {
+  const K = LANGUAGE_KEYS[ctx.spec.language], t0 = Date.now(); let last = '', since = Date.now()
+  const ids = [...ctx.seedTrackIds].map(String)
+  while (Date.now() - t0 < timeout) {
+    const s = await ctx.page.evaluate(({ keys, tk, ids }) => {
+      let inflight = 0; try { AI_LEDGER.forEach(r => { if (r._t0) inflight++ }) } catch (e) {}
+      let a = null; try { a = JSON.parse(localStorage.getItem(tk)) } catch (e) {}
+      const id = t => String(t && (t.id != null ? t.id : (t.createdAt || ((t.date || '') + ':' + ((t.pairs && t.pairs.length) || 0)))))
+      const fresh = Array.isArray(a) ? a.filter(t => !ids.includes(id(t))).length : 0
+      const sig = keys.map(k => { const v = localStorage.getItem(k); return k + ':' + (v ? v.length : 0) }).join('|')
+      return { inflight, fresh, sig }
+    }, { keys: [K.vocab, K.tracks, K.dailyNew], tk: K.tracks, ids })
+    if (s.sig !== last || s.inflight) { last = s.sig; since = Date.now() }
+    if (s.fresh && !s.inflight && Date.now() - since >= quietMs) return
+    await ctx.page.waitForTimeout(500)
+  }
+  ctx.fail('the app kept working after the track was saved (no quiet moment within the time allowed)', 'no_settle')
+}
+
+// ── Thai ───────────────────────────────────────────────────────────────────────────────────────────────────
+// Dashboard -> Daily Track / Revision Track -> (the scene is written) "Generate Track from this Scene" -> the words are written and checked -> "Start SRS Track" (or "Start
+// anyway" when the app says the track is not ready; the note says so) -> the app saves the track, builds its Listening track and saves again.
+const th = {
+  async waitHome(ctx) { await ctx.page.getByRole('button', { name: /Daily Track/ }).first().waitFor({ timeout: 180000 }) },
+  instrument: ctx => instrumentWith(ctx, [['generateConversationTrack', 3, -1]]),
+  async run(ctx) {
+    const { page, spec } = ctx, notes = []
+    ctx.progress({ phase: 'opening the ' + spec.mode + ' track screen' })
+    const btn = page.getByRole('button', { name: spec.mode === 'revision' ? /Revision Track/ : /Daily Track/ }).first()
+    if (!(await btn.isEnabled())) ctx.fail('the app does not offer a ' + spec.mode + ' track (' + (spec.mode === 'revision' ? 'no learned Thai words to revise' : 'no targets') + ')', 'app_refused')
+    await btn.click()
+    ctx.progress({ phase: 'writing the scene' })
+    const first = await firstOf(ctx, {
+      scene: () => /Generate Track from this Scene|Generate with the NEW generator/.test(document.body.innerText),
+      error: () => /Generation Failed/.test(document.body.innerText),
+      resume: () => /Resume|Start new/i.test(document.body.innerText) && /saved|draft|checkpoint/i.test(document.body.innerText) && !/Generate Track from this Scene/.test(document.body.innerText),
+    }, 5 * 60 * 1000)
+    const failText = async () => clip(await page.evaluate(() => { const p = [...document.querySelectorAll('p')].find(x => /Generation Failed/.test((x.previousElementSibling || {}).innerText || '')); return p ? p.innerText : document.body.innerText.split('Generation Failed')[1] || '' }), 400)
+    if (first === 'error') ctx.fail('the app could not start the track: ' + await failText(), 'app_refused')
+    if (first === 'resume') ctx.fail('the app offered to resume an earlier unfinished track instead of starting', 'app_refused')
+    ctx.progress({ phase: 'writing the words' })
+    await page.getByRole('button', { name: /Generate Track from this Scene/ }).click()
+    // the words are written, checked and the Listening track is not yet built: the Start button comes up (disabled while the app is still finalising)
+    const done = await firstOf(ctx, {
+      ready: () => [...document.querySelectorAll('button')].some(b => /Start SRS Track|Start anyway/.test(b.innerText) && !b.disabled),
+      error: () => /Generation Failed/.test(document.body.innerText),
+    }, 24 * 60 * 1000)
+    if (done === 'error') ctx.fail('the app stopped while writing the track: ' + await failText(), 'app_failed')
+    const label = await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /Start SRS Track|Start anyway/.test(x.innerText)); return b ? b.innerText : '' })
+    if (/Start anyway/.test(label)) notes.push('the app says the track is not ready: ' + clip(label.replace(/^[^A-Za-z]*/, ''), 160))
+    ctx.progress({ phase: 'saving the track and building its listening track' })
+    await page.getByRole('button', { name: /Start SRS Track|Start anyway/ }).first().click()
+    await settle(ctx)
+    return { notes }
+  },
+}
+
+// Japanese, Mandarin: not driven yet (see README "Languages")
 const unsupported = lang => ({
   async waitHome() { const e = new Error('the ' + lang + ' flow is not driven yet'); e.code = 'unsupported'; throw e },
   instrument: async () => {}, run: async () => { throw new Error('unsupported') },
 })
 
-module.exports = { yue, th: unsupported('Thai'), ja: unsupported('Japanese'), zh: unsupported('Mandarin'), instrumentWith, firstOf, waitForSavedTrack }
+module.exports = { yue, th, ja: unsupported('Japanese'), zh: unsupported('Mandarin'), instrumentWith, firstOf, waitForSavedTrack }

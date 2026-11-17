@@ -71,6 +71,9 @@ function buildSeed(spec) {
   local['tt-generation-model'] = JSON.stringify(pref)
   if (m.accessCode) local['tt-anthropic-site-access'] = JSON.stringify(m.accessCode.replace(/\s+/g, ''))
   if (m.geminiKey) local['tt-gemini-key'] = JSON.stringify(m.geminiKey)
+  // The Thai / Japanese / Mandarin generators only enter their model path when a Gemini key is present on the screen. With the optional model selected no request
+  // goes to Gemini (the app routes every request of the run to the model function), so a non-secret marker value is enough to open that path.
+  else if (m.model === OPTIONAL_MODEL && spec.language !== 'yue') local['tt-gemini-key'] = JSON.stringify('optional-model-selected-no-gemini-key')
   return { local: Object.entries(local), session: [['tt-active-language', spec.language]] }
 }
 

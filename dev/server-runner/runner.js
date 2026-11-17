@@ -169,13 +169,15 @@ async function runJob(spec, hooks, cfg) {
           return { lines: R.lines.slice(), done: R.done, total: R.total, reqs, cost }
         })
         s.lines.slice(drained).forEach(l => log(l)); drained = s.lines.length
-        progress({ wordsDone: s.done, wordsTotal: s.total, requests: s.reqs, costUsd: Math.round(s.cost * 1e6) / 1e6 })
+        const total = Math.max(0, s.total), done = Math.max(0, Math.min(s.done, total || s.done))
+        progress({ wordsDone: done, wordsTotal: total, requests: s.reqs, costUsd: Math.round(s.cost * 1e6) / 1e6 })
       } catch (e) {}
     }
     poller = setInterval(poll, 1000)
     // ── drive the language's flow until the app has saved the track
     const outcome = await guard(driver.run(ctx))
     await poll()
+    if (cfg.onDone) { try { await cfg.onDone(page) } catch (e) {} }       // tests: look at the page before it is closed
     // ── collect what the app saved
     const keys = resultKeys(spec.language)
     const raw = await page.evaluate(ks => Object.fromEntries(ks.map(k => [k, localStorage.getItem(k)])), keys)

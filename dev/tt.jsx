@@ -17034,21 +17034,6 @@ function chunkArray(arr, n) {
   return chunks
 }
 
-async function askKru(msgs, ctx, apiKey) {
-  const system = `You are Kru (ครู), a warm and knowledgeable Thai teacher.
-Respond in English. Include Thai script + tone-marked romanization for examples.
-Tone marks: mid=none, low=à, falling=â, high=á, rising=ǎ. Hyphens between syllables.
-Keep answers focused and practical — 2-4 short paragraphs max.
-${ctx ? `\nSTUDENT'S CURRENT LESSON:\n${ctx}` : ''}`
-  // v648: Kru chat runs on Gemini through the central client. The system brief goes in
-  // as the opening user turn; the conversation (which opens with Kru's greeting) follows,
-  // so turns alternate user / model as Gemini expects.
-  const turns = [{ role: 'user', content: system }, ...(msgs || [])]
-  const text = await geminiRequest({ apiKey, model: GEMINI_DEFAULT_MODEL, messages: turns, maxTokens: 800, stage: 'Q_kru_chat' })
-  if (!String(text || '').trim()) throw new Error('Gemini returned an empty reply')
-  return text
-}
-
 // ── Micro Components ──────────────────────────────────────────────────────────
 const Spinner = ({ size = 20, color = 'var(--gold)' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" className="spin" style={{ color }}>
@@ -18856,7 +18841,7 @@ function aiUsageSummaryLines(sum) {
 
 // ══ v648 GEMINI CLIENT — the ONLY model transport in this app ══════════════════
 // Every AI request (Thai / Japanese / Mandarin generation, QC, recovery, romanisation,
-// segmentation, gloss, listening, Kru chat, word auto-fill) goes through geminiRequest.
+// segmentation, gloss, listening, word auto-fill) goes through geminiRequest.
 // Prompt builders stay task-specific; only the transport is unified here.
 //   • model policy: Flash-Lite by default. A stage may name a Gemini model explicitly
 //     (GEMINI_STAGE_MODELS); a failed request is NEVER promoted to another model.
@@ -19132,7 +19117,7 @@ function aiRunGenerationModel(kind, opts) {
   return AI_GEN_PREF.model
 }
 function aiRunGenModel(runId) { return AI_RUN_GEN_MODEL.get(runId) || GEMINI_DEFAULT_MODEL }
-// The model for one request: Settings → Test Key always checks the Gemini key; Kru chat and word auto-fill (not part of a
+// The model for one request: Settings → Test Key always checks the Gemini key; word auto-fill (not part of a
 // track) follow the current setting; everything else follows the run it belongs to.
 function aiModelForRequest(runId, stage) {
   const s = String(stage || '')
@@ -19150,7 +19135,7 @@ const AI_JUDGE_FNS = new Set(['aiQcPromptMatch', 'aiQcEvaluateGroup', '_qrEvalua
   'thaiControlledAdjudication', 'tpJudgeGroup', '_lnGenericVerdicts', 'listeningQualityVerdicts', 'mainTrackCoherenceAudit', 'judge', 'finalPairSemanticAudit', 'gen2Judge',
   '_qrBatchNaturalnessCheck', 'listeningWholeCoherenceAudit'])
 const AI_SUPPORT_FNS = new Set(['fetchTargetPhonetics', '_qrFixBrokenPhonetics', '_qrFixPhonetic', 'jaModelReadingRepair', 'thaiFinaliseWords', 'fillMissingGlossesForTrack',
-  'japaneseListeningPronunciation', 'gen2JaPronounce', 'askKru', 'Adder'])
+  'japaneseListeningPronunciation', 'gen2JaPronounce', 'Adder'])
 const AI_GENERATION_STAGE_RX = /^(A0?_|B_|G_|H_recovery$)/       // scene, generation, regeneration, QC replacement / improvement, quota recovery
 function aiRequestRole(stage, prompt, chain, json) {
   const s = String(stage || aiStageOf(prompt, chain))
@@ -44668,7 +44653,7 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
     repair: 'Repairing local exchanges…', repaired: 'Re-checking after repair…', coherence: 'Checking whole-conversation coherence and pronunciation…', final: 'Final integrity check' }[stage] || 'Working…'
   const statusText = building ? counts.present + ' of ' + ids.length + ' targets · ' + (stage === 'scene' && sceneDone ? 'scene ' + sceneDone + ' verified · writing the next scene…' : stageText) : ready ? 'Finished · ' + counts.verified + ' of ' + ids.length + ' targets verified' : 'Finished · ' + counts.present + ' of ' + ids.length + ' targets'
   const subtitle = 'TARGET COVERAGE ' + counts.present + '/' + ids.length + ' · NEW 0 · REVIEW ' + ids.length
-  const title = building ? 'Kru Gemini is writing your listening track' : ready ? '✓ Listening Track Ready!' : '⚠ Listening track needs repair'
+  const title = building ? 'Writing your listening track' : ready ? '✓ Listening Track Ready!' : '⚠ Listening track needs repair'
   const chipColor = id => LISTENING_COVERAGE_STYLE[coverage[id] || 'pending'].color
   const statusPanel = <ListeningStatusPanel track={building ? null : result} wordOf={wordOf} building={building} onCancel={cancel} onBack={onBack}
     onStart={() => setPlaying(true)} onRebuild={() => run(ids, (result && (result.attemptId || result.id)) || currentAttempt)} onPlayAnyway={playAnyway} />
@@ -46016,7 +46001,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
         title={phase === 'done' && generatedTrack
             ? (listenPhase === 'FINALISING' || _readiness.mainTrackState === 'NOT_FINALISED' ? '🔍 Checking your track…'
               : trackReadyHeadline(generatedTrack).state === 'READY' ? '✓ Track Ready!' : '⚠ Track not ready')
-            : apiKey ? 'Kru Gemini is writing your track' : customTargets ? 'Building custom track...' : 'Building track...'}
+            : apiKey ? 'Writing your track' : customTargets ? 'Building custom track...' : 'Building track...'}
         note={sceneData && phase === 'streaming' && sceneData.scene ? (sceneData.scene.length > 80 ? sceneData.scene.slice(0,80).replace(/\s\S*$/, '') + '…' : sceneData.scene) : null}
         subtitleColor={phase === 'done' && _readiness.mainTrackState === 'NOT_READY' ? '#ef4444' : 'var(--muted)'}
         subtitle={phase === 'done' && (_readiness.mainTrackState === 'READY' || _readiness.mainTrackState === 'NOT_READY')
@@ -46036,7 +46021,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
       {/* Status / Action buttons */}
       <GeneratorStatusLine spinning={phase !== 'done'} color={color}>
           {phase === 'starting' && 'Connecting...'}
-          {phase === 'streaming' && pairsDone === 0 && 'Kru Gemini is thinking...'}
+          {phase === 'streaming' && pairsDone === 0 && 'Thinking...'}
           {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${_progTargets.length} — pair ${pairsDone}...`}
       </GeneratorStatusLine>
       <GeneratorLogPanel genLog={genLog} fullLog={fullLog} showHistory={showHistory} onToggleHistory={() => setShowHistory(h => !h)}
@@ -46384,7 +46369,7 @@ function JaGrammarReview({ track }) {
   )
 }
 
-function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onReviewQuality, targetLang, startCompleted, onListening }) {
+function Player({ track, onComplete, onBack, onBookmark, gcpTtsKey, onReviewQuality, targetLang, startCompleted, onListening }) {
   // §12 — target-language code for TTS. Defaults to Thai so the Thai runtime is
   // byte-for-byte unchanged; the Japanese runtime passes 'ja'.
   const _tl = targetLang || 'th'
@@ -46730,8 +46715,6 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
         <button onClick={() => { onBookmark && onBookmark(bookmarked ? 0 : idx) }}
           style={{ background: bookmarked ? '#1a2a00' : 'var(--surface)', border:`1px solid ${bookmarked ? '#4a7a00' : 'var(--border)'}`, borderRadius:20, padding:'5px 10px', cursor:'pointer', color: bookmarked ? '#86c900' : 'var(--muted)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.2s' }}>
           {bookmarked ? '🔖 Saved · Pair ' + (idx + 1) : '🔖 Pair ' + (idx + 1)}</button>
-        <button onClick={() => { togglePlay(); onKru(pair.prompt) }}
-          style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'5px 10px', cursor:'pointer', color:'var(--gold)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>ครู</button>
       </div>
 
       {/* Resume from bookmark banner */}
@@ -47398,83 +47381,6 @@ Respond ONLY with valid JSON: {"english":"...","phonetic":"..."}` }] })
   )
 }
 
-// ── Kru Chat ──────────────────────────────────────────────────────────────────
-function KruPanel({ open, onClose, trackContext, vocab, apiKey }) {
-  const [msgs, setMsgs] = useState([
-    { role: 'assistant', content: 'สวัสดีครับ! I\'m Kru, your Thai teacher. Ask me anything about Thai language — pronunciation, tones, grammar, vocabulary, culture!' }
-  ])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const bottomRef = useRef(null)
-  const inputRef = useRef(null)
-
-  useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 300) }, [open])
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs])
-
-  async function send() {
-    const text = input.trim()
-    if (!text || loading) return
-    setInput('')
-    const userMsg = { role: 'user', content: text }
-    setMsgs(m => [...m, userMsg])
-    setLoading(true)
-    try {
-      const history = [...msgs, userMsg].filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content }))
-      const reply = await askKru(history, trackContext, apiKey)
-      setMsgs(m => [...m, { role: 'assistant', content: reply }])
-    } catch (e) {
-      setMsgs(m => [...m, { role: 'assistant', content: `Sorry, I had trouble responding: ${e.message}` }])
-    }
-    setLoading(false)
-  }
-
-  if (!open) return null
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ marginTop: 'auto', background: 'var(--surface)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', borderBottom: 'none', display: 'flex', flexDirection: 'column', maxHeight: '85vh' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #d4a94a, #b88a35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>ครู</div>
-          <div>
-            <div className="display" style={{ fontSize: 16, color: 'var(--text)' }}>Kru</div>
-            <div style={{ fontSize: 11, color: '#10b981' }}>Thai Teacher · Online</div>
-          </div>
-          <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
-            <Icon name="x" size={20} />
-          </button>
-        </div>
-
-        {/* Messages */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {msgs.map((m, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
-              <div style={{ maxWidth: '85%', padding: '10px 14px', borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: m.role === 'user' ? 'linear-gradient(135deg, #1e3a1e, #2a4a2a)' : 'var(--surface2)', border: m.role === 'user' ? '1px solid #2d6b2d' : '1px solid var(--border)', fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                {m.content}
-              </div>
-            </div>
-          ))}
-          {loading && (
-            <div style={{ display: 'flex', gap: 4, padding: '10px 14px', background: 'var(--surface2)', borderRadius: '16px 16px 16px 4px', width: 'fit-content', border: '1px solid var(--border)' }}>
-              {[0, 1, 2].map(i => <div key={i} className="pulse-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--gold)', animationDelay: `${i * 0.2}s` }} />)}
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Input */}
-        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-          <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-            placeholder="Ask about Thai..." style={{ flex: 1, padding: '10px 14px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 14, fontFamily: 'Sarabun, sans-serif', outline: 'none' }} />
-          <button onClick={send} disabled={!input.trim() || loading}
-            style={{ width: 40, height: 40, borderRadius: 10, background: input.trim() && !loading ? 'linear-gradient(135deg, #d4a94a, #b88a35)' : 'var(--surface2)', border: 'none', cursor: input.trim() && !loading ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', color: '#0b1120' }}>
-            <Icon name="send" size={16} color={input.trim() && !loading ? '#0b1120' : 'var(--muted)'} />
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 
 
@@ -47743,7 +47649,7 @@ function GenerationModelCard() {
   return (
     <Card style={{ padding: 16, marginBottom: 12 }}>
       <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>AI Generation Model</p>
-      <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 10 }}>Which AI does all the work for new tracks (Daily, Revision, Weak-words, Listening — Thai, Japanese and Mandarin): writing, quality checks, pronunciation and translations, plus Kru chat and word auto-fill. Tracks you already made keep the AI that made them.</p>
+      <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 10 }}>Which AI does all the work for new tracks (Daily, Revision, Weak-words, Listening — Thai, Japanese, Mandarin and Cantonese): writing, quality checks, pronunciation and translations, plus word auto-fill. Tracks you already made keep the AI that made them.</p>
       {Object.values(AI_GEN_MODELS).map(m => (
         <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 6, cursor: 'pointer',
           border: '1px solid ' + (pref.model === m.id ? '#d4a94a' : 'var(--border)'), background: pref.model === m.id ? 'rgba(212,169,74,0.08)' : 'var(--surface2)' }}>
@@ -52512,8 +52418,6 @@ function ThaiTeacher({ lang, onSetLang }) {
   const [returnTopic, setReturnTopic] = useState(null)      // Browse opened from a topic's word list returns there
   const [resumeDraft, setResumeDraft] = useState(null)
   const [pendingReviewTrack, setPendingReviewTrack] = useState(null)
-  const [kruOpen, setKruOpen] = useState(false)
-  const [kruCtx, setKruCtx] = useState('')
   const [geminiKey, setGeminiKey] = useState('')
   const [geminiBackupKey, setGeminiBackupKey] = useState('')
   const [dailyNewWords, setDailyNewWords] = useState(null) // { date: 'YYYY-MM-DD', wordIds: [...] }
@@ -52907,8 +52811,6 @@ function ThaiTeacher({ lang, onSetLang }) {
     if (changed) saveVocab(newVocab)
   }
 
-  function openKru(ctx = '') { setKruCtx(ctx); setKruOpen(true) }
-
   if (loading) {
     return (
       <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: 16 }}>
@@ -52990,7 +52892,7 @@ function ThaiTeacher({ lang, onSetLang }) {
             onProceed={() => setListenDoneFor(listeningTrackId(activeTrack))} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && (!trackHasLegacyListening(activeTrack) || listenDoneFor === listeningTrackId(activeTrack)) && (
-          <ErrorBoundary><Player onListening={trackHasLegacyListening(activeTrack) ? () => setListenDoneFor(null) : null} track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)} gcpTtsKey={gcpTtsKey}
+          <ErrorBoundary><Player onListening={trackHasLegacyListening(activeTrack) ? () => setListenDoneFor(null) : null} track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} gcpTtsKey={gcpTtsKey}
             onReviewQuality={() => { setPendingReviewTrack(activeTrack); navigate('quality-review') }}
             onBookmark={async (pairIdx) => {
               // Match on the track's own id. `t === activeTrack` relies on object
@@ -53034,17 +52936,6 @@ function ThaiTeacher({ lang, onSetLang }) {
         )}
       </main>
 
-      {/* Kru floating button */}
-      {view !== 'player' && (
-        <button onClick={() => openKru()} title="Ask Kru"
-          style={{ position: 'fixed', bottom: 20, right: 20, width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg, #d4a94a, #b88a35)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(212,169,74,0.4)', fontSize: 22, zIndex: 40, transition: 'transform 0.15s' }}
-          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-          ครู
-        </button>
-      )}
-
-      <KruPanel open={kruOpen} onClose={() => setKruOpen(false)} trackContext={trackContext} vocab={vocab} apiKey={apiKey} />
     </div>
   )
 }
@@ -56791,7 +56682,7 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, tracks,
         <span style={{ fontSize:12, fontWeight:600, color:'var(--text)' }}>
           {currentTargetId
             ? ((targets.find(t => t.id === currentTargetId) || {}).chinese + (currentRecall ? '  \u00b7  Recall ' + currentRecall + ' of 3' : ''))
-            : (phase === 'done' ? 'Finished' : 'Kru Gemini is thinking\u2026')}
+            : (phase === 'done' ? 'Finished' : 'Thinking\u2026')}
         </span>
       </div>
       {currentTier > 0 && (
@@ -58389,7 +58280,7 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, minHeight:20 }}>
         {phase !== 'done' && <Spinner size={14} color="#10b981" />}
         <span style={{ fontSize:12, color:'var(--text)', fontWeight:600 }}>
-          {wordStatus || (phase === 'done' ? 'Finished' : 'Kru Gemini is thinking\u2026')}
+          {wordStatus || (phase === 'done' ? 'Finished' : 'Thinking\u2026')}
         </span>
       </div>
       {/* §11 — live check identity, coloured from the single tier map so it always

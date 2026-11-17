@@ -73,10 +73,9 @@ const msg = [{ role: 'user', content: 'Segment this Thai sentence into individua
       e && /GEMINI_KEY_MISSING/.test(e.message) && log.length === 0, e && e.message)
     T('N2', 'any stored non-Gemini model string normalises to gemini-2.5-flash-lite (v647 sent it to Gemini → 404 → promoted to Flash)',
       norm.join() === 'gemini-2.5-flash-lite,gemini-2.5-flash-lite,gemini-2.5-flash-lite,gemini-2.5-flash-lite,gemini-2.5-flash-lite,gemini-2.5-flash-lite,gemini-2.5-flash', norm) }
-  { const c = fresh(); c.aiBeginRun('t-kru'); const log = recorder(c, () => gem('สวัสดีครับ — hello'))
-    const r = await c.askKru([{ role: 'assistant', content: 'hi' }, { role: 'user', content: 'how do I say hello?' }], '', KEY)
-    const af = c.ev('geminiRequest')
-    T('N3', 'Kru chat (was a direct call to another vendor) runs on Gemini Flash-Lite through the central client', r === 'สวัสดีครับ — hello' && log.length === 1 && log[0].model === 'gemini-2.5-flash-lite', log) }
+  // 18 Nov: the Kru chat (the floating ครู button and its askKru call) was removed from the app on the owner's request ("I never use it, totally remove it"), so N3, which
+  // exercised askKru, is removed with it. What N3 protected (every model request goes through the one central Gemini client, never another vendor) is still
+  // covered by N1 and N2 above and by the source invariants below.
 
   // ── 6. Source invariants: one transport, zero banned identifiers ──
   // v717: the embedded gap-fill module data is one long base64 string (gzip); random letters in it can spell a banned name by accident, so the

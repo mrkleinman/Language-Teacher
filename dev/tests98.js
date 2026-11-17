@@ -81,6 +81,14 @@ const progressed = (c, lang, k) => initOf(c, lang).map((w, i) => i < k ? { ...w,
       lv.every((t, i) => t.includes('Lessons is not available for ' + NAME[LANGS[i]] + ' yet') && /Back to the/.test(t)) && Object.keys(c0.ev('TH_ONLY_VIEWS')).join() === 'lessons')
   }
 
+  {
+    // the header must not grow wider than a phone screen when the cost chip is shown (owner: it did). The measured check is the browser run (360 / 390 / 420 px, all four languages, with the chip);
+    // these pins hold the cause: every part that can shrink is allowed to (language name ellipsis, the chip), the buttons keep their size, and the sides are 12 px
+    const hs = SRC.slice(SRC.indexOf('function LanguageSelector('), SRC.indexOf('// ── Dashboard ───'))
+    T('H4', 'header layout: the language name shrinks first (to an ellipsis), then the cost chip may shrink, the nav buttons never shrink, the header has a gap and 12 px sides (no fixed total width that a phone cannot hold)',
+      /flex:'0 4 auto', minWidth:0/.test(hs) && /textOverflow:'ellipsis'/.test(hs) && /position:'relative', minWidth:0, flexShrink:1/.test(SRC) && /<nav style=\{\{ display: 'flex', gap: 4, flexShrink: 0 \}\}>/.test(hs) && /padding: '0 12px', gap: 4, display: 'flex'/.test(hs), hs.length)
+  }
+
   // ═════ W — Words ═════
   for (const lang of LANGS) {
     const o = await open(lang)
@@ -233,6 +241,18 @@ const progressed = (c, lang, k) => initOf(c, lang).map((w, i) => i < k ? { ...w,
     T('D10', 'the pure reader accepts the app\'s own file (the paste route and the file route read it the same way)', pasted)
     const sc = c0.langBackupScrub('a ' + KEY + ' b ' + CODE + ' c AIzaSyZZZZZZZZZZZZZZZZZZZZZZZZZZ', [KEY])
     T('D11', 'the scrubber blanks the keys it is given and anything shaped like a Google key', !sc.includes(KEY) && !/AIza[0-9A-Za-z_-]{20,}/.test(sc), sc)
+  }
+
+  // the learner's own words travel in a backup too (a new device gets them back with their ids)
+  for (const lang of LANGS) {
+    const GW = { ja: { written: '鯨', reading: 'くじら', english: 'whale' }, zh: { written: '乒乓', reading: 'pīngpāng', english: 'ping-pong' }, yue: { written: '鯨', reading: 'kìhng', english: 'whale' } }[lang]
+    const built = c0.langCustomBuild(lang, initOf(c0, lang), [GW], { queue: true })
+    const a = await open(lang, { [KEYS[lang][0]]: built.vocab }); await click(a.r, 'Data'); await click(a.r, /Download backup/); await flush(10)
+    const text = a.dl.blobs[a.dl.blobs.length - 1].text; await TR.act(async () => { a.r.unmount() })
+    const b = await open(lang); await click(b.r, 'Data'); await chooseFile(b.r, fileOf('b.json', text)); await click(b.r, /Restore \(keeps newer progress/); await flush(40)
+    const got = (stored(b.c, KEYS[lang][0]) || []).find(w => w.custom)
+    T('D12-' + lang, NAME[lang] + ': the learner\'s own word travels in the backup: a fresh device gets it back with the same id, still new and still queued', !!got && got.id === built.added[0].id && got.status === 'new' && !!got.queuedNext && /Restored/.test(msgOf(b.r)), got)
+    await TR.act(async () => { b.r.unmount() })
   }
 
   // ═════ A — Add ═════

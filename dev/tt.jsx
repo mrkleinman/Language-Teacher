@@ -17133,16 +17133,16 @@ function LanguageSelector({ lang, onSetLang, onHome }) {
   }, [open])
   const cur = LANGS[lang] || LANGS.th
   return (
-    <div ref={ref} style={{ position:'relative', display:'flex', alignItems:'center', gap:2 }}>
+    <div ref={ref} style={{ position:'relative', display:'flex', alignItems:'center', gap:2, flex:'0 4 auto', minWidth:0 }}>
       <div onClick={onHome}
-        style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', padding:'2px 4px', borderRadius:8 }}>
+        style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', padding:'2px 4px', borderRadius:8, minWidth:0 }}>
         <div style={{ width:28, height:28, borderRadius:8, background:'linear-gradient(135deg, #d4a94a, #b88a35)',
                       display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>{cur.flag}</div>
-        <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>{cur.name}</span>
+        <span style={{ fontSize:13, fontWeight:700, color:'var(--text)', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{cur.name}</span>
       </div>
       <button onClick={() => setOpen(o => !o)} aria-label="Switch language"
         style={{ background:'transparent', border:'none', color:'var(--text)', fontSize:18,
-                 cursor:'pointer', padding:'8px 8px', lineHeight:1, minWidth:36, minHeight:36 }}>▾</button>
+                 cursor:'pointer', padding:'8px 6px', lineHeight:1, minWidth:32, minHeight:36, flexShrink:0 }}>▾</button>
       {open && (
         <div style={{ position:'absolute', top:42, left:0, background:'var(--surface)', border:'1px solid var(--border)',
                       borderRadius:10, padding:4, minWidth:150, zIndex:100, boxShadow:'0 8px 24px rgba(0,0,0,0.5)' }}>
@@ -17178,14 +17178,14 @@ function Header({ view, onNav, onHome, lastTrackCost, geminiKey, geminiSpend, la
   const spend = isNum(geminiSpend) ? geminiSpend : 0
   const spendColor = spend > 1 ? '#ef4444' : spend > 0.1 ? '#f59e0b' : '#10b981'
   return (
-    <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, background: 'rgba(11,17,32,0.95)', backdropFilter: 'blur(12px)', zIndex: 50 }}>
+    <header style={{ borderBottom: '1px solid var(--border)', padding: '0 12px', gap: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, background: 'rgba(11,17,32,0.95)', backdropFilter: 'blur(12px)', zIndex: 50 }}>
       <LanguageSelector lang={lang || 'th'} onSetLang={onSetLang} onHome={onHome || (() => onNav('dashboard'))} />
       {/* v650 §8: Gemini mark + LAST TRACK creation cost (tap for details). Cumulative spend lives in Settings. */}
       {hasKey && <LastTrackCostChip />}
-      <nav style={{ display: 'flex', gap: 4 }}>
+      <nav style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
         {items.map(item => (
           <button key={item.id} onClick={() => onNav(item.id)} title={item.label}
-            style={{ padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', background: view === item.id ? 'var(--surface2)' : 'transparent', color: view === item.id ? 'var(--gold)' : 'var(--muted)', transition: 'all 0.15s' }}>
+            style={{ padding: '6px 8px', borderRadius: 8, border: 'none', cursor: 'pointer', background: view === item.id ? 'var(--surface2)' : 'transparent', color: view === item.id ? 'var(--gold)' : 'var(--muted)', transition: 'all 0.15s' }}>
             <Icon name={item.icon} size={18} />
           </button>
         ))}
@@ -18532,7 +18532,7 @@ function aiStageOf(prompt, chain) {
 }
 function aiCallerChain(err) {
   // v650: regenerator frames (_callee76$, tryCatch, Generator.next, _next…) are never a function name
-  const skip = /^(aiCallerChain|aiRecordStart|geminiRequest|geminiGenerate|geminiJudge|_geminiSend|Object\.|Array\.|new Promise|Promise|async|eval|anonymous|_callee\d*\$?|tryCatch|Generator|asyncGeneratorStep|_next|_throw|invoke|step)/
+  const skip = /^(aiCallerChain|aiRecordStart|geminiRequest|_geminiRequestInner|geminiGenerate|geminiJudge|_geminiSend|Object\.|Array\.|new Promise|Promise|async|eval|anonymous|_callee\d*\$?|tryCatch|Generator|asyncGeneratorStep|_next|_throw|invoke|step)/
   const out = []
   String((err && err.stack) || '').split('\n').slice(1).forEach(l => {
     const m = l.match(/at (?:async )?([A-Za-z0-9_$.]+)/) || l.match(/^([A-Za-z0-9_$]+)@/)
@@ -18789,11 +18789,11 @@ function LastTrackCostChip() {
     return () => { live = false; try { window.removeEventListener('tt-last-track-ai-usage', on) } catch (e) {} }
   }, [])
   return (
-    <div style={{ position:'relative' }}>
+    <div style={{ position:'relative', minWidth:0, flexShrink:1 }}>
       <button onClick={() => setOpen(o => !o)} title="Gemini cost of the last track you created (estimate)" aria-label="Last track Gemini cost"
-        style={{ background:'var(--surface2)', border:'none', borderRadius:8, padding:'4px 10px', display:'flex', alignItems:'center', gap:6, cursor:'pointer', color:'var(--text)' }}>
+        style={{ background:'var(--surface2)', border:'none', borderRadius:8, padding:'4px 8px', display:'flex', alignItems:'center', gap:6, cursor:'pointer', color:'var(--text)', maxWidth:'100%', minWidth:0 }}>
         <GeminiMark size={14} />
-        <span className="phon" style={{ fontSize:13, fontWeight:600 }}>{u ? formatSgdChip(u.estimatedSgd) : 'S$—'}</span>
+        <span className="phon" style={{ fontSize:13, fontWeight:600, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{u ? formatSgdChip(u.estimatedSgd) : 'S$—'}</span>
       </button>
       {open && (
         <div style={{ position:'absolute', top:36, left:0, zIndex:50, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'10px 12px', minWidth:200, fontSize:12, color:'var(--muted)', boxShadow:'0 6px 20px rgba(0,0,0,0.35)' }}>

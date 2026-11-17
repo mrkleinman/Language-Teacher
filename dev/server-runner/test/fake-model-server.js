@@ -86,6 +86,7 @@ function startFakeModel(opts) {
       if (opts.failWith) return send(res, opts.failWith.status || 500, { type: 'error', error: { type: opts.failWith.type || 'api_error', message: opts.failWith.message || 'stand-in failure' } })
       const ctx = textOfAnthropic(body); const schema = body.output_config && body.output_config.format && body.output_config.format.schema
       stats.prompts.push(ctx.q.slice(0, 300))
+      if (opts.onRequest) opts.onRequest({ system: ctx.system, user: ctx.user, schema, max_tokens: body.max_tokens })
       let text; for (const h of handlers) { text = h(Object.assign({ schema }, ctx)); if (text != null) break }
       if (text == null) text = JSON.stringify(synth(schema))
       return send(res, 200, { id: 'msg_standin', type: 'message', role: 'assistant', model: HAIKU, stop_reason: 'end_turn', stop_details: null,

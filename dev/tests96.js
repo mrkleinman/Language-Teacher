@@ -41,6 +41,28 @@ const T = (id, name, pass, detail) => { n++; if (!pass) fails++; console.log((pa
   const left = (SRC.match(/await new Promise\((?:r|res|resolve) => setTimeout\(/g) || []).length
   const used = (SRC.match(/await appSleep\(/g) || []).length
   T('S5', 'the waits between words, the retry waits (Gemini, the optional model) and the rate-limit countdown use appSleep; no plain timer wait is left in them', used >= 11 && left === 0, { used, left })
+
+  // keep-awake: a Web Lock and a silent tone are held while a model request runs, and let go 20 seconds after the last one
+  {
+    const c = load(FILE); c.console.info = () => {}
+    c.ev(`globalThis.document = { visibilityState: "visible", addEventListener() {} }; globalThis.__locks = []; globalThis.__rel = 0
+      globalThis.navigator = { locks: { request(name, cb) { globalThis.__locks.push(name); return new Promise(res => { cb().then(() => { globalThis.__rel++; res() }) }) } } }`)
+    const hold = c.ev('keepAliveHold'), st = c.ev('keepAliveState')
+    const r1 = hold(), r2 = hold()
+    const s1 = st()
+    T('K1', 'holding twice takes ONE Web Lock and counts two holds', s1.holds === 2 && s1.lock && c.ev('globalThis.__locks').length === 1, s1)
+    r1(); r1()
+    T('K2', 'releasing the same hold twice counts once', st().holds === 1, st())
+    r2()
+    T('K3', 'after the last release the hold count is zero (the lock and tone are let go 20 s later, so the pauses between requests stay covered)', st().holds === 0, st())
+    // a browser with none of it: nothing throws
+    const c2 = load(FILE); c2.console.info = () => {}
+    c2.ev('globalThis.document = { visibilityState: "visible" }; globalThis.navigator = {}')
+    let threw = false; try { c2.ev('keepAliveHold')()() } catch (e) { threw = true }
+    T('K4', 'a browser without Web Locks or audio simply does without (no error)', !threw)
+    T('K5', 'every model request goes through the keep-awake wrapper: geminiRequest takes a hold, runs the real request and always releases it',
+      /async function geminiRequest\(_args\) \{\s*const _release = keepAliveHold\(\)\s*try \{ return await _geminiRequestInner\(_args\) \} finally \{ _release\(\) \}/.test(SRC))
+  }
   console.log((fails ? 'FAIL ' : '') + (n - fails) + '/' + n)
   process.exit(fails ? 1 : 0)
 })()

@@ -11365,6 +11365,52 @@ function appSleep(ms) {
   })
 }
 
+// 17 Nov: keep the page awake while a track is being written. A hidden tab can be frozen or have its timers stretched by the browser; two things the browser itself treats as
+// "this page is busy, leave it alone" are held for as long as a model request is running (and for 20 seconds after the last one, so the pauses between requests are covered):
+// a Web Lock (a page that holds one is not frozen) and a silent audio signal (a page that is playing audio is exempt from the strongest timer throttling and is kept alive on
+// phones). The audio is a 20 Hz tone at about -74 dB: far below hearing and below any speaker's output, and it exists only while a request runs. Browsers only allow audio after a
+// tap, so the first tap anywhere in the app unlocks it. Every part is optional: a browser without it simply does without, and nothing here can make a request fail.
+let _kaHolds = 0, _kaCtx = null, _kaNode = null, _kaLockRelease = null, _kaStopAt = 0
+function keepAliveUnlock() {
+  try {
+    const AC = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext); if (!AC) return
+    if (!_kaCtx) _kaCtx = new AC()
+    if (_kaCtx.state === 'suspended') { const r = _kaCtx.resume(); if (r && r.catch) r.catch(() => {}) }
+  } catch (e) {}
+}
+try { if (typeof document !== 'undefined' && document.addEventListener) { document.addEventListener('pointerdown', keepAliveUnlock, { passive: true }); document.addEventListener('keydown', keepAliveUnlock, { passive: true }) } } catch (e) {}
+function _kaStart() {
+  try {
+    keepAliveUnlock()
+    if (_kaCtx && !_kaNode && _kaCtx.state === 'running') {
+      const o = _kaCtx.createOscillator(), g = _kaCtx.createGain(); o.frequency.value = 20; g.gain.value = 0.0002
+      o.connect(g); g.connect(_kaCtx.destination); o.start(); _kaNode = { o, g }
+    }
+  } catch (e) { _kaNode = null }
+  try {
+    if (typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request && !_kaLockRelease) {
+      const p = navigator.locks.request('tt-track-writing', () => new Promise(res => { _kaLockRelease = res })); if (p && p.catch) p.catch(() => {})
+    }
+  } catch (e) {}
+}
+function _kaStop() {
+  try { if (_kaNode) { _kaNode.o.stop(); _kaNode.o.disconnect(); _kaNode.g.disconnect() } } catch (e) {}
+  _kaNode = null
+  try { if (_kaLockRelease) _kaLockRelease() } catch (e) {}
+  _kaLockRelease = null
+}
+function keepAliveHold() {
+  _kaHolds++; _kaStopAt = 0; _kaStart()
+  let done = false
+  return function release() {
+    if (done) return; done = true; _kaHolds = Math.max(0, _kaHolds - 1)
+    if (_kaHolds > 0) return
+    const mark = _kaStopAt = Date.now() + 20000
+    appSleep(20000).then(() => { if (_kaHolds === 0 && _kaStopAt === mark) _kaStop() })
+  }
+}
+function keepAliveState() { return { holds: _kaHolds, audio: !!_kaNode, lock: !!_kaLockRelease } }
+
 // Japanese storage namespace — never collides with the Thai keys (tt-vocab, tt-tracks…)
 const JA = {
   vocab:'tt-ja-vocab', tracks:'tt-ja-tracks', dailyNew:'tt-ja-daily-new',
@@ -18699,7 +18745,12 @@ function _cancelledError(why) { const e = new Error('GEMINI_CANCELLED' + (why ? 
 // v671 §B4 — live/mock provenance: incremented ONLY by a real provider HTTP response (the test transport replaces
 // geminiRequest, so a mocked run never moves it). Generation stats read the delta to say LIVE or MOCK truthfully.
 const AI_LIVE_TRANSPORT = { responses: 0, ok: 0 }
-async function geminiRequest({ apiKey, model, messages, maxTokens, temperature, signal, stage, json, dedupe, attempt }) {
+// every model request of every language and provider enters here: the page is kept awake for as long as it runs (see keepAliveHold)
+async function geminiRequest(_args) {
+  const _release = keepAliveHold()
+  try { return await _geminiRequestInner(_args) } finally { _release() }
+}
+async function _geminiRequestInner({ apiKey, model, messages, maxTokens, temperature, signal, stage, json, dedupe, attempt }) {
   // telemetry: caller chain captured synchronously (before any await)
   const _chain = aiCallerChain(new Error())
   const _promptText = (messages || []).map(m => typeof m.content === 'string' ? m.content : JSON.stringify(m.content)).join('\n')

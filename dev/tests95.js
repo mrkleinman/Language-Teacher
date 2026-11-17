@@ -70,12 +70,14 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
   const { V, tr: TRACK } = await mkTrack(c0, 5)
   // 18 Nov (stage B-1): the track also holds 4 greeting / parting pairs; the reviewer judges the LESSON lines only (the framing lines are fixed, curated and have no target), so N is the lesson-line count
   const N = TRACK.pairs.filter(p => !p._framing).length
+  // the lesson lines of a track (what the reviewer sees, numbered 1..N); pairIndex of a flag counts in the WHOLE track, whose first two pairs are the opening greeting
+  const lesson = t => t.pairs.filter(p => !p._framing)
 
   // ═════ A — the question ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
   {
     const q = c0.yueReviewPrompt(TRACK, V), all = q.system + '\n' + q.user
     T('A1', 'the question carries EVERY line (Cantonese, Yale, English), numbered 1…N, with the speaker as A man / B woman, and the targets with the meaning the word list intends',
-      q.count === 15 && TRACK.pairs.every((p, i) => q.user.includes((i + 1) + '. [' + (p.speaker === 'B' ? 'B, woman' : 'A, man') + ']') && q.user.includes('Cantonese: ' + p.chinese) && q.user.includes('Yale: ' + p.pinyin) && q.user.includes('English: ' + p.english)) &&
+      q.count === 15 && lesson(TRACK).every((p, i) => q.user.includes((i + 1) + '. [' + (p.speaker === 'B' ? 'B, woman' : 'A, man') + ']') && q.user.includes('Cantonese: ' + p.chinese) && q.user.includes('Yale: ' + p.pinyin) && q.user.includes('English: ' + p.english)) &&
       TRACK.keywords.every(k => q.user.includes(k.chinese + ' (' + k.pinyin + ') = ' + k.english)) && /\[(particle|pronoun|verb)\]/.test(q.user), q.user.slice(0, 600))
     T('A2', 'the reviewer is told to JUDGE only: natural Hong Kong Cantonese (Mandarin-isms and written Chinese are flags, with the 係 唔 冇 咗 嘅 喺 佢 / 是 不 没有 了 的 在 他 contrast), English fidelity, Yale vs the characters, target sense, register A man / B woman; never to rewrite or write romanisation',
       /native Hong Kong Cantonese speaker/.test(q.system) && /only JUDGE/.test(q.system) && /never rewrite, correct or translate a line and you never write romanisation/.test(q.system) && /係 唔 冇 咗 嘅 喺 佢/.test(q.system) && /是 不 没有 了 的 在 他/.test(q.system) &&
@@ -118,11 +120,11 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
     const out = await c.runCantoneseQualityReview(tr, V2, { apiKey: KEY })
     const r = out.review, body = c.__calls.gemini[0] && c.__calls.gemini[0].body, sent = JSON.stringify(body)
     T('C1', 'ONE request for the whole track (15 lines), to the default model, with every line in it, the strict schema as the response schema, and the judging stage in the ledger',
-      c.__calls.gemini.length === 1 && c.__calls.anthropic.length === 0 && /gemini-2\.5-flash-lite:generateContent/.test(c.__calls.gemini[0].url) && tr.pairs.every(p => sent.includes(p.chinese)) && linesIn(body) === 15 &&
+      c.__calls.gemini.length === 1 && c.__calls.anthropic.length === 0 && /gemini-2\.5-flash-lite:generateContent/.test(c.__calls.gemini[0].url) && lesson(tr).every(p => sent.includes(p.chinese)) && linesIn(body) === 15 &&
       body.generationConfig.responseMimeType === 'application/json' && body.generationConfig.responseSchema && body.generationConfig.responseSchema.properties.verdict && ledger(c, 'E_yue_review').length === 1 && ledger(c, 'E_yue_review')[0].provider === 'gemini', c.__calls.urls)
     T('C2', 'the result: done, 2 of 15 flagged, each flag keeps its line number, pair index, speaker, target, Cantonese, kind and reason; the verdict is "review"; reviewer and model named',
-      r.status === 'done' && r.total === 15 && r.flagged === 2 && r.verdict === 'review' && r.flags.map(f => f.n).join() === '4,9' && r.flags[0].pairIndex === 3 && r.flags[0].chinese === tr.pairs[3].chinese && r.flags[0].speaker === tr.pairs[3].speaker &&
-      r.flags[0].targetChinese === tr.pairs[3].targetChinese && r.flags[0].kind === 'mandarin' && /Mandarin/.test(r.flags[0].reason) && r.flags[1].kind === 'yale' && r.model === GEM && r.provider === 'gemini' && /Gemini 2\.5 Flash-Lite/.test(r.modelLabel) && r.version === 'yue-review-v1', r)
+      r.status === 'done' && r.total === 15 && r.flagged === 2 && r.verdict === 'review' && r.flags.map(f => f.n).join() === '4,9' && r.flags[0].pairIndex === tr.pairs.indexOf(lesson(tr)[3]) && r.flags[0].pairIndex === 5 && r.flags[0].chinese === lesson(tr)[3].chinese && r.flags[0].speaker === lesson(tr)[3].speaker &&
+      r.flags[0].targetChinese === lesson(tr)[3].targetChinese && r.flags[0].kind === 'mandarin' && /Mandarin/.test(r.flags[0].reason) && r.flags[1].kind === 'yale' && r.model === GEM && r.provider === 'gemini' && /Gemini 2\.5 Flash-Lite/.test(r.modelLabel) && r.version === 'yue-review-v1', r)
     // verdict arithmetic: the worse of the reviewer's own verdict and what its flags add up to
     const run = async (flags, verdict) => { const cc = app({ flags, script: (k, b) => reply(linesIn(b), flags, verdict) }), t2 = await mkTrack(cc, 5); return (await cc.runCantoneseQualityReview(t2.tr, t2.V, { apiKey: KEY })).review }
     const many = Object.fromEntries([1, 2, 3, 4, 5, 6].map(i => [i, { kind: 'mandarin', reason: 'Mandarin' }]))
@@ -130,6 +132,7 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
     T('C3', 'verdict: no flags → pass; the reviewer says "pass" but flags a line → review (flags win); more than a third flagged → fail; the reviewer\'s own "fail" is kept even with no flag',
       rClean.verdict === 'pass' && rClean.flagged === 0 && rPassWithFlags.verdict === 'review' && rPassWithFlags.modelVerdict === 'pass' && rMany.verdict === 'fail' && rMany.flagged === 6 && rFailNoFlags.verdict === 'fail' && rFailNoFlags.flagged === 0, { rClean, rPassWithFlags: rPassWithFlags.verdict, rMany: rMany.verdict })
     reviewed = c.yueApplyReview(tr, out)
+    // 18 Nov (stage B-1): a saved track now holds 15 lesson pairs + 4 greeting / parting pairs = 19; the review still judges the 15 lesson lines
     T('C4', 'the result is stored ON the track (track.qualityReview) and survives a JSON round trip (reload / export / tab sync); the pairs are untouched (nothing rewritten, Yale as the data has it)',
       reviewed.qualityReview && reviewed.qualityReview.status === 'done' && JSON.stringify(JSON.parse(JSON.stringify(reviewed)).qualityReview) === JSON.stringify(reviewed.qualityReview) && JSON.stringify(reviewed.pairs) === JSON.stringify(tr.pairs) &&
       reviewed.pairs.every(p => c.validateYale(p.pinyin).ok) && reviewed.pairs.length === 19 && tr.qualityReview === undefined, Object.keys(reviewed))
@@ -143,7 +146,7 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
     const done = html(React.createElement(c.CantoneseReviewPanel, { track: reviewed, vocab: V, cred, auto: false }))
     T('D1', 'the result card: "2 of 15 lines flagged", the verdict in words, the reviewer, requests and cost, and for each flagged line its number, speaker, target, kind, the Cantonese and the reason; nothing rewritten',
       /Quality review: 2 of 15 lines flagged/.test(done) && /Some lines need a look/.test(done) && /Reviewed by Gemini 2\.5 Flash-Lite \(default\) · 1 request · ≈ S\$/.test(done) && /Line 4 /.test(done) && /Line 9 /.test(done) && /Mandarin or written Chinese/.test(done) &&
-      /Yale does not match the characters/.test(done) && done.includes(reviewed.pairs[3].chinese) && /uses 是 and 没有: Mandarin, not Hong Kong Cantonese/.test(done) && /Flagged lines stay in the track/.test(done) && /Nothing was rewritten/.test(done) && /Run the quality review again/.test(done), done)
+      /Yale does not match the characters/.test(done) && done.includes(lesson(reviewed)[3].chinese) && /uses 是 and 没有: Mandarin, not Hong Kong Cantonese/.test(done) && /Flagged lines stay in the track/.test(done) && /Nothing was rewritten/.test(done) && /Run the quality review again/.test(done), done)
     const clean = c.yueApplyReview(TRACK, { review: { version: 'yue-review-v1', status: 'done', verdict: 'pass', modelVerdict: 'pass', summary: 'All natural.', total: 15, flagged: 0, flags: [], requests: 1, costUsd: 0.0004, modelLabel: 'Gemini 2.5 Flash-Lite (default)', ranAt: '2026-11-17T10:00:00Z' } })
     const dClean = html(React.createElement(c.CantoneseReviewPanel, { track: clean, vocab: V, cred, auto: false }))
     T('D2', 'a clean review says "all 15 lines judged fine" and lists no flagged line', /all 15 lines judged fine/.test(dClean) && /No problems found/.test(dClean) && !/Line \d+ /.test(dClean))
@@ -185,8 +188,9 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
     await click(/Study anyway — 2 lines flagged/)
     const saved = () => { const s = JSON.parse(c.localStorage.getItem('tt-yue-tracks') || 'null'); const a = s && (s.items || s.list || s); return Array.isArray(a) ? a : (a && a.v) || [] }
     const t1 = saved()[0]
+    // 18 Nov (stage B-1): a saved track now holds 15 lesson pairs + 4 greeting / parting pairs = 19; the review still judges the 15 lesson lines
     T('E3', 'Study anyway saves the track WITH its review under the Cantonese key (2 flags, requests 1, cost counted, the reviewer named) and opens the Player',
-      /Say in Cantonese/.test(txt(r)) && saved().length === 1 && t1.qualityReview && t1.qualityReview.status === 'done' && t1.qualityReview.flagged === 2 && t1.qualityReview.requests === 1 && t1.qualityReview.costUsd > 0 && t1.pairs.length === 15 && t1.aiUsage && t1.aiUsage.total === 1, t1 && t1.qualityReview)
+      /Say in Cantonese/.test(txt(r)) && saved().length === 1 && t1.qualityReview && t1.qualityReview.status === 'done' && t1.qualityReview.flagged === 2 && t1.qualityReview.requests === 1 && t1.qualityReview.costUsd > 0 && t1.pairs.length === 19 && t1.aiUsage && t1.aiUsage.total === 1, t1 && t1.qualityReview)
     T('E4', 'the Player has a Review button for Cantonese; it opens the saved-track review screen with the earlier result', await click(/Review$/) && /Quality review/.test(txt(r)) && /2 of 15 lines flagged/.test(txt(r)) && /Run the quality review again/.test(txt(r)) && !/is not available for Cantonese yet/.test(txt(r)), txt(r).slice(0, 400))
     c.__calls.gemini.length = 0
     T('E5', 'Run the quality review again: ONE more request, the result replaces the earlier one on the saved track (a new date), and the screen shows it', await click(/Run the quality review again/) && c.__calls.gemini.length === 1 && saved().length === 1 &&
@@ -240,6 +244,7 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
     let gr; await TR.act(async () => { gr = TR.create(React.createElement(c6.CantoneseGenerator, { vocab: t6.V, targets: t6.tg, selection: null, cred: { geminiKey: KEY }, trackMode: 'daily', tracks: [], onGenerated: t => { got = t }, onBack() {} })); await flush(20) })
     await TR.act(async () => { gr.root.findAll(x => x.type === 'button').find(b => /Build the track/.test(textOf(b.children))).props.onClick(); await flush(120) })
     const g1 = txt(gr), studyBtn = gr.root.findAll(x => x.type === 'button').find(b => /Study track/.test(textOf(b.children)))
+    // 18 Nov (stage B-1): a saved track now holds 15 lesson pairs + 4 greeting / parting pairs = 19; the review still judges the 15 lesson lines
     T('F6', 'generator: a malformed reply is said in words ("could not be completed"), the Study button is enabled, and the track handed on carries the failed attempt (no flags, nothing wiped)', /Structure check passed/.test(g1) && /Quality review could not be completed/.test(g1) && !!studyBtn && !studyBtn.props.disabled &&
       (await TR.act(async () => { studyBtn.props.onClick(); await flush(10) }), got && got.qualityReview && got.qualityReview.status === 'failed' && got.pairs.length === 19), g1.slice(-400))
     await TR.act(async () => { gr.unmount() })
@@ -261,6 +266,7 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
     let gr; await TR.act(async () => { gr = TR.create(React.createElement(c3.CantoneseGenerator, { vocab: t3.V, targets: t3.tg, selection: null, cred: {}, trackMode: 'daily', tracks: [], onGenerated: t => { got = t }, onBack() {} })); await flush(20) })
     await TR.act(async () => { gr.root.findAll(x => x.type === 'button').find(b => /Build the track/.test(textOf(b.children))).props.onClick(); await flush(120) })
     const g = txt(gr), study = gr.root.findAll(x => x.type === 'button').find(b => /Study track/.test(textOf(b.children)))
+    // 18 Nov (stage B-1): a saved track now holds 15 lesson pairs + 4 greeting / parting pairs = 19; the review still judges the 15 lesson lines
     T('G5', 'generator, no key: "Structure check passed", "Quality review not run … no Gemini key is saved in Settings", still 0 model requests, Study is enabled and hands on a track whose review says not-run; nothing was sent',
       /Structure check passed/.test(g) && /Quality review not run/.test(g) && /No model was asked, because no Gemini key is saved in Settings/.test(g) && /0 model requests/.test(g) && !!study && !study.props.disabled && c3.__calls.urls.length === 0 &&
       (await TR.act(async () => { study.props.onClick(); await flush(10) }), got && got.qualityReview.status === 'not-run' && got.qualityReview.requests === 0 && got.pairs.length === 19), g.slice(-500))

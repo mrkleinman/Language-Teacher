@@ -9376,7 +9376,7 @@ const YUE_FREE_YALE = Object.freeze({ '呀': 'a', '啊': 'a', '啦': 'lā', '喇
 // target yet; the ids are written next to the module data (YUE_NO_MODULE_IDS) so the selector knows them before the data is unpacked
 function yueTargetHasModule(w) { try { return !!w && !YUE_NO_MODULE_SET.has(w.id != null ? w.id : w.wordId) } catch (e) { return true } }
 
-// ── THE LEARNER-VOCABULARY RULE (18 Nov) ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// ── THE LEARNER-VOCABULARY RULE ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 // A real day-one Cantonese Daily used words the learner had never been taught (狗 名字 乜嘢 多士 鍾意 今日 超市 買咗 ...): every module had only been proved against the
 // WHOLE tier-1 list. A module may now serve a target only if EVERY fixed word of it (its chunk words, already cut with the word list at build time, plus the target's own
 // surface for {W} and the classifier for {M}) is in the learner's ALLOWED SET:
@@ -60530,6 +60530,13 @@ function yueLineProblems(line, target, seenMap) {
   if (seenMap && seenMap.has(key) && seenMap.get(key) !== (target && target.id)) out.push('the sentence is already used for another word in this track')
   return out
 }
+// the words of a RENDERED line that the learner may not use (a second, independent look at the finished line: the module filter works on the fixed chunks, this works on the
+// segments the learner will actually see, so a slip in either one cannot put an untaught word on the screen)
+function yueLineVocabProblems(line, allowed) {
+  const bad = []
+  ;((line && line.segments) || []).forEach(s => { if (s && s.type !== 'punct' && s.surface && !allowed.has(s.surface) && !bad.includes(s.surface)) bad.push(s.surface) })
+  return bad
+}
 // the sentence that says why no lesson can be written for a word (shown on the generator screen and in the log; never a silent substitute)
 function yueNoLessonText(target, info, usable) {
   if (!yueModulesActive() || !yueModuleTagOf(target) || (info && !info.inCell)) return 'no module can fill this word yet'
@@ -60561,6 +60568,7 @@ function yueModuleExchange(target, vocab, seenMap, log, o) {
     let ok = true
     for (const l of lines) {
       const p = yueLineProblems(l, target, seenMap)
+      if (!p.length && allowed) { const bad = yueLineVocabProblems(l, allowed); if (bad.length) p.push('a word you have not been taught: ' + bad.slice(0, 3).join(' ')) }
       if (p.length) { ok = false; if (!firstWhy) firstWhy = p[0].slice(0, 70); break }
     }
     if (!ok) { refused++; continue }
@@ -62318,7 +62326,8 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
       const inc = e && e.incomplete
       const named = new Map(); ;(inc && inc.failures || []).forEach(f => { if (!named.has(f.targetId)) named.set(f.targetId, f) })
       setError(inc ? 'Cantonese track incomplete: ' + inc.produced + '/' + inc.expected + ' recalls.\n' + [...named.values()].map(f => '• ' + f.target + ': ' + f.reason).join('\n') +
-        '\n\nNo line was written for the words above, and no line with a word you have not been taught was written in its place (nothing else can write a Cantonese sentence yet), so no track was made.' : (e && e.message) || 'Generation failed.')
+        (YUE_STRICT.on ? '\n\nNo line was written for the words above, and no line with a word you have not been taught was written in its place (nothing else can write a Cantonese sentence yet), so no track was made.'
+          : '\n\nNo line was written for the words above (nothing else can write a Cantonese sentence yet), so no track was made.') : (e && e.message) || 'Generation failed.')
       setPhase('error')
     }
   }
@@ -62467,7 +62476,7 @@ function CantoneseDashboard({ vocab, tracks, targets, trackTargets, held, onStar
         {(held || []).slice(0, 6).map(d => <p key={d.target.id} style={{ fontSize:11, color:'var(--muted)', lineHeight:1.5 }}>
           <span className="yue" lang="zh-HK">{d.target.chinese}</span>{': '}{d.why || 'no lesson yet'}{d.replacedBy ? <> {'\u2014'} <span className="yue" lang="zh-HK">{d.replacedBy.chinese}</span> instead.</> : ' \u2014 left for later.'}</p>)}
         {(held || []).length > 6 && <p style={{ fontSize:11, color:'var(--muted)' }}>and {(held || []).length - 6} more.</p>}
-        <p style={{ fontSize:10, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>A track only uses words you have been taught, the words of the track and a few free words, so a word waits until a lesson exists that needs nothing else.</p>
+        {YUE_STRICT.on && <p data-yue-held-why="1" style={{ fontSize:10, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>A track only uses words you have been taught, the words of the track and a few free words, so a word waits until a lesson exists that needs nothing else.</p>}
       </Card>}
       {!voiceOk && !gcpTtsKey && <Card style={{ padding:'10px 14px', border:'1px solid #f59e0b' }}>
         <p data-yue-voice-notice="1" style={{ fontSize:11, color:'#f59e0b', lineHeight:1.5 }}>This device has no Hong Kong Cantonese voice (zh-HK). Audio may be read in Mandarin, which is wrong for these words. Add a Cantonese (Hong Kong) voice in the speech settings of the device, or use a cloud voice key.</p>

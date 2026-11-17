@@ -93,6 +93,7 @@ async function runJob(spec, hooks, cfg) {
   hooks = hooks || {}
   const driver = drivers[spec.language]
   if (!driver) throw new RunnerError('no driver for language ' + spec.language, 'unsupported')
+  if (driver.unsupported) throw new RunnerError(driver.unsupported, 'unsupported')           // no browser is started for a language that has no verified driver
   const secrets = [spec.model.accessCode, spec.model.geminiKey]
   const scrub = makeScrubber(secrets)
   const log = line => { try { hooks.onLog && hooks.onLog(scrub.text(line).slice(0, 400)) } catch (e) {} }

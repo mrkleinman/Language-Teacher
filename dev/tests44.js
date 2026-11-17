@@ -78,7 +78,11 @@ const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sor
     // so the rule checker flags a CORRECT reading. Six are English loanwords said with a high tone (เมตร méet, เมาส์ máo, ซอส sáawt,
     // โพสต์ phóot, ชอล์ก cháawk, ลิงก์ líng); ฤกษ์ rôoek and หงส์ hǒng are the standard readings (the checker misreads the silent
     // ษ์ / ส์). Each carries qcStatus NEEDS_REVIEW (PHONETIC:TONE_CHECKER_DISAGREES) in the bank. Any OTHER flag still fails.
-    const V708_IRREGULAR = new Set(['เมตร', 'เมาส์', 'ซอส', 'โพสต์', 'ชอล์ก', 'ฤกษ์', 'หงส์', 'ลิงก์'])
+    // v761 — EXPECTED CHANGE (Muay Thai topic, 33 new topic words): น็อก "knock out" náwk is the same kind of case. By the spelling rule it is HIGH
+    // (low-class น, short vowel ็อ, dead final ก) and the bank already reads หมวกกันน็อก mùuak-gan-náwk; but the v684 rule checker only treats a
+    // mai-taikhu as short after a leading vowel sign, reads ็อ here as the long ɔɔ and answers "falling". The reading is right, the checker's
+    // ็อ case is the limit; any OTHER flag still fails.
+    const V708_IRREGULAR = new Set(['เมตร', 'เมาส์', 'ซอส', 'โพสต์', 'ชอล์ก', 'ฤกษ์', 'หงส์', 'ลิงก์', 'น็อก'])
     let mono = 0; const flagged = [], missed = []
     bank.forEach(d => { if (!d.ph || /[\s-]/.test(d.ph.trim()) || /\s/.test(d.t)) return; mono++
       const p = c.v684ThWordProblems(d.t, c.loadCanonicalThaiPhonetic(d.ph)).filter(x => /tone/.test(x))

@@ -345,12 +345,12 @@ const yueVocab = () => Array.from({ length: 60 }, (_, i) => ({ id: i + 1, status
   {
     // Japanese / Mandarin have no verified driver: the service accepts the job and fails it at once with a clear reason (it never hangs)
     const model = await startFakeModel({ accessCode: CANARY })
-    const out = {}
+    const out = {}, nb0 = browsers.length
     for (const lang of ['ja', 'zh']) {
       const id = await submit({ language: lang, mode: 'daily', data: {}, model: { model: 'claude-haiku-5-5', serverUrl: model.url, accessCode: CANARY } })
       const st = await finish(id, 90000); out[lang] = st.state + ': ' + (st.error || 'ok')
     }
-    T('D4', 'Japanese and Mandarin jobs fail at once with "not driven yet" (no driver is verified for them)', Object.values(out).every(x => /^failed: the (Japanese|Mandarin) flow is not driven yet/.test(x)), out)
+    T('D4', 'Japanese and Mandarin jobs fail at once with "not driven yet" (no driver is verified for them) and no browser is started for them', Object.values(out).every(x => /^failed: the (Japanese|Mandarin) flow is not driven yet/.test(x)) && browsers.length === nb0, out)
     await model.close()
   }
   // the whole tests' printed output and the job files hold no secret

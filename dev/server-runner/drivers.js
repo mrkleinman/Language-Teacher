@@ -170,6 +170,7 @@ const th = {
 
 // Japanese, Mandarin: not driven yet (see README "Languages")
 const unsupported = lang => ({
+  unsupported: 'the ' + lang + ' flow is not driven yet',          // checked before any browser is started
   async waitHome() { const e = new Error('the ' + lang + ' flow is not driven yet'); e.code = 'unsupported'; throw e },
   instrument: async () => {}, run: async () => { throw new Error('unsupported') },
 })

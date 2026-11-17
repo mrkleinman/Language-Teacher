@@ -19355,6 +19355,16 @@ const ANTHROPIC_STAGE_EFFORT = Object.freeze({
   O_listening_plan_repair: 'medium', O_listening_scene: 'medium', O_listening_scene_check: 'medium', O_listening_repair: 'medium', O_listening_qc: 'medium', O_listening_word_check: 'medium', O_listening_module_scene: 'medium', O_word_usage: 'medium',
   // listening — translation stays low
   O_listening_story_english: 'low' })
+// 18 Nov (owner: "change the effort of daily, revision and topic to your suggestion across all languages"): the sentence-writing and judging stages of Daily, Revision and Topic tracks run at
+// MEDIUM (scene, generation and its retries, the group and naturalness judges, replace / improve, recovery, and the Japanese / Mandarin plan-generate-judge-repair path); the cue checks and the
+// word-by-word work (segmentation, romanisation, gloss) stay LOW. The labels are partly classified from the prompt, so the rule is by prefix after the exact table above.
+function anthropicStageEffort(stage) {
+  const s = String(stage || '')
+  if (Object.prototype.hasOwnProperty.call(ANTHROPIC_STAGE_EFFORT, s)) return ANTHROPIC_STAGE_EFFORT[s]
+  if (/^(E_cue|L_final_cue|CUE_CHECK|I_|J_|K_)/.test(s)) return 'low'
+  if (/^(A0_|A_|B_|C_|F_|G_|H_recovery|V684_|NATURALNESS_CHECK)/.test(s)) return 'medium'
+  return undefined
+}
 function anthropicRequestBody({ model, messages, maxTokens, json, effort, noThinking }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
@@ -19436,7 +19446,7 @@ function aiRunSpend(runId, provider) {
 // ── the Anthropic transport (one ledger row per HTTP attempt, like Gemini) ──────────────────────────────────────────────
 async function anthropicRequest({ model, messages, maxTokens, signal, stage, json, _chain, _promptText, runCtl, runId }) {
   const stageNow = stage || aiStageOf(_promptText, _chain)
-  const req = anthropicRequestBody({ model, messages, maxTokens, json, effort: ANTHROPIC_STAGE_EFFORT[stageNow], noThinking: (/^Y_/.test(String(stageNow)) || stageNow === 'O_cue_fidelity') && THAI_YESAND.noThinking && !(stageNow === 'Y_bridge' && THAI_YESAND.bridgeThinking && !THAI_YESAND._bridgeNoThink) })
+  const req = anthropicRequestBody({ model, messages, maxTokens, json, effort: anthropicStageEffort(stageNow), noThinking: (/^Y_/.test(String(stageNow)) || stageNow === 'O_cue_fidelity') && THAI_YESAND.noThinking && !(stageNow === 'Y_bridge' && THAI_YESAND.bridgeThinking && !THAI_YESAND._bridgeNoThink) })
   const latched = AI_ANTHROPIC_LATCH.get(runId)
   const notSent = (why, err) => { const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens }); row.latched = true; aiRecordEnd(row, { http: null, ok: false, error: why }); throw err }
   if (latched) notSent('LATCHED: ' + latched.fatalProvider.reason, latched)

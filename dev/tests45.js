@@ -154,8 +154,10 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     c.aiBeginRun('daily-track')
     await ask(c, { stage: 'A_generation', temperature: 0.9, messages: [{ role: 'system', content: 'SYS' }, { role: 'user', content: 'U1' }, { role: 'assistant', content: 'A1' }] })
     const b = c.__calls.anthropic[0].body, keys = deepKeys(b)
-    T('M1', 'request: model claude-haiku-5-5, adaptive thinking, effort "low", system prompt separate, starts and ends with the user',
-      b.model === HAIKU && b.thinking.type === 'adaptive' && b.output_config.effort === 'low' && b.system === 'SYS' && b.messages[0].role === 'user' && b.messages[b.messages.length - 1].role === 'user', b)
+    // 18 Nov (owner's request): the sentence-writing stage of a Daily (A_generation) runs at effort MEDIUM now; "low" was the default for every stage before. The default for a stage
+    // that is not listed is still low (tests101 D3 checks that), so only this pin changed.
+    T('M1', 'request: model claude-haiku-5-5, adaptive thinking, effort "medium" for the writing stage, system prompt separate, starts and ends with the user',
+      b.model === HAIKU && b.thinking.type === 'adaptive' && b.output_config.effort === 'medium' && b.system === 'SYS' && b.messages[0].role === 'user' && b.messages[b.messages.length - 1].role === 'user', b)
     T('M2', 'request: no temperature, top_p, top_k or budget_tokens anywhere (Haiku 5.5 rejects non-default sampling)', !keys.some(k => /^(temperature|top_p|top_k|topP|topK|budget_tokens)$/.test(k)), keys)
     T('M3', 'request: max_tokens leaves room for thinking (3× the Gemini cap, min 2048) within the 16000 ceiling', b.max_tokens === 3600)
     const lines = c.anthropicJsonFormat(c.ev('GEMINI_SCHEMAS.lines')), verd = c.anthropicJsonFormat(c.ev('GEMINI_SCHEMAS.verdicts'))

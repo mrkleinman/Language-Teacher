@@ -16169,14 +16169,56 @@ function markWordKnown(word) {
 }
 
 // ── Storage ───────────────────────────────────────────────────────────────────
+// 17 Nov — a browser keeps about 5 MB per site in localStorage. The Thai word list (1.2 MB) and its one-time backup copy (1.2 MB) take most of it, and one saved track is
+// 0.3 MB, so after about five tracks a save no longer fitted — and the old code swallowed that error: the new track showed on screen and was gone after a reload. A value that
+// does not fit is now kept in the browser's IndexedDB (hundreds of MB) under the same key; a later save that fits again moves it back. If neither store takes it, the learner is told.
+// ST_OVF.backend = { get(key), put(key, json), del(key) } (a test can replace it); it is the browser's IndexedDB when there is one, and nothing otherwise.
+const ST_OVF = { backend: null, keys: new Set(), failed: 0 }
+function stOvfBackend() {
+  if (ST_OVF.backend) return ST_OVF.backend
+  let idb = null; try { idb = typeof indexedDB !== 'undefined' ? indexedDB : null } catch (e) {}
+  if (!idb) return null
+  let dbp = null
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    const rq = idb.open('tt-overflow', 1)
+    rq.onupgradeneeded = () => { try { rq.result.createObjectStore('kv') } catch (e) {} }
+    rq.onsuccess = () => res(rq.result); rq.onerror = () => { dbp = null; rej(rq.error) }
+  }))
+  const run = (mode, f) => open().then(db => new Promise((res, rej) => { const tx = db.transaction('kv', mode), st = tx.objectStore('kv'); let out; const r = f(st); if (r) r.onsuccess = () => { out = r.result }; tx.oncomplete = () => res(out); tx.onerror = tx.onabort = () => rej(tx.error) }))
+  return (ST_OVF.backend = { get: k => run('readonly', st => st.get(k)), put: (k, v) => run('readwrite', st => st.put(v, k)), del: k => run('readwrite', st => st.delete(k)) })
+}
+function stOvfWarn(key) {
+  ST_OVF.failed++
+  try { console.error('[storage] a save of "' + key + '" fitted neither localStorage nor IndexedDB') } catch (e) {}
+  try {
+    if (typeof document === 'undefined' || !document.body || document.getElementById('tt-storage-warning')) return
+    const d = document.createElement('div'); d.id = 'tt-storage-warning'
+    d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99999;background:#7a1d1d;color:#fff;font:13px/1.4 sans-serif;padding:10px 14px;text-align:center'
+    d.textContent = '⚠ This device is out of storage: your latest save could not be kept and will be lost when you close the app. Download a backup now (Settings → Backup), then free space.'
+    d.onclick = () => { try { d.remove() } catch (e) {} }
+    document.body.appendChild(d)
+  } catch (e) {}
+}
 async function stGet(key) {
   try { const r = await window.storage.get(key); return r ? JSON.parse(r.value) : null } catch {}
+  // a value that did not fit in localStorage lives in the overflow store (and is newer than any older copy left in localStorage)
+  try { const b = stOvfBackend(); if (b) { const o = await b.get(key); if (o != null) { ST_OVF.keys.add(key); return JSON.parse(o) } } } catch {}
   try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : null } catch {}
   return null
 }
 async function stSet(key, val) {
-  try { await window.storage.set(key, JSON.stringify(val)) } catch {}
-  try { localStorage.setItem(key, JSON.stringify(val)) } catch {}
+  const json = JSON.stringify(val)
+  try { await window.storage.set(key, json) } catch {}
+  let ok = false
+  try { localStorage.setItem(key, json); ok = true } catch {}
+  let b = null; try { b = stOvfBackend() } catch (e) {}
+  if (ok) {            // it fits: any copy left in the overflow store is older and must go
+    if (b) { try { await b.del(key) } catch (e) {} }
+    ST_OVF.keys.delete(key); return
+  }
+  let kept = false
+  if (b) { try { await b.put(key, json); kept = true; ST_OVF.keys.add(key); try { localStorage.removeItem(key) } catch (e) {} } catch (e) {} }   // the older copy in localStorage would only take room
+  if (!kept) stOvfWarn(key)
 }
 
 // ══ SEVERAL TABS AT ONCE (v750) ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -16347,7 +16389,7 @@ async function stTabGet(key, o) {
   return null
 }
 async function stTabSet(key, val) {
-  if (val == null) { try { localStorage.removeItem(stTabKey(key)); localStorage.removeItem(key) } catch (e) {}; try { if (window.storage && window.storage.delete) { await window.storage.delete(stTabKey(key)) } } catch (e) {}; return }
+  if (val == null) { try { localStorage.removeItem(stTabKey(key)); localStorage.removeItem(key) } catch (e) {}; try { const _b = stOvfBackend(); if (_b) { await _b.del(stTabKey(key)); await _b.del(key) } } catch (e) {}; try { if (window.storage && window.storage.delete) { await window.storage.delete(stTabKey(key)) } } catch (e) {}; return }
   await stSet(stTabKey(key), val)
 }
 // old tab-owned saves nobody has touched for 3 days are removed at start
@@ -61126,6 +61168,12 @@ function yueModuleCandidates(target, learnerTier, o) {
   mods.sort((a, b) => (fresh(a) - fresh(b)) || (b.tier - a.tier) || (r.get(a.id) - r.get(b.id)))
   return mods.map(m => ({ m, tag }))
 }
+const YUE_SCENE_WORDS = { home: 'at home', street: 'on the street', office: 'at the office', phone: 'on the phone', cafe: 'at a caf\u00E9', school: 'at school', shop: 'in a shop', station: 'at the station',
+  restaurant: 'at a restaurant', party: 'at a party', '\u8336\u9910\u5EF3': 'in a cha chaan teng', clinic: 'at the clinic', airport: 'at the airport', market: 'at the market', park: 'in the park',
+  bus: 'on the bus', building: 'in a building', cinema: 'at the cinema', bank: 'at the bank', hill: 'on a hill', 'dim sum restaurant': 'at a dim sum restaurant', beach: 'at the beach',
+  hiking: 'on a hike', sports: 'at the sports ground', salon: 'at the salon', mall: 'in a mall', hotel: 'at a hotel', minibus: 'on a minibus', gym: 'at the gym', 'food stall': 'at a food stall', 'food court': 'in a food court' }
+// "New chat · at a café — " (the words that open the first cue of a lesson block); a place with no name here is left out, the "New chat" stays
+function yueSceneStart(scene) { const w = YUE_SCENE_WORDS[String(scene || '').toLowerCase()]; return 'New chat' + (w ? ' \u00B7 ' + w : '') + ' \u2014 ' }
 // one fixed chunk: its words (surface + Yale; a punctuation mark has no Yale) and its text
 function yueModuleChunk(i) {
   const d = YUE_MODULES.data; if (!d) return null
@@ -61164,7 +61212,11 @@ function yueModuleRender(c, target) {
     }
     const chinese = segs.map(s => s.surface).join(''), pinyin = yueYaleOfPieces(pieces), english = jaModuleFillEn(en, tag.slot, tag.plural), prompt = jaModuleFillEn(pr, tag.slot, tag.plural)
     if (/[{}]/.test(chinese + english + prompt) || !pinyin) return null
-    out.push({ speaker: sp[k], chinese, pinyin, spokenPinyin: pinyin, english, prompt, segments: segs, _moduleId: m.id, _module: true })
+    // 17 Nov (the owner: "the prompts are still very confusing"): a cue only said WHAT KIND of thing to say ("Say hello to her and give your name"), and every lesson block is its own
+    // little chat in a place the learner never saw, so Leon and Carrie seemed to meet again and again for no reason. The cue now (1) says the English to put into Cantonese and
+    // (2) on the first line of each block says that a new chat starts, and where.
+    const cue = (k === 0 ? yueSceneStart(m.scene) : '') + String(prompt) + ' Say: \u201C' + english + '\u201D'
+    out.push({ speaker: sp[k], chinese, pinyin, spokenPinyin: pinyin, english, prompt: cue, segments: segs, _moduleId: m.id, _module: true, ...(k === 0 ? { newChat: true } : {}) })
   }
   return out
 }
@@ -61435,7 +61487,7 @@ function yueReviewPrompt(track, vocab) {
     '3. YALE (kind "yale"): the Yale matches the characters syllable by syllable: the same number of syllables and the right word for each character. Judge tone marks only where a tone is clearly wrong for the word. Flag a wrong, missing or extra syllable; do not write the correct Yale.\n' +
     '4. TARGET WORD (kind "sense"): the line uses the target word in the sense the word list gives for it (see TARGET WORDS), not in a different sense.\n' +
     '5. REGISTER (kind "register"): the wording suits the speaker and a friendly everyday conversation: not rude, not formal, not old-fashioned, nothing that clashes with a man speaking as A or a woman speaking as B.\n' +
-    'Use kind "other" for any other real fault (not a sentence anyone would say, unclear, contradicts the line before it). A line answers the line before it in its group of three, so judge it with that line in view.\n' +
+    'Use kind "other" for any other real fault (not a sentence anyone would say, unclear, contradicts the line before it). A line answers the line before it in its group of three, so judge it with that line in view. The lines come in groups of three and EACH GROUP IS ITS OWN SHORT CHAT (a new place, the same two friends Leon the man and Carrie the woman): do not flag a group for repeating a greeting, an introduction or a question an earlier group already had, and do not flag it for not following the group before it.\n' +
     'Reply with JSON only, in this shape: {"verdict":"pass|review|fail","summary":"one short sentence","lines":[{"i":1,"ok":true},{"i":2,"ok":false,"kind":"mandarin","reason":"under 15 words, in English"}]}\n' +
     'Every line number from 1 to ' + pairs.length + ' must appear exactly once in "lines". A good line is {"i":N,"ok":true}. A flagged line has "ok":false, a "kind" and a short "reason". "verdict" is "pass" when no line is flagged, "review" when some lines are flagged but the track is mostly sound, and "fail" when many lines are wrong.'
   const user = 'TARGET WORDS (the word, its Yale, the meaning the word list intends)\n' + ids.map(tline).join('\n') + '\n\nLINES (' + pairs.length + ')\n' +

@@ -19386,7 +19386,7 @@ function anthropicStageEffort(stage) {
   if (/^(A0_|A_|B_|C_|F_|G_|H_recovery|V684_|NATURALNESS_CHECK)/.test(s)) return 'medium'
   return undefined
 }
-function anthropicRequestBody({ model, messages, maxTokens, json, effort, noThinking }) {
+function anthropicRequestBody({ model, messages, maxTokens, json, effort, noThinking, exactMax }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
   let marked = false
@@ -19397,7 +19397,10 @@ function anthropicRequestBody({ model, messages, maxTokens, json, effort, noThin
   const fmt = json && typeof json === 'object' ? anthropicJsonFormat(json) : null
   // Gemini ran with thinking off and a short cap; Haiku thinks adaptively and thinking counts toward max_tokens, so the cap
   // leaves room for it (within the ceiling the server function enforces).
-  const max_tokens = Math.min(ANTHROPIC_CONFIG.maxTokensCeiling, Math.max(2048, Math.round((maxTokens || 1200) * 3)))
+  // 18 Nov: thinking counts toward max_tokens, and a HIGH effort stage thinks much longer: the Listening story plan (cap 2400 x 3 = 7200) was cut off on every attempt after it went to high effort.
+  // A high effort stage gets five times the answer cap (still within the 16000 ceiling the server enforces); a retry after a cut-off passes the exact larger number (exactMax).
+  const mult = (effort || ANTHROPIC_CONFIG.effort) === 'high' && !noThinking ? 5 : 3
+  const max_tokens = exactMax ? Math.min(ANTHROPIC_CONFIG.maxTokensCeiling, exactMax) : Math.min(ANTHROPIC_CONFIG.maxTokensCeiling, Math.max(2048, Math.round((maxTokens || 1200) * mult)))
   const body = { model, max_tokens, messages: m.messages, thinking: { type: noThinking ? 'disabled' : 'adaptive' }, output_config: { effort: effort || ANTHROPIC_CONFIG.effort } }
   if (noThinking) delete body.output_config.effort      // v723: the yes-and stages write one short line; thinking was ~85% of their output tokens
   if (m.system) body.system = m.system
@@ -19467,7 +19470,7 @@ function aiRunSpend(runId, provider) {
 // ── the Anthropic transport (one ledger row per HTTP attempt, like Gemini) ──────────────────────────────────────────────
 async function anthropicRequest({ model, messages, maxTokens, signal, stage, json, _chain, _promptText, runCtl, runId }) {
   const stageNow = stage || aiStageOf(_promptText, _chain)
-  const req = anthropicRequestBody({ model, messages, maxTokens, json, effort: anthropicStageEffort(stageNow), noThinking: (/^Y_/.test(String(stageNow)) || stageNow === 'O_cue_fidelity') && THAI_YESAND.noThinking && !(stageNow === 'Y_bridge' && THAI_YESAND.bridgeThinking && !THAI_YESAND._bridgeNoThink) })
+  let req = anthropicRequestBody({ model, messages, maxTokens, json, effort: anthropicStageEffort(stageNow), noThinking: (/^Y_/.test(String(stageNow)) || stageNow === 'O_cue_fidelity') && THAI_YESAND.noThinking && !(stageNow === 'Y_bridge' && THAI_YESAND.bridgeThinking && !THAI_YESAND._bridgeNoThink) })
   const latched = AI_ANTHROPIC_LATCH.get(runId)
   const notSent = (why, err) => { const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens }); row.latched = true; aiRecordEnd(row, { http: null, ok: false, error: why }); throw err }
   if (latched) notSent('LATCHED: ' + latched.fatalProvider.reason, latched)
@@ -19481,8 +19484,8 @@ async function anthropicRequest({ model, messages, maxTokens, signal, stage, jso
     notSent('TRACK_LIMIT (not sent)', err)
   }
   if (!AI_ANTHROPIC_ACCESS) { const err = anthropicError(401, 'access_denied', ''); AI_ANTHROPIC_LATCH.set(runId, err); notSent('NO_ACCESS_CODE (not sent)', err) }
-  const body = JSON.stringify(req.body)
-  let why = null, lastErr = null, _pauses = 0
+  let body = JSON.stringify(req.body)
+  let why = null, lastErr = null, _pauses = 0, _effNow = req.body.output_config && req.body.output_config.effort
   for (let attempt = 1; attempt <= ANTHROPIC_CONFIG.maxAttempts; attempt++) {
     if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) throw _cancelledError('run superseded')
     const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens, attempt, retryReason: why })
@@ -19540,6 +19543,19 @@ async function anthropicRequest({ model, messages, maxTokens, signal, stage, jso
     row.stopReason = (data && data.stop_reason) || null
     row.thinkingBlocks = out.thinkingBlocks || 0
     aiRecordEnd(row, { http: status, ok: out.ok, text: out.ok ? out.text : '', usage, error: out.ok ? null : out.problem })
+    // 18 Nov: a reply cut off at max_tokens (thinking + answer did not fit) is repeated with MORE ROOM instead of identically (the same request can only be cut off again): double the cap up to the
+    // ceiling, and once at the ceiling one effort level lower (high -> medium -> low), so the thinking leaves room for the answer. It uses one of the request's attempts.
+    if (!out.ok && /^MAX_TOKENS/.test(String(out.problem || '')) && attempt < ANTHROPIC_CONFIG.maxAttempts) {
+      const cur = req.body.max_tokens, nextMax = Math.min(ANTHROPIC_CONFIG.maxTokensCeiling, cur * 2), lower = { high: 'medium', medium: 'low' }
+      const effNext = nextMax === cur && lower[_effNow] ? lower[_effNow] : _effNow
+      if (nextMax !== cur || effNext !== _effNow) {
+        _effNow = effNext
+        req = anthropicRequestBody({ model, messages, maxTokens, json, effort: effNext, noThinking: !(req.body.thinking && req.body.thinking.type === 'adaptive'), exactMax: nextMax })
+        body = JSON.stringify(req.body)
+        why = 'retry: the reply was cut off (' + cur + ' tokens) - more room'
+        continue
+      }
+    }
     if (!out.ok) throw anthropicError(status, 'reply', 'CLAUDE HAIKU REPLY REJECTED: ' + out.problem)   // a failed candidate: the generator's own rules decide what next
     if (typeof window !== 'undefined' && typeof window.__trackAnthropicUsage === 'function' && row.costUsd) window.__trackAnthropicUsage(row.costUsd)
     return out.text

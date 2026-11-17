@@ -175,11 +175,18 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
       R(msg('{"other":1}'), true), R(msg('not json'), true), R(msg('x', { stop_reason: 'pause_turn' }))]
     T('M7', 'reply: refusal, cut-off (max_tokens), empty text, no content, malformed structured JSON and unexpected stops are all rejected — valid JSON alone is not enough',
       badR.every(r => !r.ok) && /REFUSAL \(general_harms\)/.test(badR[0].problem) && /MAX_TOKENS/.test(badR[1].problem), badR.map(r => r.problem))
-    const m2 = app({ haiku: true, anthropic: [resp(200, msg('cut', { stop_reason: 'max_tokens' }))] }); const run2 = m2.aiBeginRun('daily-track')
+    // 18 Nov (the Listening story plan was cut off on every attempt at high effort): a cut-off reply is no longer repeated identically; the request layer repeats it with MORE ROOM (the cap doubled,
+    // at the ceiling one effort level lower). M8 below is the old "failed candidate" check, now fed three cut-off answers in a row (every attempt is cut off), M9 the new retry that succeeds.
+    const cut = () => resp(200, msg('cut', { stop_reason: 'max_tokens' }))
+    const m2 = app({ haiku: true, anthropic: [cut(), cut(), cut()] }); const run2 = m2.aiBeginRun('daily-track')
     const r2 = await tryAsync(() => ask(m2, { stage: 'A_generation' }))
     const row2 = rows(m2, run2).slice(-1)[0]
-    T('M8', 'a rejected reply is a failed candidate: not retried, not sent to Gemini, logged (stop reason, thinking blocks), not fatal',
-      r2.e && !r2.e.fatalProvider && m2.__calls.anthropic.length === 1 && m2.__calls.gemini.length === 0 && row2.ok === false && row2.stopReason === 'max_tokens' && row2.thinkingBlocks === 1, { e: r2.e && r2.e.message, row2 })
+    T('M8', 'a reply that stays cut off through every attempt is a failed candidate: sent three times (each with more room), never to Gemini, logged (stop reason, thinking blocks), not fatal',
+      r2.e && !r2.e.fatalProvider && m2.__calls.anthropic.length === 3 && m2.__calls.gemini.length === 0 && row2.ok === false && row2.stopReason === 'max_tokens' && row2.thinkingBlocks === 1 && /MAX_TOKENS/.test(r2.e.message), { e: r2.e && r2.e.message, n: m2.__calls.anthropic.length, row2 })
+    const m3 = app({ haiku: true, anthropic: [cut(), resp(200, msg('fine'))] }); m3.aiBeginRun('daily-track')
+    const r3 = await tryAsync(() => ask(m3, { stage: 'A_generation' }))
+    const mt = m3.__calls.anthropic.map(x => x.body.max_tokens)
+    T('M9', 'a cut-off reply is repeated ONCE with more room (the cap doubled) and the second answer is used', !r3.e && /fine/.test(String(r3.v)) && mt.length === 2 && mt[1] === Math.min(16000, mt[0] * 2) && mt[1] > mt[0], { e: r3.e && r3.e.message, mt })
   }
 
   // ══ E — failures ════════════════════════════════════════════════════════════════════════════════════════════════

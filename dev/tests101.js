@@ -27,5 +27,10 @@ T('D1', 'Daily / Revision / Topic writing, retries, judges, fixes and recovery a
 T('D2', 'the cue checks and the word-by-word work (segmentation, romanisation, gloss) are LOW', DAILY_LOW.every(k => F(k) === 'low'), DAILY_LOW.map(k => [k, F(k)]))
 T('D3', 'the listening table still wins over the prefix rules (HIGH stays HIGH), and an unknown or support stage falls back to the default (undefined → low)', F('O_listening_story_plan') === 'high' && F('O_listening_coherence') === 'high' && F('P_other') === undefined && F('R_word_autofill') === undefined && F('Z_haiku_test') === undefined)
 T('D4', 'the request builder is fed through the rule: the source calls anthropicStageEffort(stageNow), never the bare table', /effort: anthropicStageEffort\(stageNow\)/.test(fs.readFileSync('tt.jsx', 'utf8')))
+
+// the answer cap: thinking counts toward max_tokens, so a HIGH stage gets five times the cap (the Listening story plan, cap 2400, was cut off at 3x = 7200 once it ran at high effort)
+const mt = (effort, cap) => c.ev('anthropicRequestBody')({ model: 'claude-haiku-5-5', messages: [{ role: 'user', content: 'x' }], maxTokens: cap, effort }).body.max_tokens
+T('H1', 'a HIGH effort stage gets 5x the answer cap (2400 -> 12000), medium and low keep 3x (7200), never above the 16000 ceiling', mt('high', 2400) === 12000 && mt('medium', 2400) === 7200 && mt('low', 2400) === 7200 && mt('high', 5000) === 16000, [mt('high', 2400), mt('medium', 2400), mt('low', 2400), mt('high', 5000)])
+T('H2', 'an exact cap (the retry after a cut-off) overrides the multiplier and is limited by the ceiling', c.ev('anthropicRequestBody')({ model: 'claude-haiku-5-5', messages: [{ role: 'user', content: 'x' }], maxTokens: 2400, effort: 'high', exactMax: 14400 }).body.max_tokens === 14400 && c.ev('anthropicRequestBody')({ model: 'claude-haiku-5-5', messages: [{ role: 'user', content: 'x' }], maxTokens: 2400, effort: 'high', exactMax: 99999 }).body.max_tokens === 16000)
 console.log((fails ? 'FAIL ' : 'ALL PASS ') + (n - fails) + '/' + n)
 process.exit(fails ? 1 : 0)

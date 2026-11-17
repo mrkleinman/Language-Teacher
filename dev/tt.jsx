@@ -35883,13 +35883,15 @@ function enforceTrackTargetContract(selection, o) {
   const learned = vocab.filter(w => !used.has(w.id) && jazhTargetEligible(w, lang) && (typeof revisionEligible === 'function' ? revisionEligible(w) : hasBeenIntroduced(w)))
     .sort((a, b) => due(a).localeCompare(due(b)) || String(a.lastSeen || '').localeCompare(String(b.lastSeen || '')) || (a.id - b.id))
   for (const w of learned) { if (out.length >= need) break; out.push({ ...w, selectionRole: 'reinforce', _selectorStage: 'fallback-learned' }); used.add(w.id); log.push('BACKFILL slot=' + out.length + ' fallback-learned ' + w.id) }
-  if (out.length < need && mode === 'daily') {
+  // Cantonese (17 Nov): the belt's new-word limit is a rule, not a preference. The overflow below pads a Daily with extra NEW words to reach 30 when there is not enough to
+  // review (a new learner would get 30 new words at White belt, whose limit is 5): for Cantonese a short Daily is accepted instead, and it grows as words are learned
+  if (out.length < need && mode === 'daily' && lang !== 'yue') {
     const byOrder = (a, b) => (a.unlockOrder || a.id) - (b.unlockOrder || b.id)
     const unseen = vocab.filter(w => !used.has(w.id) && jazhTargetEligible(w, lang) && isGenuinelyNew(w)).sort(byOrder)
     for (const w of unseen) { if (out.length >= need) break; out.push({ ...w, selectionRole: 'new', _newCeilingOverflow: true, _selectorStage: 'new-reserve' }); used.add(w.id); log.push('BACKFILL slot=' + out.length + ' NEW_CEILING_OVERFLOW ' + w.id) }
   }
   const targets = out.slice(0, need).map((w, i) => ({ ...w, targetIndex: i }))
-  const blocked = targets.length < need ? { code: 'TRACK_SELECTION_BLOCKED', eligible: targets.length, required: need, mode,
+  const blocked = targets.length < need && !(lang === 'yue' && mode === 'daily' && targets.length > 0) ? { code: 'TRACK_SELECTION_BLOCKED', eligible: targets.length, required: need, mode,
     reason: 'the entire eligible ' + (mode === 'revision' ? 'introduced-word pool (revision never uses unseen words)' : lang + ' vocabulary bank') + ' holds only ' + targets.length + ' valid targets (required ' + need + ')' } : null
   const counts = { ...(selection && selection.counts || {}), total: targets.length,
     new: targets.filter(w => w.selectionRole === 'new' || w._newCeilingOverflow).length,
@@ -35922,7 +35924,7 @@ function jazhStartGate(o) {
     const mode = opts.trackMode === 'revision' || opts.trackMode === 'srs' ? 'revision' : 'daily'
     blocked = enforceTrackTargetContract({ targets }, { lang, vocab: opts.vocab || [], mode }).blocked
     // the targets given are already the contracted list: a short list that the whole bank could not fill is a data problem
-    if (!blocked && targets.length < TRACK_CONTRACT.TARGETS) blocked = { code: 'TRACK_SELECTION_BLOCKED', eligible: targets.length, required: TRACK_CONTRACT.TARGETS, mode,
+    if (!blocked && targets.length < TRACK_CONTRACT.TARGETS && !(lang === 'yue' && mode === 'daily' && targets.length > 0)) blocked = { code: 'TRACK_SELECTION_BLOCKED', eligible: targets.length, required: TRACK_CONTRACT.TARGETS, mode,
       reason: 'only ' + targets.length + ' valid targets were selected (required ' + TRACK_CONTRACT.TARGETS + ')' }
   } catch (e) { blocked = null }        // a failure of the check itself never blocks a lesson
   if (blocked) return { code: 'TRACK_SELECTION_BLOCKED', blocked, message: 'TRACK_SELECTION_BLOCKED eligible=' + blocked.eligible + ' required=' + blocked.required +
@@ -61652,12 +61654,11 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
           <p style={{ fontSize:13, lineHeight:1.6 }}>This track is built from ready-made lesson modules: <b>no AI request is made</b> and no key is needed. Each word gets three lines (A, B, A) with Yale and a word-by-word breakdown.</p>
           <p style={{ fontSize:11, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>A quality review by a model is not available for Cantonese yet; the track is checked by its structure.</p>
           {(() => {
-            // a track always carries 30 words (the shared track rule). Until enough words are learned to review, the rest are the next words of the list: say so, because the
-            // dashboard promises only a handful of new words per Daily (the first track of a new learner would otherwise look like a mistake)
-            let nNew = 0, lim = 0
-            try { nNew = (targets || []).filter(t => t.selectionRole === 'new' || t._newCeilingOverflow).length; lim = newWordsPerTrack('yue', 'daily', vocab) } catch (e) {}
-            return (!isRev && nNew > lim && lim > 0)
-              ? <p data-yue-first-track="1" style={{ fontSize:11, color:'#f59e0b', marginTop:6, lineHeight:1.5 }}>{nNew} of these words are new: a track always holds 30 words, and you have not learned enough words yet to fill it with review. From now on a Daily brings about {lim} new words and fills the rest with words you are learning.</p>
+            // a short Daily is expected: the belt allows only a few new words a day (5 at White belt) and a new learner has nothing to review yet. Say so, so it does not look like a mistake
+            let nNew = 0
+            try { nNew = (targets || []).filter(t => t.selectionRole === 'new').length } catch (e) {}
+            return (!isRev && nNew > 0 && (targets || []).length < 30 && nNew === (targets || []).length)
+              ? <p data-yue-first-track="1" style={{ fontSize:11, color:'#f59e0b', marginTop:6, lineHeight:1.5 }}>This track is short on purpose: your belt brings {nNew} new words a day, and you have no words to review yet. It grows as you learn words.</p>
               : null
           })()}
         </Card>)}

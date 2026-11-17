@@ -192,7 +192,8 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
     const fresh = V0.map(w => ({ ...w })), Q = fresh.map(w => noWord.some(x => x.id === w.id) ? { ...w, queuedNext: '2026-11-16T00:00:00Z' } : w)
     const sel = c.selectTrackTargets({ vocab: c.ev('jazhWordsOnly')(Q), targetCap: 30, recentTrackWordIds: [], lang: 'yue', newSelector: v => c.cantoneseSelectTargets(v, []) })
     const tg = c.jazhDailyTargets(sel.targets, Q, 'yue')
-    T('G16', 'a Daily for a new learner holds 30 words, none of the blocked stand-ins 當 像 適合 (not even hand-queued: they are not eligible targets); every target has a module', tg.length === 30 && !tg.some(w => noWord.some(x => x.id === w.id)) && tg.every(w => data.t[String(w.id)]) && noWord.every(w => !c.ev('jazhTargetEligible')(w, 'yue')) && c.ev('jazhTargetEligible')(V0[1], 'yue'))
+    // 17 Nov: a new learner's Daily holds the belt's 5 new words (not 30): the padding with extra NEW words is gone for Cantonese
+    T('G16', 'a Daily for a new learner holds the belt\'s 5 new words, none of the blocked stand-ins 當 像 適合 (not even hand-queued: they are not eligible targets); every target has a module', tg.length === 5 && !tg.some(w => noWord.some(x => x.id === w.id)) && tg.every(w => data.t[String(w.id)]) && noWord.every(w => !c.ev('jazhTargetEligible')(w, 'yue')) && c.ev('jazhTargetEligible')(V0[1], 'yue'))
   }
   unblockWords()
   // ── nothing of Mandarin ──

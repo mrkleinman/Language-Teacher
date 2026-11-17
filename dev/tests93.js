@@ -138,15 +138,17 @@ const fn = (name, body) => { const i = SRC.indexOf(name); return i < 0 ? '' : SR
   const t0 = txt(o.r)
   T('F1', 'first start (no saved data, no key): the Cantonese dashboard opens with the Daily button enabled', /Cantonese Teacher/.test(t0) && /Daily Track/.test(t0) && /Learn \+ review/.test(t0) && !/No targets/.test(t0), t0.slice(0, 300))
   T('F2', 'tapping Listening opens its "not available yet" screen (no generator, no Thai Listening), and Back returns', await click(o.r, /^\s*🎧\s*Listening/) && /Listening track is not available for Cantonese yet/.test(txt(o.r)) && await click(o.r, /Back to the Cantonese dashboard/) && /Daily Track/.test(txt(o.r)))
-  T('F3', 'Daily Track opens the generator (nothing built yet); no start gate blocks a brand-new learner (30 targets, 5 NEW + words from the next of the list)', await click(o.r, /Daily Track/) && /Build the track/.test(txt(o.r)) && /TARGETING 30 WORDS/.test(txt(o.r)) && !/TRACK_SELECTION_BLOCKED/.test(txt(o.r)), txt(o.r).slice(0, 300))
+  // 17 Nov: the owner's rule — a Daily follows the belt's new-word limit (White belt: 5 a day) — beats padding the track to 30 with extra NEW words. A brand-new learner now gets a SHORT Daily
+  // (5 new words, 15 recalls) that grows as words are learned (13 words with 12 learned, 30 once 40 are). The pins below (F3 F4 F5 F6 S1) used to say 30 words / 90 recalls on the first day.
+  T('F3', 'Daily Track opens the generator (nothing built yet); no start gate blocks a brand-new learner (a short track: the belt\'s 5 NEW words only)', await click(o.r, /Daily Track/) && /Build the track/.test(txt(o.r)) && /TARGETING 5 WORDS/.test(txt(o.r)) && /short on purpose/.test(txt(o.r)) && !/TRACK_SELECTION_BLOCKED/.test(txt(o.r)), txt(o.r).slice(0, 300))
   let reqs = 0; o.c.geminiGenerate = async () => { reqs++; throw new Error('no network') }
-  T('F4', 'Build the track: 30 words → 90 recalls from modules in a moment, the structure check passes, 0 model requests, a Study button', await click(o.r, /Build the track/) && /Structure check passed/.test(txt(o.r)) && /90 \/ 90 lines from modules/.test(txt(o.r)) && /0 model requests/.test(txt(o.r)) && /Study track/.test(txt(o.r)) && reqs === 0, txt(o.r).slice(-400))
-  T('F5', 'Study track: the track is saved under the Cantonese key only (tt-yue-tracks: one track, language yue, 90 pairs, Yale) and the Player opens on the first cue', await click(o.r, /Study track/) && /Say in Cantonese/.test(txt(o.r)) && await (async () => {
+  T('F4', 'Build the track: 5 words → 15 recalls from modules in a moment, the structure check passes, 0 model requests, a Study button', await click(o.r, /Build the track/) && /Structure check passed/.test(txt(o.r)) && /15 \/ 15 lines from modules/.test(txt(o.r)) && /0 model requests/.test(txt(o.r)) && /Study track/.test(txt(o.r)) && reqs === 0, txt(o.r).slice(-400))
+  T('F5', 'Study track: the track is saved under the Cantonese key only (tt-yue-tracks: one track, language yue, 15 pairs, Yale) and the Player opens on the first cue', await click(o.r, /Study track/) && /Say in Cantonese/.test(txt(o.r)) && await (async () => {
     const saved = JSON.parse(o.c.localStorage.getItem('tt-yue-tracks') || 'null'); const tr = saved && (saved.items || saved.list || saved)
     const arr = Array.isArray(tr) ? tr : (tr && tr.v) || []
-    return arr.length === 1 && arr[0].language === 'yue' && arr[0].pairs.length === 90 && arr[0].pairs.every(p => c.validateYale(p.pinyin).ok) })() && !o.c.localStorage.getItem('tt-zh-tracks') && !o.c.localStorage.getItem('tt-ja-tracks') && !o.c.localStorage.getItem('tt-tracks'),
+    return arr.length === 1 && arr[0].language === 'yue' && arr[0].pairs.length === 15 && arr[0].pairs.every(p => c.validateYale(p.pinyin).ok) })() && !o.c.localStorage.getItem('tt-zh-tracks') && !o.c.localStorage.getItem('tt-ja-tracks') && !o.c.localStorage.getItem('tt-tracks'),
     { keys: [...Array(o.c.localStorage.length).keys()].map(i => o.c.localStorage.key(i)) })
-  T('F6', 'the new words of the track are remembered for today under tt-yue-daily-new (5 new words, ids), and nothing of the other languages is written', (() => { const d = JSON.parse(o.c.localStorage.getItem('tt-yue-daily-new') || 'null'); const v = d && (d.v || d); return !!v && Array.isArray(v.wordIds) && v.wordIds.length === 30 })() &&
+  T('F6', 'the new words of the track are remembered for today under tt-yue-daily-new (5 new words, ids), and nothing of the other languages is written', (() => { const d = JSON.parse(o.c.localStorage.getItem('tt-yue-daily-new') || 'null'); const v = d && (d.v || d); return !!v && Array.isArray(v.wordIds) && v.wordIds.length === 5 })() &&
     [...Array(o.c.localStorage.length).keys()].map(i => o.c.localStorage.key(i)).every(k => !/^tt-(zh|ja)-/.test(k) && k !== 'tt-vocab'))
   await TR.act(async () => { o.r.unmount() })
   // a learner with progress: Revision opens the generator with 0 NEW words, and a saved track is listed with its download button
@@ -172,8 +174,11 @@ const fn = (name, body) => { const i = SRC.indexOf(name); return i < 0 ? '' : SR
     const today = new Date().toISOString()
     const four = [1, 2, 3, 4].map(i => ({ createdAt: today, date: today.slice(0, 10), trackMode: 'daily', language: 'yue', pairs: [] }))
     const gt = gate({ lang: 'yue', targets: tiny.map(w => ({ ...w, selectionRole: 'new' })), vocab: tiny, trackMode: 'daily', tracks: [] })
-    T('S1', 'the start gate for Cantonese: 30 targets start; a bank that can hold only 12 is blocked with the Thai wording (TRACK_SELECTION_BLOCKED, no track started); a 4th Daily in one day is refused', gate({ lang: 'yue', targets: full, vocab: Vb, trackMode: 'daily', tracks: [] }) === null &&
-      !!gt && gt.code === 'TRACK_SELECTION_BLOCKED' && /vocabulary-data problem/.test(gt.message) && (gate({ lang: 'yue', targets: full, vocab: Vb, trackMode: 'daily', tracks: four }) || {}).code === 'DAILY_CAP', gt)
+    const shortDaily = gate({ lang: 'yue', targets: tiny.map(w => ({ ...w, selectionRole: 'new' })), vocab: tiny, trackMode: 'daily', tracks: [] })
+    const shortRev = gate({ lang: 'yue', targets: tiny.map(w => ({ ...w, selectionRole: 'review' })), vocab: tiny, trackMode: 'revision', tracks: [] })
+    const emptyDaily = gate({ lang: 'yue', targets: [], vocab: tiny, trackMode: 'daily', tracks: [] })
+    T('S1', 'the start gate for Cantonese: a full Daily starts; a SHORT Daily starts too (the belt limit beats the 30, 17 Nov); a Daily with no word at all and a short Revision are blocked with the Thai wording (TRACK_SELECTION_BLOCKED, no track started); a 4th Daily in one day is refused', gate({ lang: 'yue', targets: full, vocab: Vb, trackMode: 'daily', tracks: [] }) === null &&
+      shortDaily === null && !!emptyDaily && emptyDaily.code === 'TRACK_SELECTION_BLOCKED' && !!shortRev && shortRev.code === 'TRACK_SELECTION_BLOCKED' && /vocabulary-data problem/.test(shortRev.message) && (gate({ lang: 'yue', targets: full, vocab: Vb, trackMode: 'daily', tracks: four }) || {}).code === 'DAILY_CAP', { shortDaily, emptyDaily, shortRev })
   }
 
   // ── W ──

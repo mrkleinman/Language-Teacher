@@ -32128,7 +32128,8 @@ async function completeThaiTrackHandoff(track, rawTrack, o) {
   const { listeningBuild: _drop, ...finalTrack } = { ...track }
   const msg = '🎧 MAIN_TRACK_SAVED trackId=' + listeningTrackId(track) + ' trackType=' + trackModeOf(track) + ' · LISTENING_CALLS=0 (Listening is a separate track — use the Listening Track button)'
   try { console.info('[listening] ' + msg); o.onLog && o.onLog(msg) } catch (e) {}
-  await o.saveTracks([...(o.tracks || []), finalTrack])            // persisted BEFORE the caller navigates
+  const _fid = stTrackId(finalTrack)           // 17 Nov: the same track may already be in the list (saved when it was finished): replace it, never duplicate it
+  await o.saveTracks([...(o.tracks || []).filter(t => stTrackId(t) !== _fid), finalTrack])            // persisted BEFORE the caller navigates
   return finalTrack
 }
 // One build per Main Track text: the Generator starts it when QC finishes and the save
@@ -45460,7 +45461,7 @@ function CompactGeneratorHeader({ label, labelColor, pct, leftNote, rightNote })
   )
 }
 
-function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, customTargets, onTrackCost, tracks, resumeDraft, dailyNewWords, onSaveDailyNewWords, topicId }) {
+function Generator({ vocab, mode, onGenerated, onAutoSave, onBack, apiKey, onPhonetics, customTargets, onTrackCost, tracks, resumeDraft, dailyNewWords, onSaveDailyNewWords, topicId }) {
   // v698 — a Topic Track (e.g. Wedding Speech) is a Daily Track whose NEW words come from the topic; everything else is this engine
   const topic = topicId ? topicById('th', topicId) : null
   const cpLang = topic ? 'th-topic' : 'th'
@@ -45728,6 +45729,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     targetCount: _progTargets.length, coreDone: pairsDone, phase,
     finalPairs: generatedTrack && generatedTrack.pairs ? generatedTrack.pairs.length : null })
   const _readiness = trackReadiness(generatedTrack)          // v650 §1: the ONE readiness source for this screen
+  const thAutoSavedRef = useRef(null)
   const thDraftTargets = t => ((t && t.keywords) || []).map(k => ({ id: k.wordId, thai: k.thai, selectionRole: k.isNew ? 'new' : 'review' }))
   // the words this learner may use: the learned ones (known / learning) + the targets — a change there means the draft is stale
   const thDraftAuthorised = ids => (vocab || []).filter(w => w && (w.status === 'known' || w.status === 'learning' || ids.has(w.id))).map(w => w.id + ':' + (ids.has(w.id) ? 'target' : w.status))
@@ -45752,6 +45754,15 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
       .forEach(p => { nth[p.targetId] = (nth[p.targetId] || 0) + 1; if (nth[p.targetId] <= 3) genCheckpointAddPair(cp, { ...p, recallIndex: nth[p.targetId] }) })
     cp.extra = { track: generatedTrack }; cp.updatedAt = new Date().toISOString()
     thCpRef.current = cp; genCheckpointWrite(cpLang, cp)
+    // 17 Nov: a finished READY track goes into the track list the moment it is finished — not only when "Start SRS Track" is pressed (a screen left, a tab reloaded or a
+    // phone that closed the page before that press used to lose it from the list; it was kept only as a draft). Pressing Start saves the same track again (same id: replaced,
+    // never duplicated) after the closed-vocabulary save gate.
+    try {
+      if (onAutoSave && cp.status === 'final-ready' && generatedTrack.createdAt && thAutoSavedRef.current !== generatedTrack.createdAt) {
+        thAutoSavedRef.current = generatedTrack.createdAt
+        onAutoSave(generatedTrack)
+      }
+    } catch (e) { console.error('[auto-save] failed', e) }
   }, [phase, listenPhase, generatedTrack, thRetrying])
   async function retryThaiMissing(trackIn) {
     const t0 = trackIn || generatedTrack, r = trackReadiness(t0)
@@ -52901,6 +52912,16 @@ function ThaiTeacher({ lang, onSetLang }) {
     setGenTopicId(null); setCustomTargets(targets); setGenMode('custom'); setView('generate')
   }
 
+  // 17 Nov: the finished track is put into the list as soon as it is READY (see Generator). tracksRef is the freshest list this screen has; the merge on save keeps anything
+  // another tab added. Start SRS Track later saves the same track (same id) after the save gate and the Listening handoff.
+  const tracksRef = useRef(tracks); tracksRef.current = tracks
+  function onTrackAutoSave(rawTrack) {
+    const track = stampTrackMode(rawTrack, genMode === 'revision' ? 'revision' : 'daily', customTargets || [])
+    if (!track) return
+    const { listeningBuild: _drop, ...saved } = track
+    const id = stTrackId(saved)
+    saveTracks([...(tracksRef.current || []).filter(t => stTrackId(t) !== id), saved])
+  }
   async function onTrackGenerated(rawTrack) {
     // v644: Listening is no longer triggered by the Listening screen mounting (listenAutoFor
     // is kept for reference only; the Thai gate ignores it). It is built HERE, at the
@@ -53065,7 +53086,7 @@ function ThaiTeacher({ lang, onSetLang }) {
             }}
           />
         )}
-        {view === 'generate' && <ErrorBoundary><Generator vocab={vocab} mode={genMode} topicId={genTopicId} onGenerated={onTrackGenerated} onBack={() => navigate(genTopicId ? 'topics' : 'dashboard')}
+        {view === 'generate' && <ErrorBoundary><Generator vocab={vocab} mode={genMode} topicId={genTopicId} onGenerated={onTrackGenerated} onAutoSave={onTrackAutoSave} onBack={() => navigate(genTopicId ? 'topics' : 'dashboard')}
           apiKey={apiKey}
           onPhonetics={onPhonetics} customTargets={customTargets}
           resumeDraft={resumeDraft}

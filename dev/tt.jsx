@@ -19342,7 +19342,19 @@ function anthropicCacheBlocks(text) {
 }
 // v712 — a stage may think harder than the default effort (the English story script of a Listening scene: a short call without the Thai
 // word list, where more reasoning improves the story and still finishes in ~15 s)
-const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_cue_fidelity: 'low', Y_bridge: 'low', Y_batch: 'low', Y_fix: 'low', Y_judge: 'low', Y_seed: 'low', Y_line: 'low', Y_gate: 'low', Y_final: 'low', O_listening_module_scene: 'low', O_listening_module_spine: 'low', O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_word_check: 'medium', O_listening_story_usage: 'medium', O_word_usage: 'medium' })
+// 18 Nov (owner: raise the thinking where a listening track is made coherent): the stages that decide whether the story hangs together (the plan, the beats, the whole-story review and the
+// whole-track coherence judge) run at HIGH, writing / fixing / repair and the per-scene checks at MEDIUM, and the mechanical or translation stages stay LOW. One table for every
+// language and every listening path (story, scene, module): the stage label is shared. It applies only when the optional model is selected; the server function accepts low / medium / high.
+const ANTHROPIC_STAGE_EFFORT = Object.freeze({
+  O_cue_fidelity: 'low', Y_bridge: 'low', Y_batch: 'low', Y_fix: 'low', Y_judge: 'low', Y_seed: 'low', Y_line: 'low', Y_gate: 'low', Y_final: 'low',
+  // listening — the plan and the judges
+  O_listening_story_plan: 'high', O_listening_story_beats: 'high', O_listening_story_review: 'high', O_listening_coherence: 'high', O_listening_module_spine: 'high',
+  O_listening_meaning_plan: 'high', O_listening_semantic_audit: 'high',          // the Japanese / Mandarin listening path: its plan and its final audit
+  // listening — writing, fixing, repair and the per-scene checks
+  O_listening_story_write: 'medium', O_listening_story_edit: 'medium', O_listening_story_line_fix: 'medium', O_listening_story_repair: 'medium', O_listening_story_qc_repair: 'medium', O_listening_story_usage: 'medium',
+  O_listening_plan_repair: 'medium', O_listening_scene: 'medium', O_listening_scene_check: 'medium', O_listening_repair: 'medium', O_listening_qc: 'medium', O_listening_word_check: 'medium', O_listening_module_scene: 'medium', O_word_usage: 'medium',
+  // listening — translation stays low
+  O_listening_story_english: 'low' })
 function anthropicRequestBody({ model, messages, maxTokens, json, effort, noThinking }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed

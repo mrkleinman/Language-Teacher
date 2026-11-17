@@ -159,7 +159,8 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     T('M1', 'request: model claude-haiku-5-5, adaptive thinking, effort "medium" for the writing stage, system prompt separate, starts and ends with the user',
       b.model === HAIKU && b.thinking.type === 'adaptive' && b.output_config.effort === 'medium' && b.system === 'SYS' && b.messages[0].role === 'user' && b.messages[b.messages.length - 1].role === 'user', b)
     T('M2', 'request: no temperature, top_p, top_k or budget_tokens anywhere (Haiku 5.5 rejects non-default sampling)', !keys.some(k => /^(temperature|top_p|top_k|topP|topK|budget_tokens)$/.test(k)), keys)
-    T('M3', 'request: max_tokens leaves room for thinking (3× the Gemini cap, min 2048) within the 16000 ceiling', b.max_tokens === 3600)
+    // 18 Nov: A_generation runs at MEDIUM effort now and a medium stage gets 4x the cap (3x at low, 5x at high): 1200 x 4 = 4800
+    T('M3', 'request: max_tokens leaves room for thinking (4x the Gemini cap at medium effort, 3x at low, 5x at high; min 2048) within the 16000 ceiling', b.max_tokens === 4800)
     const lines = c.anthropicJsonFormat(c.ev('GEMINI_SCHEMAS.lines')), verd = c.anthropicJsonFormat(c.ev('GEMINI_SCHEMAS.verdicts'))
     const objs = []; const walk = s => { if (!s || typeof s !== 'object') return; if (s.type === 'object') objs.push(s); Object.values(s).forEach(walk) }; walk(lines.format.schema); walk(verd.format.schema)
     T('M4', 'structured output: the app\'s Gemini schemas become JSON Schema (every object closed with additionalProperties:false; an array root wrapped in {items})',

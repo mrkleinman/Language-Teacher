@@ -30,14 +30,10 @@ ROWS = [
  ('麥當勞', 'mak6 dong1 lou4', "McDonald's", L, 'the brand every visitor has seen; the Hong Kong name'),
  ('肯德基', 'hang2 dak1 gei1', 'KFC', L, 'the brand every visitor has seen; the Hong Kong name'),
  ('星巴克', 'sing1 baa1 hak1', 'Starbucks', L, 'the brand every visitor has seen; the Hong Kong name'),
- ('阿明', 'aa3 ming4', 'Ah Ming (man)', N, 'common Hong Kong given name with 阿, for a male speaker or third person'),
- ('阿強', 'aa3 koeng4', 'Ah Keung (man)', N, 'common Hong Kong given name with 阿, for a male speaker or third person'),
- ('大衛', 'daai6 wai6', 'David (man)', N, 'the Chinese spelling of the English name David used in Hong Kong'),
- ('彼得', 'bei2 dak1', 'Peter (man)', N, 'the Chinese spelling of the English name Peter used in Hong Kong'),
- ('阿欣', 'aa3 jan1', 'Ah Yan (woman)', N, 'common Hong Kong given name with 阿, for a female speaker or third person'),
- ('阿芬', 'aa3 fan1', 'Ah Fan (woman)', N, 'common Hong Kong given name with 阿, for a female speaker or third person'),
- ('瑪麗', 'maa5 lai6', 'Mary (woman)', N, 'the Chinese spelling of the English name Mary used in Hong Kong'),
- ('安娜', 'on1 naa4', 'Anna (woman)', N, 'the Chinese spelling of the English name Anna used in Hong Kong'),
+ # 18 Nov (owner: "how will I know who the other person is?"): the two speakers of every lesson are always the same two people, so there are exactly TWO names. A is Leon (the man), B is
+ # Carrie (the woman): a line by A calls B Carrie and introduces himself as Leon, a line by B calls A Leon and introduces herself as Carrie. Written in the characters Hong Kong uses.
+ ('利安', 'lei6 on1', 'Leon (the man, speaker A)', N, 'the name Leon as Hong Kong writes it; always the man, speaker A'),
+ ('嘉莉', 'gaa1 lei6', 'Carrie (the woman, speaker B)', N, 'the name Carrie as Hong Kong writes it; always the woman, speaker B'),
  ('哇', 'waa1', 'wow', I, 'wow: a reaction, not a word to learn'),
  ('嘩', 'waa1', 'wow (the other spelling)', I, 'the same sound as 哇, spelled 嘩 in the word list (a list word, taught later)'),
  ('喂', 'wai3', 'hey; hello (on the phone)', I, 'hey / hello on the phone: a calling sound; also a list word, taught later'),

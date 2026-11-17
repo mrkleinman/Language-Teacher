@@ -19399,7 +19399,7 @@ function anthropicRequestBody({ model, messages, maxTokens, json, effort, noThin
   // leaves room for it (within the ceiling the server function enforces).
   // 18 Nov: thinking counts toward max_tokens, and a HIGH effort stage thinks much longer: the Listening story plan (cap 2400 x 3 = 7200) was cut off on every attempt after it went to high effort.
   // A high effort stage gets five times the answer cap (still within the 16000 ceiling the server enforces); a retry after a cut-off passes the exact larger number (exactMax).
-  const mult = (effort || ANTHROPIC_CONFIG.effort) === 'high' && !noThinking ? 5 : 3
+  const eff0 = effort || ANTHROPIC_CONFIG.effort, mult = noThinking ? 3 : eff0 === 'high' ? 5 : eff0 === 'medium' ? 4 : 3          // the cap is only a ceiling (billing is by tokens used), so more room costs nothing unless the thinking needs it
   const max_tokens = exactMax ? Math.min(ANTHROPIC_CONFIG.maxTokensCeiling, exactMax) : Math.min(ANTHROPIC_CONFIG.maxTokensCeiling, Math.max(2048, Math.round((maxTokens || 1200) * mult)))
   const body = { model, max_tokens, messages: m.messages, thinking: { type: noThinking ? 'disabled' : 'adaptive' }, output_config: { effort: effort || ANTHROPIC_CONFIG.effort } }
   if (noThinking) delete body.output_config.effort      // v723: the yes-and stages write one short line; thinking was ~85% of their output tokens

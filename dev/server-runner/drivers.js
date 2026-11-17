@@ -159,6 +159,7 @@ const th = {
     }, 24 * 60 * 1000)
     if (done === 'error') ctx.fail('the app stopped while writing the track: ' + await failText(), 'app_failed')
     const label = await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /Start SRS Track|Start anyway/.test(x.innerText)); return b ? b.innerText : '' })
+    if (ctx.cfg && ctx.cfg.onStage) { try { await ctx.cfg.onStage('thai-ready', page) } catch (e) {} }          // tests: look at the screen at this point
     if (/Start anyway/.test(label)) notes.push('the app says the track is not ready: ' + clip(label.replace(/^[^A-Za-z]*/, ''), 160))
     ctx.progress({ phase: 'saving the track and building its listening track' })
     await page.getByRole('button', { name: /Start SRS Track|Start anyway/ }).first().click()

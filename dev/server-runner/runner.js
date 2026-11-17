@@ -138,6 +138,7 @@ async function runJob(spec, hooks, cfg) {
       const t = m.text()
       if (/^\[ai-call\]/.test(t)) log(t.replace(/\s+(promptTokenCount|INPUT_CHARS|OUTPUT_CHARS)=.*$/, '').slice(0, 260))
     })
+    if (cfg.debugConsole) page.on('console', m => { try { cfg.debugConsole(m.type(), m.text()) } catch (e) {} })          // tests: see everything the page prints
     page.on('pageerror', e => log('page error: ' + String((e && e.message) || e).slice(0, 240)))
     const seed = buildSeed(spec)
     await page.addInitScript(s => {
@@ -154,7 +155,7 @@ async function runJob(spec, hooks, cfg) {
     // ── open the app
     progress({ phase: 'opening the app' })
     await guard(page.goto(target.url, { waitUntil: 'domcontentloaded', timeout: 120000 }))
-    const ctx = { page, spec, scrub, log, progress, guard, fail, trackId, deepEqual, seedTrackIds: new Set(((spec.data[LANGUAGE_KEYS[spec.language].tracks]) || []).map(trackId)) }
+    const ctx = { cfg, page, spec, scrub, log, progress, guard, fail, trackId, deepEqual, seedTrackIds: new Set(((spec.data[LANGUAGE_KEYS[spec.language].tracks]) || []).map(trackId)) }
     await guard(driver.waitHome(ctx))
     await guard(driver.instrument(ctx))
     // ── progress poller: counters and log lines the page produced

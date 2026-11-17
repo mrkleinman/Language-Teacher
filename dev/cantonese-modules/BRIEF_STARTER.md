@@ -79,3 +79,6 @@ The plan has 321 modules as a floor (tier-aware: a T1 starter cannot fit a T2 wo
 
 ## Report (short)
 Per assignment line: modules written (floor / written), the exclusions you used, final coverage of every word (from `yue_starter_cov.py`), words you could not support and why (word, position, what the vocabulary allowed), lines you are unsure about (not quite natural for a native speaker), slot / tag problems you noticed (word id + issue), any new checker quirk.
+
+## UPDATE 17 Nov — the teaching day counts (read this first)
+The five words of a teaching day are taught TOGETHER in one track, so a starter line for one of them MAY use the other words of the SAME day (positions up to the end of that day), as well as the words of earlier days and the free words. Example: day 1 teaches 你好 我 你 係 唔, so 你好，我係阿明。 and 你係唔係阿欣呀？ are allowed for those words; day 5 teaches 想 食 飲 水 茶, so 我想飲水。 is allowed. `python3 tools/yue_check.py starter-allowed WORD_ID` prints exactly what you may use. Write the most natural beginner exchanges this allows.

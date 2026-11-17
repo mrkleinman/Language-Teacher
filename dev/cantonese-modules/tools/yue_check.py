@@ -15,7 +15,7 @@ character must be covered by an allowed word at the module's tier or by a free g
 
 STARTER MODULES (stage B of the beginner order): a module whose id has the segment `-S<nn>` (`N_DRINK.WATER-T1-S03`, id = <CELL>-<tier>-S<nn>) is a starter module. Its vocabulary is NOT
 the tier list. The learner who meets it knows only the words taught before its target word, so the allowed vocabulary of a starter module is
-  (a) the words at curriculum positions STRICTLY BEFORE the first position among the words the module fits (position = `rank` of cantonese-word-tags.csv = beginner-order.csv for the
+  (a) the words at curriculum positions before the TEACHING DAY of the earliest word the module fits, AND the words of that same day (a day's five words are taught together in one track: 17 Nov), i.e. positions up to the end of that day among the words the module fits (position = `rank` of cantonese-word-tags.csv = beginner-order.csv for the
       first 200; a spelling with two rows counts from its earliest row, the same rule tools/yue_stage_fit.py uses for the learner),
   (b) the free words of free-words.csv (names, loanwords, interjections, particles) written in CHARACTERS (阿明, not Latin letters: the app rejects Latin letters in a line, so `OK` is
       not usable), plus the checker's own free particles,
@@ -125,9 +125,23 @@ def starter_data():
         _STARTER.update(pos=pos, counted=counted, uncounted=uncounted, latin=latin)
     return _STARTER['pos'], _STARTER['counted'], _STARTER['uncounted'], _STARTER['latin']
 
+_DAYS = {}
+def _day_end(pos):
+    """the last position of the teaching day that `pos` belongs to (beginner-order.csv): the five words of a day are taught TOGETHER in one track, so a line for one of them may use
+    the others of the same day (the app lets a line use every target of the track). 17 Nov: without this the day-one words (你好 我 你 係 唔) could not be used together at all."""
+    if not _DAYS:
+        p = f'{HERE}/beginner-order.csv'
+        byday = {}
+        if os.path.exists(p):
+            for r in csv.DictReader(open(p, encoding='utf-8-sig')): byday.setdefault(int(r['day']), []).append(int(r['position']))
+        for d, ps in byday.items():
+            for k in ps: _DAYS[k] = max(ps)
+    return _DAYS.get(pos, pos)
+
 def starter_first(fw):
-    """the first position among the module's fitting words (the learner knows only the words before it)"""
-    return min(int(w['rank']) for w in fw)
+    """the CUT-OFF of a starter module: the learner knows the words before the day of the module's earliest fitting word, plus that whole day's words (taught together).
+    Returned as 'first position not allowed' (the words at positions < cut-off are allowed)."""
+    return _day_end(min(int(w['rank']) for w in fw)) + 1
 
 def starter_vocab(first):
     pos, counted, uncounted, _ = starter_data()

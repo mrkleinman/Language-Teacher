@@ -183,12 +183,13 @@ def encode(mods, Z, py, report):
     punct = re.compile(r'[，。？！、；：…\s,.?!"“”「」（）()\-—·]')
 
     def chunk(text, tier_i, nxt):
-        # the cut of a chunk: with the words of the module's own tier and the free particles first (every module written before the starter modules is cut exactly as it always was);
-        # a chunk that is not covered that way is cut again with every word of the list (a starter module may use a word of a higher tier that the beginner order teaches earlier)
-        # and the free words of free-words.csv (阿欣 三文治 ...), which the checker has already proved
-        ok, spans, toks = Z.segment(text, tier_i)
+        # the cut of a chunk: with the words of the module's own tier and every free word (the particles of the checker AND the names / loanwords of free-words.csv: 哈囉 is ONE
+        # word, not the two particles 哈 + 囉); a chunk that is not covered that way is cut again with every word of the list (a starter module may use a word of a higher tier
+        # that the beginner order teaches earlier). A module written before the starter modules has no multi-character free word, so it is cut exactly as it always was.
+        free = set(Z.FREE_SET) | set(FREE_ALL)
+        ok, spans, toks = Z.segment(text, tier_i, None, free)
         if not ok:
-            ok, spans, toks = Z.segment(text, tier_i, set(Z.ALLOWED), set(Z.FREE_SET) | set(FREE_ALL))
+            ok, spans, toks = Z.segment(text, tier_i, set(Z.ALLOWED), free)
         assert ok, ('chunk is not covered by the closed list', text, spans)
         words, i, ti = [], 0, 0
         while i < len(text):

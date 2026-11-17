@@ -99,6 +99,14 @@ function thaiHandlers(seen) {
     return JSON.stringify(Array.from({ length: n }, (_, k) => { const f = REC[(2 + k0 - n + k) % REC.length]; return { targetId: id, targetSurfaceUsed: T, speaker: f[0], thai: f[1].replace('{T}', T), english: f[2].replace('{g}', g), prompt: f[3].replace(/\{g\}/g, g) } }))
   })
   list.push(ctx => { if (!/Reply ONLY with JSON \{"bad":\[\{"gap":N/.test(ctx.q)) return undefined; hit('bridge-judge'); return JSON.stringify({ bad: [] }) })
+  // the whole-track coherence judges (sections / one scene at a time)
+  list.push(ctx => {
+    if (!/Reply ONLY with JSON: \{"sections":\[/.test(ctx.q)) return undefined
+    hit('coherence')
+    const secs = [...ctx.q.matchAll(/^Section (\d+) — /gm)].map(m => +m[1])
+    return JSON.stringify({ sections: secs.map(n => ({ section: n, score: 5, coherent: true, premiseFitsTargets: true, suggestedPremise: null, offTopicLines: [] })), overall: 5 })
+  })
+  list.push(ctx => { if (!/Reply ONLY with JSON: \{"problems":\[\{"n":"L12"/.test(ctx.q)) return undefined; hit('scene-review'); return JSON.stringify({ problems: [] }) })
   // anything else: counted
   list.push(ctx => { const k = (ctx.user || ctx.q).replace(/\s+/g, ' ').slice(-140); if (!seen.unhandled.some(x => x.k === k)) seen.unhandled.push({ k, n: 1 }); return undefined })
   return list

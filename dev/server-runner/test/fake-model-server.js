@@ -64,6 +64,8 @@ function startFakeModel(opts) {
     'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, x-lt-access', 'Access-Control-Allow-Methods': 'POST, OPTIONS' }, extra || {})); res.end(b) }
   const server = http.createServer((req, res) => {
     if (req.method === 'OPTIONS') { stats.options++; res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, x-lt-access', 'Access-Control-Allow-Methods': 'POST, OPTIONS' }); return res.end() }
+    if (opts.allowedOrigin && req.headers.origin !== opts.allowedOrigin) { stats.denied++; return send(res, 403, { type: 'error', error: { type: 'origin_not_allowed', message: 'this site is not allowed' } }) }
+    stats.origins = stats.origins || []; stats.origins.push(req.headers.origin || null)
     const chunks = []; let size = 0
     req.on('data', c => { size += c.length; if (size > 2e6) req.destroy(); else chunks.push(c) })
     req.on('end', async () => {

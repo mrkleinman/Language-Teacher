@@ -33,6 +33,7 @@ function loadConfig(env) {
     jobTimeLimitSec: num(env.RUNNER_JOB_TIME_LIMIT_SEC, 25 * 60),
     chromiumArgs: String(env.RUNNER_CHROMIUM_ARGS || '').split(/\s+/).filter(Boolean),   // e.g. "--no-sandbox --disable-dev-shm-usage" inside the container
     allowLocalModel: env.RUNNER_ALLOW_LOCAL_MODEL === '1',                     // tests only: let a job point at http://127.0.0.1
+    pageOrigin: env.RUNNER_PAGE_ORIGIN || '',                                  // with a page FILE: serve it as if it came from this https origin (the model function only accepts the app's own origin)
     geminiBase: env.RUNNER_TEST_GEMINI_BASE || '',                             // tests only: answer the page's Gemini calls from this stand-in instead
     headless: env.RUNNER_HEADED === '1' ? false : true,
   }
@@ -52,10 +53,16 @@ function vendorFiles(cfg) {
 function pageTarget(cfg) {
   const p = String(cfg.page || '')
   if (!p) throw new RunnerError('the runner has no page configured (set RUNNER_PAGE)', 'not_configured')
-  if (/^https:\/\//i.test(p)) return { url: p, origin: new URL(p).origin, dir: null }
+  if (/^https:\/\//i.test(p)) return { url: p, origin: new URL(p).origin, dir: null, file: null }
   const abs = path.resolve(p)
   if (!fs.existsSync(abs)) throw new RunnerError('the page file does not exist (RUNNER_PAGE)', 'not_configured')
-  return { url: 'file://' + abs, origin: null, dir: path.dirname(abs) }
+  // A page opened from a file has the origin "null", which the model function refuses (it answers only the app's own site). With RUNNER_PAGE_ORIGIN the file is
+  // served as if it came from that https origin: same page, same code, and the model function sees the app's origin. Nothing is fetched from that site.
+  if (cfg.pageOrigin) {
+    if (!/^https:\/\/[^/\s]+$/i.test(cfg.pageOrigin)) throw new RunnerError('RUNNER_PAGE_ORIGIN must look like https://example.github.io', 'not_configured')
+    return { url: cfg.pageOrigin + '/', origin: cfg.pageOrigin, dir: null, file: abs }
+  }
+  return { url: 'file://' + abs, origin: null, dir: path.dirname(abs), file: null }
 }
 
 // what the page finds in its storage when it starts: the learner's data exactly as the app keeps it (JSON text), the language, and the model settings the way
@@ -120,6 +127,10 @@ async function runJob(spec, hooks, cfg) {
         }
         for (const [rx, body] of vendor) if (rx.test(url)) return body ? route.fulfill({ status: 200, contentType: 'application/javascript', body }) : route.continue()
         const u = new URL(url)
+        if (target.file && u.origin === target.origin) {                           // the page file, served under the app's origin; nothing else comes from there
+          if (u.pathname === '/' || u.pathname === '/index.html') return route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: fs.readFileSync(target.file) })
+          return route.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' })
+        }
         if (target.origin && u.origin === target.origin) return route.continue()
         if (modelOrigin && u.origin === modelOrigin) return route.continue()
         if (u.hostname === GEMINI_HOST && geminiJob) {

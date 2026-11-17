@@ -31,8 +31,10 @@ def need_of(w):
 
 
 def keys_of(w):
-    """The cells whose modules serve the word directly (coverage.py)."""
-    return {w['subgroup'] or w['group'], w['group'], w['second_group']} - {'', '-'}
+    """The cell whose modules serve the word directly. The APP's rule (thaiModuleCandidates): the word's subgroup, else its group; only when that
+    cell has no usable module does the app fall back to the word's second_group family. (coverage.py also counts the plain parent group of a
+    word that has a subgroup: the same thing for every old cell, but wrong for a new subgroup inside an unsplit group such as N_ITEM.GEAR.)"""
+    return {w['subgroup'] or w['group']}
 
 
 class Data:
@@ -72,17 +74,22 @@ class Data:
             pass
 
     def direct(self, w, own_tier_only=False):
-        """Modules that serve word w by its own cell (not excluded)."""
-        out, seen = [], set()
-        for k in keys_of(w):
-            for m in self.by_cell.get(k, []):
-                if m['module_id'] in seen or w['id'] in m['_ex']:
+        """Modules that serve word w by its own cell (not excluded, tier at or above the word's); the second_group family only when the cell has none."""
+        def pick(cells, prefix=False):
+            out, seen = [], set()
+            for g, ms in self.by_cell.items():
+                if not (g in cells or (prefix and any(g.startswith(c + '.') for c in cells))):
                     continue
-                if own_tier_only and m['tier'] != w['tier']:
-                    continue
-                if m['_t'] < tier_i(w['tier']):
-                    continue
-                seen.add(m['module_id']); out.append(m)
+                for m in ms:
+                    if m['module_id'] in seen or w['id'] in m['_ex'] or m['_t'] < tier_i(w['tier']):
+                        continue
+                    if own_tier_only and m['tier'] != w['tier']:
+                        continue
+                    seen.add(m['module_id']); out.append(m)
+            return out
+        out = pick(keys_of(w))
+        if not out and w['second_group'] not in ('', '-'):
+            out = pick({w['second_group']}, prefix=True)
         return out
 
     def counts(self, w, with_links=True):

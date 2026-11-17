@@ -90,7 +90,8 @@ function createServer(opts) {
       if (!item.purged) { rec.result = scrub.deep(result); rec.state = 'done'; rec.progress.phase = 'done' }
     } catch (e) {
       rec.state = 'failed'
-      rec.error = scrub.text(e instanceof RunnerError || (e && e.code) ? String(e.message) : 'the job failed: ' + String((e && e.message) || e).split('\n')[0]).slice(0, 500)
+      rec.error = closed && !item.purged ? 'the runner was shut down before this job finished; submit it again'
+        : scrub.text(e instanceof RunnerError || (e && e.code) ? String(e.message) : 'the job failed: ' + String((e && e.message) || e).split('\n')[0]).slice(0, 500)
       rec.progress.phase = 'failed'
     } finally {
       // the job's credentials leave memory with the job
@@ -226,4 +227,7 @@ if (require.main === module) {
   app.listen().then(port => console.log('track runner listening on ' + port + ' (origins: ' + (cfg.origins.join(', ') || 'none') + ')'))
   const bye = () => { app.close().then(() => process.exit(0)) }
   process.on('SIGTERM', bye); process.on('SIGINT', bye)
+  // a stray rejection must not take the service (and the job being run) down; the message is scrubbed of key-shaped text and printed without any request data
+  const generic = makeScrubber([])
+  process.on('unhandledRejection', e => { try { console.error('unhandled rejection: ' + generic.text(String((e && e.message) || e)).slice(0, 200)) } catch (x) {} })
 }

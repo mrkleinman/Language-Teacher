@@ -5,7 +5,7 @@
 //   B  the service: token, CORS, body cap, queue (one at a time), lifecycle, cancel, purge, restart, secret scrubbing (no browser: the job function is replaced)
 //   C  the real page in a real headless Chromium with the stand-in model: the Cantonese Daily and Revision flows, the AI review stage, failures, time limit, cancel,
 //      the Gemini path, and a canary credential that must appear NOWHERE
-//   D  the Thai / Japanese / Mandarin flows
+//   D  the Thai Daily and Revision flows with the Thai stand-in (set RUNNER_TEST_SKIP_THAI=1 to skip: about 8 minutes), and the languages without a driver
 'use strict'
 const fs = require('fs'), os = require('os'), path = require('path'), http = require('http')
 const { execFileSync, spawn } = require('child_process')
@@ -15,6 +15,7 @@ const { validateJob, LANGUAGE_KEYS, allowedKeys } = require('../jobspec')
 const { makeScrubber } = require('../scrub')
 const { MemoryFileStore } = require('../store')
 const { startFakeModel } = require('./fake-model-server')
+const { thaiHandlers } = require('./thai-stand-in')
 
 const ROOT = path.resolve(__dirname, '..', '..')
 const PAGE_DIR = path.join(os.tmpdir(), 'runner-test'), PAGE = process.env.RUNNER_TEST_PAGE || path.join(PAGE_DIR, 'index.html')
@@ -41,6 +42,22 @@ async function waitState(port, id, states, ms) {
   return last
 }
 const dirText = dir => fs.readdirSync(dir).map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n')
+
+// the app's own Thai word bank, with every word it ships as "learning" marked as introduced and seen (so a Revision track has words to revise)
+async function thaiSeedVocab() {
+  const { chromium } = require('playwright')
+  const D = path.join(ROOT, 'node_modules') + path.sep, rd = f => fs.readFileSync(D + f)
+  const vend = [[/babel/, '@babel/standalone/babel.min.js'], [/react-dom/, 'react-dom/umd/react-dom.production.min.js'], [/unpkg\.com\/react@/, 'react/umd/react.production.min.js']]
+  const b = await chromium.launch()
+  try {
+    const ctx = await b.newContext({ serviceWorkers: 'block' }), p = await ctx.newPage()
+    await p.route('**/*', r => { const u = r.request().url(); for (const [rx, f] of vend) if (/unpkg|cdn/.test(u) && rx.test(u)) return r.fulfill({ status: 200, contentType: 'application/javascript', body: rd(f) }); return u.startsWith('file://') ? r.continue() : r.abort() })
+    await p.addInitScript(() => { localStorage.setItem('tt-active-language', JSON.stringify('th')) })
+    await p.goto('file://' + PAGE, { waitUntil: 'domcontentloaded' })
+    await p.waitForFunction(() => typeof initVocab === 'function', null, { timeout: 180000 })
+    return await p.evaluate(() => initVocab().map(w => w.status === 'learning' || w.status === 'known' ? Object.assign({}, w, { introducedAt: '2026-10-01', lastSeen: '2026-11-01', repCount: Math.max(3, w.repCount || 0) }) : w))
+  } finally { await b.close() }
+}
 
 const BASE_JOB = { language: 'yue', mode: 'daily', model: { model: 'claude-haiku-5-5', serverUrl: 'https://example-model.run.app', accessCode: CANARY } }
 const yueVocab = () => Array.from({ length: 60 }, (_, i) => ({ id: i + 1, status: 'learning', lastSeen: '2026-11-01', introducedAt: '2026-10-01', repCount: 3, okStreak: 1, dueDate: '2026-11-12' }))
@@ -290,15 +307,50 @@ const yueVocab = () => Array.from({ length: 60 }, (_, i) => ({ id: i + 1, status
     await slow.close(); await quick.close()
   }
   {
-    // all four languages are accepted by the service; the ones without a driver say so
+    // the model function answers only the app's own site: a page opened from a file has the origin "null" and is refused; RUNNER_PAGE_ORIGIN serves the same file under the app's origin
+    const model = await startFakeModel({ accessCode: CANARY, allowedOrigin: 'https://app.example' })
+    const jobBody = { language: 'yue', mode: 'daily', data: { 'tt-yue-vocab': yueVocab() }, model: { model: 'claude-haiku-5-5', serverUrl: model.url, accessCode: CANARY } }
+    const idFile = await submit(jobBody); const stFile = await finish(idFile); const resFile = await resultOf(idFile)
+    // the flags switch off Chrome's Private Network Access checks, which only apply because this stand-in is on THIS computer (a public https page reaching 127.0.0.1); the real model function is public
+    const app2 = mkApp({ pageOrigin: 'https://app.example', chromiumArgs: ['--disable-features=PrivateNetworkAccessSendPreflights,PrivateNetworkAccessRespectPreflightResults,BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessForWorkers,LocalNetworkAccessChecks'] }); const port2 = await app2.listen(0, '127.0.0.1')
+    const r2 = await http1(port2, 'POST', '/jobs', { body: jobBody }); const st2 = await waitState(port2, r2.json.id, ['done', 'failed'], 120000)
+    const res2 = (await http1(port2, 'GET', '/jobs/' + r2.json.id + '/result')).json
+    outputs.push(JSON.stringify(stFile), JSON.stringify(st2), JSON.stringify(res2 || {}), JSON.stringify(resFile || {}))
+    T('C19', 'a page opened from a file is refused by a model function that checks the origin; with RUNNER_PAGE_ORIGIN the same page is served under the app\'s origin and the review runs',
+      stFile.state === 'done' && resFile.track.qualityReview.status === 'failed' && st2.state === 'done' && res2.track.qualityReview.status === 'done' && model.stats.origins.includes('https://app.example'), { file: resFile && resFile.track.qualityReview, origins: model.stats.origins })
+    await app2.close(); await model.close()
+  }
+  if (!process.env.RUNNER_TEST_SKIP_THAI) {
+    // Thai through the real page: the scene, the 30-word generation (the app's own gap-fill modules answer some words with no request), the judges and recovery are
+    // answered by the Thai stand-in; the app's own validators run for real. Whether every target pair passes depends on the stand-in's fixed sentence frames, so the test
+    // asserts that the flow ran to the app's save, not that the track is READY; the readiness note is printed.
+    const seen = { unhandled: [], handled: {} }
+    const model = await startFakeModel({ accessCode: CANARY, handlers: thaiHandlers(seen) })
+    const gate = { th: {} }
+    const thVocab = await thaiSeedVocab()          // a learner who has been taught words (the app's bank with learned words marked as introduced), so Revision has words to revise
+    for (const mode of ['daily', 'revision']) {
+      const id = await submit({ language: 'th', mode, timezone: 'Asia/Singapore', data: mode === 'revision' ? { 'tt-vocab': thVocab } : {}, model: { model: 'claude-haiku-5-5', serverUrl: model.url, accessCode: CANARY, limitUsd: 5, limitRequests: 2000 } })
+      const st = await finish(id, 12 * 60 * 1000); const res = await resultOf(id); outputs.push(JSON.stringify(st)); if (res) outputs.push(JSON.stringify(res))
+      const tr = res && res.track
+      gate.th[mode] = st.state + (st.error ? ': ' + st.error : '') + (res && res.notes && res.notes.length ? ' · ' + res.notes.join(' | ') : ' · track ready')
+      T('D' + (mode === 'daily' ? 1 : 2), 'Thai ' + mode + ' through the real page: the job is done, the app saved a Thai track (' + (tr ? tr.pairs.length : '?') + ' lines), requests counted' + (mode === 'daily' ? ', daily-new slots saved' : ', slots untouched'),
+        st.state === 'done' && tr && tr.pairs.length >= 60 && res.changedKeys.includes('tt-tracks') && res.usage.requests > 30 && st.progress.requests === res.usage.requests
+        && (mode === 'daily' ? res.changedKeys.includes('tt-daily-new') : !res.changedKeys.includes('tt-daily-new')) && (tr.mode === mode || tr.trackMode === mode) && ![st, res].some(x => JSON.stringify(x).includes(CANARY)), st.error || st.log.slice(-4))
+      console.log('      Thai ' + mode + ': ' + gate.th[mode] + ' · ' + (res ? res.usage.requests + ' requests' : ''))
+    }
+    T('D3', 'the Thai stand-in answered the scene, the plan, the generation, the judges and the recovery; every kind of prompt it did not know is listed (' + seen.unhandled.length + ')', seen.handled.generation > 0 && seen.handled['cue-check'] > 0 && seen.handled.naturalness > 0 && seen.handled['group-eval'] > 0, seen.handled)
+    if (seen.unhandled.length) console.log('      Thai prompts the stand-in did not know: ' + seen.unhandled.length + ' (e.g. ' + JSON.stringify(seen.unhandled.slice(0, 2).map(u => u.k.slice(-70))) + ')')
+    await model.close()
+  }
+  {
+    // Japanese / Mandarin have no verified driver: the service accepts the job and fails it at once with a clear reason (it never hangs)
     const model = await startFakeModel({ accessCode: CANARY })
     const out = {}
-    for (const lang of ['th', 'ja', 'zh']) {
+    for (const lang of ['ja', 'zh']) {
       const id = await submit({ language: lang, mode: 'daily', data: {}, model: { model: 'claude-haiku-5-5', serverUrl: model.url, accessCode: CANARY } })
-      const st = await finish(id, 60000); out[lang] = st.state + ': ' + (st.error || 'ok')
+      const st = await finish(id, 90000); out[lang] = st.state + ': ' + (st.error || 'ok')
     }
-    T('D1', 'Thai / Japanese / Mandarin jobs: see the printed outcome (a language without a verified driver fails with a clear reason, never hangs)', Object.values(out).every(x => /^(done|failed): /.test(x)), out)
-    console.log('      D1 outcomes: ' + JSON.stringify(out))
+    T('D4', 'Japanese and Mandarin jobs fail at once with "not driven yet" (no driver is verified for them)', Object.values(out).every(x => /^failed: the (Japanese|Mandarin) flow is not driven yet/.test(x)), out)
     await model.close()
   }
   // the whole tests' printed output and the job files hold no secret

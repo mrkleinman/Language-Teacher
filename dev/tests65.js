@@ -67,7 +67,7 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const src = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')
     const i = src.indexOf("'cue-revalidation (final)'"), j = src.indexOf('FINAL_RECOVERY', i), k = src.indexOf('enforceTrackPairQuota(t, adapter', i)
     T('R5', 'after the final cue revalidation, a removed line goes to one bounded quota-recovery round (its pronunciation built, the new line judged), before the quota is counted',
-      i > 0 && k > i && j > k && src.indexOf('const quota = trackQuotaReport(t.pairs, kws, adapter, c)', i) > j, { i, k, j })
+      i > 0 && k > i && j > k && src.indexOf('const quota = trackQuotaReport(t.pairs, kws, adapter, c, _plan)', i) > j /* 17 Nov: the call also passes the track's target plan (short-by-design tracks); the ordering protected is unchanged */, { i, k, j })
   }
   {
     const V = c.ev('RAW_VOCAB'), w = V.find(v => v.t === 'เขา'), el = c.ev('thaiVocabEligibility')({ ...w, thai: w.t, english: w.e })

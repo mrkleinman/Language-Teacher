@@ -159,7 +159,9 @@ for (const [L, tag] of [['ja', 'C'], ['zh', 'D']]) {
 
   // a learner at White (Mukyu) is not offered phrases whose home is a later belt
   const v0 = learner(L, 0), d0 = daily(L, v0)
-  T(tag + '10', L + ': a Mukyu learner (nothing learnt) gets no new phrase (their home belts are Orange and later) and a plain 30', d0.targets.length === 30 && d0.targets.filter(isPhrase).length === 0, d0.targets.filter(isPhrase).map(p => p.homeBelt))
+  // 17 Nov — CHANGED (the owner's rule: a track holds min(30, the words that exist), never padded with unseen words): "a plain 30" used to be 3-5 new words padded with 25+ extra
+  // unseen ones. A learner with nothing learnt now gets just the belt's new words (here: all new, fewer than 30, none flagged as overflow). The point of the check, no new phrase at White belt, is unchanged.
+  T(tag + '10', L + ': a Mukyu learner (nothing learnt) gets no new phrase (their home belts are Orange and later) and only the belt\'s new words (short by design, no padding to 30)', d0.targets.length >= 1 && d0.targets.length <= 7 && d0.targets.every(w => w.selectionRole === 'new' && !w._newCeilingOverflow) && d0.targets.filter(isPhrase).length === 0, d0.targets.filter(isPhrase).map(p => p.homeBelt))
 
   // revision tracks hold words only
   const rv = c.ev('selectRevisionTargets')(L, v2)

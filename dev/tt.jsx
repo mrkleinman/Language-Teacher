@@ -61760,7 +61760,7 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
     </div>
   )
 }
-function CantoneseDashboard({ vocab, tracks, targets, trackTargets, onStartTrack, notice,
+function CantoneseDashboard({ vocab, tracks, targets, trackTargets, onStartTrack, notice, gcpTtsKey,
                               onOpenTrack, onDeleteTrack, onLearnWords, onStartSrsTrack, srsDue, onNav, selection, revisionSelection, onNotYet }) {
   const stats = useMemo(() => getStats(vocab), [vocab])
   const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
@@ -61818,7 +61818,7 @@ function CantoneseDashboard({ vocab, tracks, targets, trackTargets, onStartTrack
       </div>
       <RankTestButton vocab={vocab} rank={currentRankName(vocab)} onStart={st => { if (typeof onNav === 'function') onNav('rank-test', st) }} />
       {notice && <Card style={{ padding:'12px 16px', border:'1px solid #f59e0b' }}><p style={{ fontSize:12, color:'#f59e0b', fontWeight:600 }}>{notice}</p></Card>}
-      {!voiceOk && <Card style={{ padding:'10px 14px', border:'1px solid #f59e0b' }}>
+      {!voiceOk && !gcpTtsKey && <Card style={{ padding:'10px 14px', border:'1px solid #f59e0b' }}>
         <p data-yue-voice-notice="1" style={{ fontSize:11, color:'#f59e0b', lineHeight:1.5 }}>This device has no Hong Kong Cantonese voice (zh-HK). Audio may be read in Mandarin, which is wrong for these words. Add a Cantonese (Hong Kong) voice in the speech settings of the device, or use a cloud voice key.</p>
       </Card>}
       <Card style={{ padding:'10px 14px' }} data-yue-not-available="1">
@@ -61974,7 +61974,7 @@ function CantoneseTeacher({ lang, onSetLang }) {
         lastTrackCost={null} geminiKey={cred.geminiKey} geminiSpend={cred.geminiSpend} />
       <main>
         {view === 'dashboard' && (
-          <CantoneseDashboard vocab={vocab} tracks={tracks} targets={newTargets} trackTargets={targets} notice={notice}
+          <CantoneseDashboard vocab={vocab} tracks={tracks} targets={newTargets} trackTargets={targets} notice={notice} gcpTtsKey={cred.gcpTtsKey}
             srsDue={revisionSelection.counts.due} selection={newSelection} onNav={setView}
             onLearnWords={() => { setTrackMode('daily'); setNotice(''); setView('learn') }}
             revisionSelection={revisionSelection} onNotYet={toNotYet}

@@ -187,6 +187,13 @@ const fn = (name, body) => { const i = SRC.indexOf(name); return i < 0 ? '' : SR
       !!lostWords && lostWords.code === 'TRACK_SELECTION_BLOCKED' && /vocabulary-data problem/.test(lostWords.message) && /eligible=12 required=30/.test(lostWords.message) && (gate({ lang: 'yue', targets: full, vocab: Vb, trackMode: 'daily', tracks: four }) || {}).code === 'DAILY_CAP', { shortDaily, emptyDaily, shortRev, emptyRev, lostWords })
   }
 
+  // 17 Nov: the dashboard's "no Hong Kong voice" warning must not show when a cloud voice key is saved (the Player and the word screens already knew; the dashboard did not)
+  {
+    const dsrc = SRC.slice(SRC.indexOf('function CantoneseDashboard('), SRC.indexOf('function CantoneseDashboard(') + 6500)
+    T('U14', 'the dashboard shows the no-Hong-Kong-voice warning only when there is no cloud voice key, and the Cantonese screen hands the key to the dashboard',
+      /\{!voiceOk && !gcpTtsKey && <Card/.test(dsrc) && /<CantoneseDashboard [^>]*gcpTtsKey=\{cred\.gcpTtsKey\}/.test(SRC), dsrc.match(/\{!voiceOk[^<]*/))
+  }
+
   // ── W ──
   const tb = SRC.slice(SRC.indexOf('function CantoneseTeacher('), SRC.indexOf('function AppRoot('))
   T('W1', 'multi-tab wiring (copied from the Mandarin screen, on the Cantonese keys): load + mark, commit with the shared options, tab-synced vocab and tracks, daily-new change listener', /stGet\(YUE\.vocab\)/.test(tb) && /stSyncMark\(YUE\.vocab/.test(tb) && /stSyncMark\(YUE\.tracks/.test(tb) && /stSyncCommit\(YUE\.vocab, v, setVocab, stWordId/.test(tb) && /stSyncCommit\(YUE\.tracks, capped, setTracks, stTrackId/.test(tb) &&

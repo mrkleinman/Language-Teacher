@@ -251,10 +251,10 @@ const html = el => RDS.renderToStaticMarkup(el).replace(/<[^>]+>/g, ' ').replace
     // the module writer is switched on with the data, as tests93 does
     const zlib = require('zlib'); const DATA = JSON.parse(zlib.gunzipSync(Buffer.from(ev('YUE_MODULES_GZ'), 'base64')).toString('utf8'))
     c.yueModulesUseData(DATA); c.yueModulesSetEnabled(true)
+    c.yueStrictVocabSetEnabled(false)     // starter modules not merged yet: remove this switch when they are (a learner who has been taught 12 words builds a Daily of 17 words, which only the old rule can write)
     // TEST CHANGED (stage B-1): the data is loaded BEFORE the Daily is computed, as on the real screen (the Cantonese Daily is gated by what a module can teach this learner, and the gate
     // only knows once the modules are loaded); with the rule off (starter modules not merged yet) this changes nothing.
     const Ly = learner('yue', 12), d = daily('yue', Ly.vocab), Vy = Ly.vocab
-    c.yueStrictVocabSetEnabled(false)     // starter modules not merged yet: remove this switch when they are (a learner who has been taught 12 words builds a Daily of 17 words, which only the old rule can write)
     const res = await c.generateCantoneseTrack(d.targets, Vy, () => {}, () => {}, { cancelled: false }, { startedAt: '2026-11-17T08:00:00.000Z' })
     const tr = c.cantoneseBuildTrack(res, d.targets, 'daily', '2026-11-17T08:00:00.000Z'), ck = c.cantoneseTrackCheck(tr)
     // 18 Nov (stage B-1): every track carries 4 greeting / parting pairs on top of its lesson pairs (17 x 3 = 51 + 4 = 55; 12 x 3 = 36 + 4 = 40); the structure check counts the lesson pairs (ck.pairs)

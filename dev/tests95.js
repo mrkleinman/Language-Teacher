@@ -45,6 +45,7 @@ function app(o) {
   // the harness runs every setTimeout at once (a timeout would fire immediately); a test of a request that HANGS until it is cancelled needs the real clock
   const c = load(FILE, o.realTimers ? { React, realBelt: true, globals: { setTimeout, clearTimeout } } : { React, realBelt: true }); c.console.info = () => {}; c.console.warn = () => {}
   c.yueModulesSetEnabled(true); c.ev('yueModulesUseData')(DATA)
+  c.yueStrictVocabSetEnabled(false)     // starter modules not merged yet: remove this switch when they are (these tests review a track built for a learner who has been taught nothing: the real first-day flow)
   const calls = { gemini: [], anthropic: [], urls: [] }
   c.fetch = async (url, opts) => {
     const body = JSON.parse((opts && opts.body) || 'null'), isA = String(url) === '/api/anthropic'
@@ -67,7 +68,8 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
 ;(async () => {
   const c0 = app()
   const { V, tr: TRACK } = await mkTrack(c0, 5)
-  const N = TRACK.pairs.length
+  // 18 Nov (stage B-1): the track also holds 4 greeting / parting pairs; the reviewer judges the LESSON lines only (the framing lines are fixed, curated and have no target), so N is the lesson-line count
+  const N = TRACK.pairs.filter(p => !p._framing).length
 
   // ═════ A — the question ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
   {
@@ -130,7 +132,7 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
     reviewed = c.yueApplyReview(tr, out)
     T('C4', 'the result is stored ON the track (track.qualityReview) and survives a JSON round trip (reload / export / tab sync); the pairs are untouched (nothing rewritten, Yale as the data has it)',
       reviewed.qualityReview && reviewed.qualityReview.status === 'done' && JSON.stringify(JSON.parse(JSON.stringify(reviewed)).qualityReview) === JSON.stringify(reviewed.qualityReview) && JSON.stringify(reviewed.pairs) === JSON.stringify(tr.pairs) &&
-      reviewed.pairs.every(p => c.validateYale(p.pinyin).ok) && reviewed.pairs.length === 15 && tr.qualityReview === undefined, Object.keys(reviewed))
+      reviewed.pairs.every(p => c.validateYale(p.pinyin).ok) && reviewed.pairs.length === 19 && tr.qualityReview === undefined, Object.keys(reviewed))
     const keep = c.yueApplyReview(reviewed, { review: { status: 'failed', reason: 'x' } }), keep2 = c.yueApplyReview(reviewed, { review: { status: 'not-run', reason: 'x' } }), repl = c.yueApplyReview(tr, { review: { status: 'failed', reason: 'x' } })
     T('C5', 'a failed or not-run attempt NEVER wipes an earlier completed review; on a track with none it is recorded as what it was', keep.qualityReview.status === 'done' && keep2.qualityReview.status === 'done' && repl.qualityReview.status === 'failed')
   }
@@ -157,15 +159,16 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
     const nyNames = c.ev('YUE_NOT_YET').map(r => r[0])
     const dash = html(React.createElement(c.CantoneseDashboard, { vocab: V.map(w => ({ ...w })), tracks: [], targets: [], trackTargets: [], notice: '', onStartTrack() {}, onNav() {}, onDeleteTrack() {}, onOpenTrack() {}, revisionSelection: { counts: { total: 0, due: 0 }, targets: [] }, selection: null, onNotYet() {} }))
     const card = dash.slice(dash.indexOf('Not available for Cantonese yet'))
+    // 18 Nov (stage B-1): the review judges the LESSON lines only (the greeting and goodbye are fixed words with no target), so the screens now say "every lesson line" instead of "every line"
     T('D7', 'the "Not available for Cantonese yet" card no longer lists Quality review; Listening track, Topics and the model-written tracks / test generator stay; the card says a model now reviews the tracks',
       JSON.stringify(nyNames) === JSON.stringify(['Listening track', 'Topics', 'Model-written tracks and the test generator']) && !/Quality review/.test(card.slice(0, card.indexOf('Daily and Revision'))) && ['Listening track', 'Topics', 'Model-written tracks and the test generator'].every(x => card.includes(x)) &&
-      /quality review by the model chosen in Settings then judges every line/.test(card) && /no AI request to write them/.test(card), card.slice(0, 500))
+      /quality review by the model chosen in Settings then judges every lesson line/.test(card) && /no AI request to write them/.test(card), card.slice(0, 500))
     const ny = html(React.createElement(c.CantoneseNotYet, { what: 'Model-written tracks and the test generator', onBack() {} }))
     T('D8', 'the "model-written tracks" screen still says it is not available and now adds that a model only reviews the tracks', /is not available for Cantonese yet/.test(ny) && /a model only reviews them afterwards/.test(ny))
     const gen = html(React.createElement(c.CantoneseGenerator, { vocab: V, targets: V.slice(0, 5).map(w => ({ ...w, selectionRole: 'new' })), selection: null, cred: { geminiKey: KEY }, trackMode: 'daily', tracks: [], onGenerated() {}, onBack() {} }))
     const gen0 = html(React.createElement(c.CantoneseGenerator, { vocab: V, targets: V.slice(0, 5).map(w => ({ ...w, selectionRole: 'new' })), selection: null, cred: {}, trackMode: 'daily', tracks: [], onGenerated() {}, onBack() {} }))
-    T('D9', 'before the build the screen says what will happen after it: with a key "Gemini 2.5 Flash-Lite (default) reviews every line in one request"; without one that the review will not run and why',
-      /no AI request writes it/.test(gen) && /Afterwards Gemini 2\.5 Flash-Lite \(default\) reviews every line in one request/.test(gen) && /no AI request writes it/.test(gen0) && /will not run; the track is checked by its structure only/.test(gen0) && /no Gemini key is saved in Settings/.test(gen0))
+    T('D9', 'before the build the screen says what will happen after it: with a key "Gemini 2.5 Flash-Lite (default) reviews every lesson line in one request"; without one that the review will not run and why',
+      /no AI request writes it/.test(gen) && /Afterwards Gemini 2\.5 Flash-Lite \(default\) reviews every lesson line in one request/.test(gen) && /no AI request writes it/.test(gen0) && /will not run; the track is checked by its structure only/.test(gen0) && /no Gemini key is saved in Settings/.test(gen0))
   }
 
   // ═════ E — the whole flow with a key ══════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -176,7 +179,7 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
     const btn = rx => r.root.findAll(x => x.type === 'button').find(b => rx.test(textOf(b.children)))
     const click = async rx => { const b = btn(rx); if (!b) return false; await TR.act(async () => { b.props.onClick(); await flush(80) }); return true }
     T('E1', 'Daily Track → the generator says a review follows; Build the track → the track is built, the structure check passes, then ONE review request is made on its own and its result is shown',
-      await click(/Daily Track/) && /Afterwards Gemini 2\.5 Flash-Lite \(default\) reviews every line in one request/.test(txt(r)) && c.__calls.gemini.length === 0 && await click(/Build the track/) && /Structure check passed/.test(txt(r)) && c.__calls.gemini.length === 1 &&
+      await click(/Daily Track/) && /Afterwards Gemini 2\.5 Flash-Lite \(default\) reviews every lesson line in one request/.test(txt(r)) && c.__calls.gemini.length === 0 && await click(/Build the track/) && /Structure check passed/.test(txt(r)) && c.__calls.gemini.length === 1 &&
       /Quality review: 2 of 15 lines flagged/.test(txt(r)) && /1 model request \(the review\)/.test(txt(r)), txt(r).slice(-700))
     T('E2', 'the flagged lines are listed with reasons on the generator screen; Study is offered as "Study anyway — 2 lines flagged" (the learner chooses; nothing is removed)', /Line 4 /.test(txt(r)) && /Line 9 /.test(txt(r)) && /Mandarin, not Hong Kong Cantonese/.test(txt(r)) && !!btn(/Study anyway — 2 lines flagged/), txt(r).slice(-500))
     await click(/Study anyway — 2 lines flagged/)
@@ -238,7 +241,7 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
     await TR.act(async () => { gr.root.findAll(x => x.type === 'button').find(b => /Build the track/.test(textOf(b.children))).props.onClick(); await flush(120) })
     const g1 = txt(gr), studyBtn = gr.root.findAll(x => x.type === 'button').find(b => /Study track/.test(textOf(b.children)))
     T('F6', 'generator: a malformed reply is said in words ("could not be completed"), the Study button is enabled, and the track handed on carries the failed attempt (no flags, nothing wiped)', /Structure check passed/.test(g1) && /Quality review could not be completed/.test(g1) && !!studyBtn && !studyBtn.props.disabled &&
-      (await TR.act(async () => { studyBtn.props.onClick(); await flush(10) }), got && got.qualityReview && got.qualityReview.status === 'failed' && got.pairs.length === 15), g1.slice(-400))
+      (await TR.act(async () => { studyBtn.props.onClick(); await flush(10) }), got && got.qualityReview && got.qualityReview.status === 'failed' && got.pairs.length === 19), g1.slice(-400))
     await TR.act(async () => { gr.unmount() })
   }
 
@@ -260,7 +263,7 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
     const g = txt(gr), study = gr.root.findAll(x => x.type === 'button').find(b => /Study track/.test(textOf(b.children)))
     T('G5', 'generator, no key: "Structure check passed", "Quality review not run … no Gemini key is saved in Settings", still 0 model requests, Study is enabled and hands on a track whose review says not-run; nothing was sent',
       /Structure check passed/.test(g) && /Quality review not run/.test(g) && /No model was asked, because no Gemini key is saved in Settings/.test(g) && /0 model requests/.test(g) && !!study && !study.props.disabled && c3.__calls.urls.length === 0 &&
-      (await TR.act(async () => { study.props.onClick(); await flush(10) }), got && got.qualityReview.status === 'not-run' && got.qualityReview.requests === 0 && got.pairs.length === 15), g.slice(-500))
+      (await TR.act(async () => { study.props.onClick(); await flush(10) }), got && got.qualityReview.status === 'not-run' && got.qualityReview.requests === 0 && got.pairs.length === 19), g.slice(-500))
     await TR.act(async () => { gr.unmount() })
   }
 
@@ -289,7 +292,7 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
     const pre = txt(gr)
     await TR.act(async () => { gr.root.findAll(x => x.type === 'button').find(b => /Build the track/.test(textOf(b.children))).props.onClick(); await flush(150) })
     T('H6', 'generator with the optional model and no Gemini key: the plan names the optional model, the review runs (one request, to its server function) and the screen shows "all 15 lines judged fine"',
-      /Afterwards Claude Haiku 5\.5 \(experimental\) reviews every line in one request/.test(pre) && c3.__calls.anthropic.length === 1 && c3.__calls.gemini.length === 0 && /all 15 lines judged fine/.test(txt(gr)) && /Reviewed by Claude Haiku 5\.5/.test(txt(gr)), txt(gr).slice(-400))
+      /Afterwards Claude Haiku 5\.5 \(experimental\) reviews every lesson line in one request/.test(pre) && c3.__calls.anthropic.length === 1 && c3.__calls.gemini.length === 0 && /all 15 lines judged fine/.test(txt(gr)) && /Reviewed by Claude Haiku 5\.5/.test(txt(gr)), txt(gr).slice(-400))
     await TR.act(async () => { gr.unmount() })
     // the run is its own kind: it is a quality-review run, bound to the model chosen NOW
     c.aiSetGenerationPreference({ model: HAIKU }); const rid = c.aiBeginRun('yue-quality-review', 't')
@@ -333,7 +336,8 @@ const ledger = (c, stage) => c.ev('AI_LEDGER').filter(r => !stage || r.stage ===
     T('J5', 'a wasted request (malformed reply) is counted too: the cost is on the failed record and in the usage', oF.review.requests === 1 && oF.review.costUsd > 0 && oF.usage && oF.usage.total === 1)
     // 90 lines: still ONE request
     const c90 = app({ flags: {} }), t90 = await mkTrack(c90, 30), o90 = await c90.runCantoneseQualityReview(t90.tr, t90.V, { apiKey: KEY })
-    T('J6', 'a full 30-word track (90 lines) is still ONE request with all 90 lines, and the answer must judge all 90', t90.tr.pairs.length === 90 && c90.__calls.gemini.length === 1 && linesIn(c90.__calls.gemini[0].body) === 90 && o90.review.status === 'done' && o90.review.total === 90 && c90.__calls.gemini[0].body.generationConfig.maxOutputTokens === 4550)
+    // 18 Nov (stage B-1): the track is 94 pairs (90 lesson + 4 greeting / parting); the review still sends exactly the 90 lesson lines in ONE request
+    T('J6', 'a full 30-word track (90 lines) is still ONE request with all 90 lines, and the answer must judge all 90', t90.tr.pairs.length === 94 && t90.tr.pairs.filter(p => !p._framing).length === 90 && c90.__calls.gemini.length === 1 && linesIn(c90.__calls.gemini[0].body) === 90 && o90.review.status === 'done' && o90.review.total === 90 && c90.__calls.gemini[0].body.generationConfig.maxOutputTokens === 4550)
   }
 
   // ═════ K — never another language's reviewer ══════════════════════════════════════════════════════════════════════════════════════════════════

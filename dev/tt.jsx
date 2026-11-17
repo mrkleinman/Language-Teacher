@@ -60721,7 +60721,7 @@ const YUE_REVIEW_STAGE = 'E_yue_review'                       // a judging stage
 const YUE_REVIEW_KINDS = Object.freeze({ mandarin: 'Mandarin or written Chinese', meaning: 'English does not match', yale: 'Yale does not match the characters', sense: 'target word in another sense', register: 'register or speaker', other: 'other problem' })
 const YUE_REVIEW_VERDICTS = Object.freeze({ pass: 'No problems found', review: 'Some lines need a look', fail: 'Many lines are wrong' })
 const YUE_REVIEW_RANK = Object.freeze({ pass: 0, review: 1, fail: 2 })
-// the greeting / parting lines are fixed, curated words with no target: the reviewer judges the lesson lines only
+// the greeting / parting lines are fixed, curated words with no target: the reviewer judges the lesson lines only (the screens say "every lesson line")
 const yueReviewLines = track => ((track && track.pairs) || []).filter(p => p && !p._framing && String(p.chinese || '').trim())
 function yueReviewMaxTokens(n) { return Math.max(1500, Math.min(9000, 500 + n * 45)) }
 // the question: the targets (with the sense the word list intends) first, then every line (A is a man, B a woman) with its Cantonese, Yale and English
@@ -62180,7 +62180,7 @@ function CantoneseReviewPanel({ track, vocab, cred, auto, onOutcome, onBusy }) {
   </>)
   if (!r) return box('var(--border)', st.ready ? 'idle' : 'not-run', st.ready ? <>
     <p style={{ fontSize:12, fontWeight:700 }}>Quality review not run yet</p>
-    <p style={{ fontSize:11, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>{st.label} judges every line in one request. Nothing is sent until you press the button.</p>{again}
+    <p style={{ fontSize:11, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>{st.label} judges every lesson line in one request. Nothing is sent until you press the button.</p>{again}
   </> : <>
     <p style={{ fontSize:12, fontWeight:700, color:'#f59e0b' }}>{'⚠'} Quality review not run</p>
     <p style={{ fontSize:11, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>It needs a model, and {st.reason}. The track is checked by its structure only; you can still study it.</p>
@@ -62326,7 +62326,7 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
             // the review follows the model chosen in Settings (the same choice every language follows); say before the build what will happen after it
             const st = aiSelectedModelStatus(cred && cred.geminiKey, YUE_REVIEW_RUN_KIND)
             return <p data-yue-review-plan={st.ready ? 'on' : 'off'} style={{ fontSize:11, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>{st.ready
-              ? 'Afterwards ' + st.label + ' reviews every line in one request (natural Hong Kong Cantonese, the English, the Yale, the target word, the register) and the result is shown here.'
+              ? 'Afterwards ' + st.label + ' reviews every lesson line in one request (natural Hong Kong Cantonese, the English, the Yale, the target word, the register) and the result is shown here.'
               : 'A quality review by a model needs a model, and ' + st.reason + ', so it will not run; the track is checked by its structure only.'}</p>
           })()}
           {(() => {

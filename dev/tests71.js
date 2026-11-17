@@ -1,6 +1,6 @@
 // Thai phrase / word split (builder prompt of 29 Oct) — ON since v741 (owner: fix the listed problems, then switch on); THAI_PHRASE_SPLIT.on = false + thaiPhraseSplitRevert is the rollback
 //   S1  switched off and reverted: the bank, the belt sizes and getStats are exactly as before the split
-//   S2  on: 114 phrases + 3,159 words = 3,273 entries; every numbered belt keeps its size; phrases leave the syllabus; the 55 promoted words fill the vacated positions
+//   S2  on: 114 phrases + 3,192 words = 3,306 entries (v761: +33 Muay Thai topic-only records; was 3,159 + 114 = 3,273); every numbered belt keeps its size; phrases leave the syllabus; the 55 promoted words fill the vacated positions
 //   S3  the plan is complete (no unfilled position, no missing record) and applying it twice changes nothing
 //   S4  stats: phrases are counted on their own and never added to the word figures; fill-in templates are held out of selection
 //   S5  a promoted word takes its new belt's tier in the module tags
@@ -23,8 +23,8 @@ const sizes = c => { const iv = c.ev('initVocab')(); const r = {}; c.ev('CURRICU
   const D = off.ev('THAI_PHRASE_SPLIT_DATA'), ivOff = off.ev('initVocab')(), ivOn = on.ev('initVocab')()
   T('S1', 'switched off and reverted: the phrase list is not applied, stats are the old flat counts, no phrase is flagged; the shipped default is ON',
     fs.readFileSync(__dirname + '/tt.jsx', 'utf8').includes('const THAI_PHRASE_SPLIT = { on: true }') && off.ev('THAI_PHRASE_SPLIT').on === false && off.ev('RAW_VOCAB').every(d => d.entryType == null) && off.ev('getStats')(ivOff).phrases === undefined && !ivOff.some(w => off.ev('isThaiPhraseEntry')(w)), off.ev('getStats')(ivOff))
-  T('S2', 'the file lists 114 phrases and 55 promoted words; the bank holds 3,273 entries = 3,159 words + 114 phrases',
-    D.phrases.length === 114 && D.promoted.length === 55 && ivOn.length === 3273 && ivOn.filter(w => on.ev('isThaiPhraseEntry')(w)).length === 114, [D.phrases.length, D.promoted.length, ivOn.length])
+  T('S2', 'the file lists 114 phrases and 55 promoted words; the bank holds 3,306 entries = 3,192 words + 114 phrases',
+    D.phrases.length === 114 && D.promoted.length === 55 && ivOn.length === 3306 && ivOn.filter(w => on.ev('isThaiPhraseEntry')(w)).length === 114, [D.phrases.length, D.promoted.length, ivOn.length])
   T('S2', 'every numbered belt keeps exactly its size (100/100/200/200/200/200/200/325/325/325/325) with the split on',
     JSON.stringify(sizes(on)) === JSON.stringify(sizes(off)) && Object.values(sizes(on)).reduce((a, b) => a + b, 0) === 2500, sizes(on))
   const inSyl = on.ev('isCurriculumWord')
@@ -37,8 +37,8 @@ const sizes = c => { const iv = c.ev('initVocab')(); const r = {}; c.ev('CURRICU
   // the two loads draw their own random due dates (initVocab spreads the seeded 'easy' words over a week), so the totals are compared on ONE list
   const st = on.ev('getStats')(ivOn), today = new Date().toISOString().slice(0, 10)
   const flat = { total: ivOn.length, due: ivOn.filter(w => w.status !== 'new' && w.dueDate && w.dueDate <= today).length, newW: ivOn.filter(w => w.status === 'new').length, learning: ivOn.filter(w => w.status === 'learning').length, known: ivOn.filter(w => w.status === 'known').length }
-  T('S4', 'stats: words 3,159, phrases 114 on their own; word + phrase counts add up to the old flat counts and are never mixed',
-    st.total === 3159 && flat.total === 3273 && st.phrases.total === 114 && st.due + st.phrases.due === flat.due && st.known + st.phrases.known === flat.known && st.learning + st.phrases.learning === flat.learning && st.newW + st.phrases.newW === flat.newW, [st, flat])
+  T('S4', 'stats: words 3,192, phrases 114 on their own; word + phrase counts add up to the old flat counts and are never mixed',
+    st.total === 3192 && flat.total === 3306 && st.phrases.total === 114 && st.due + st.phrases.due === flat.due && st.known + st.phrases.known === flat.known && st.learning + st.phrases.learning === flat.learning && st.newW + st.phrases.newW === flat.newW, [st, flat])
   const el = on.ev('thaiVocabEligibility')
   T('S4', 'the three fill-in templates (ช่วย…ได้ไหม, …อยู่ที่ไหน, …เป็นอย่างไร) are held out of selection; an ordinary phrase is not',
     D.templates.length === 3 && D.templates.every(id => el(ivOn.find(w => w.id === id)).reason === 'VOCAB_TEMPLATE_PHRASE') && el(ivOn.find(w => w.id === 97)).ok === true && D.templates.every(id => off.ev('thaiVocabEligibility')(ivOff.find(w => w.id === id)).ok), null)
@@ -94,8 +94,9 @@ const sizes = c => { const iv = c.ev('initVocab')(); const r = {}; c.ev('CURRICU
     T('F1', 'every one of the 55 promoted words can be learnt through the Daily (eligible and ACTIVE): the ten that were not (a duplicate of ไหม, recognition-only, excluded, or a Wedding Speech topic word) were swapped',
       bad.length === 0 && Object.entries(SWAP).every(([from, to]) => D2.promoted.some(p => p[0] === +to) && !D2.promoted.some(p => p[0] === +from)), bad.map(w => w.thai))
     const topicWords = raw2.filter(d => d.topicOnly && D2.promoted.some(p => p[0] === d.id))
+    // v761 — the 24 Wedding Speech topic-only words are unchanged; the 33 Muay Thai topic-only records join them (57 topic-only in all), and neither topic's words are promoted
     T('F2', 'no Wedding Speech topic word is promoted: the Topics feature (its fixed priority order, 24 topic-only words) is untouched by the split',
-      topicWords.length === 0 && raw2.filter(d => d.topicOnly).length === 24, topicWords.map(d => d.t))
+      topicWords.length === 0 && raw2.filter(d => d.topicOnly).length === 57, topicWords.map(d => d.t))
     T('F3', 'the CSV spells id 845 correctly (ให้หน่อย), and the phrase list is the 114 ids of the file', /ให้หน่อย/.test(fs.readFileSync(__dirname + '/thai-modules/thai-phrase-word-split.csv', 'utf8')) && !/ให้น่อย/.test(fs.readFileSync(__dirname + '/thai-modules/thai-phrase-word-split.csv', 'utf8')) && D2.phrases.length === 114, null)
   }
   out.forEach(l => console.log(l))

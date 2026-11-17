@@ -72,10 +72,18 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
     else { const m = /^const RAW_VOCAB = (\[.*\])\s*$/m.exec(fs.readFileSync('tt.jsx', 'utf8'))
       orig = (m ? JSON.parse(m[1]) : []).filter(d => !aud.has(d.id)); how = 'source literal' }
     const byIdNow = new Map(RAW.map(d => [d.id, d]))
-    const changed = orig.filter(d => JSON.stringify(byIdNow.get(d.id)) !== JSON.stringify(d))
+    // v761 — EXPECTED CHANGE (Muay Thai topic, the second topic): the 27 Muay Thai words that were already in the bank gain only their topic MEMBERSHIP
+    // (`topics`), and ยก (694, curriculum) gains its second sense (gloss, note, usage note, senseId, `senseBefore` keeps what it was). Those fields are
+    // set aside before the byte comparison; everything else (curriculum index, belt, belt order, text, phonetic, QC) must still be identical. The 33 new
+    // Muay Thai records are new records like the Wedding Speech ones (reported as `created`).
+    const MT_SENSE = ['topics', 'e', 'note', 'usageNote', 'senseId', 'senseBefore']
+    const strip = d => { const o = { ...d }; MT_SENSE.forEach(k => { if (d.id === 1431 || k === 'topics') delete o[k] }); return o }
+    const ownTopics = d => (d.topics || []).filter(t => t === 'wedding-speech')
+    const changed = orig.filter(d => JSON.stringify({ ...strip(byIdNow.get(d.id)), ...(d.topics ? { topics: ownTopics(byIdNow.get(d.id)) } : {}) }) !== JSON.stringify({ ...strip(d), ...(d.topics ? { topics: d.topics } : {}) }))
+    const mtCreated = (c.topicById('th', 'muay-thai').seed || {}).created || []
     T(6, 'existing belt assignments preserved: every pre-existing dictionary record is byte-identical to the ' + how + ' (curriculum index, belt, belt order, text, phonetic, QC)',
-      orig.length > 1500 && changed.length === 0 && RAW.filter(d => !orig.some(o => o.id === d.id) && !aud.has(d.id)).length === (seed.created || []).length, {   // the v645 audit-fixed records are left out of `orig` above, so they are not "new" here either
-       orig: orig.length, now: RAW.length, changed: changed.slice(0, 3).map(d => d.id), extra: RAW.filter(d => !orig.some(o => o.id === d.id) && !aud.has(d.id)).length, created: (seed.created || []).length })
+      orig.length > 1500 && changed.length === 0 && RAW.filter(d => !orig.some(o => o.id === d.id) && !aud.has(d.id)).length === (seed.created || []).length + mtCreated.length, {   // the v645 audit-fixed records are left out of `orig` above, so they are not "new" here either
+       orig: orig.length, now: RAW.length, changed: changed.slice(0, 3).map(d => d.id), extra: RAW.filter(d => !orig.some(o => o.id === d.id) && !aud.has(d.id)).length, created: (seed.created || []).length + mtCreated.length })
     c.ev('THAI_PHRASE_SPLIT').on = true; c.ev('thaiPhraseSplitApply')(c.ev('RAW_VOCAB'))
     const created = ids.map(id => canon.get(id)).filter(r => r.topicOnly)
     T(5, 'new topic-only entries carry no Shodan position: curriculumIndex 0, beltOrder 0, "Beyond curriculum", not Known, not introduced; no rank lists them',
@@ -422,8 +430,9 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
     const b2 = badge().map(x => textOf(x.children))
     const sB = await stats1()
     const saved = JSON.parse(c31.localStorage.getItem('tt-tracks'))[0]
+    // v761 — EXPECTED CHANGE: the Thai Topics screen now lists two topics (Wedding Speech, Muay Thai) with four stat cells each, so 8 cells; the first four are the Wedding Speech ones this test is about
     T(35, 'refreshing / reopening the app keeps topic progress (same stats) and the track\'s topic identity (label, topicId, new / revision ids)',
-      same(sA, sB) && sA.length === 4 && sA.includes('introduced=2 Introduced') && same(b1, b2) && saved.topicId === 'wedding-speech' && saved.selectionMode === 'topic' && same(saved.selectedNewTargetIds, s0.selectedNewTargetIds),
+      same(sA, sB) && sA.length === 4 * c31.topicsFor('th').length && sA.slice(0, 4).includes('introduced=2 Introduced') && same(b1, b2) && saved.topicId === 'wedding-speech' && saved.selectionMode === 'topic' && same(saved.selectedNewTargetIds, s0.selectedNewTargetIds),
       { sA, sB })
     await TR.act(async () => { r.unmount() })
   }

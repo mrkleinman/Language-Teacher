@@ -28,7 +28,21 @@ def build():
                    r['english_slot'], r['english_slot_2'], r['english_plural']] for r in tags}
     cols = ['module_id', 'group', 'tier', 'exclude_ids', 'A1_thai', 'A1_english', 'A1_prompt', 'B_thai', 'B_english', 'B_prompt', 'A2_thai', 'A2_english', 'A2_prompt', 'scene', 'job']
     m = [[tier(r[c]) if c == 'tier' else r[c] for c in cols] for r in mods]
-    return {'v': 'm1', 't': t, 'm': m}
+    # v761: cross-use links (thai-module-word-links.csv, status applied): word id -> indexes into m of the modules that may ALSO be used for that
+    # word (a module's own cell serves its own words; a link adds a word from another cell). Dropped silently when the module or the word is gone.
+    x = {}
+    lp = os.path.join(SRC, 'thai-module-word-links.csv')
+    if os.path.exists(lp):
+        at = {r['module_id']: k for k, r in enumerate(mods)}
+        for r in csv.DictReader(open(lp, encoding='utf-8-sig')):
+            if r['status'] == 'applied' and r['module_id'] in at and r['word_id'] in t:
+                x.setdefault(r['word_id'], [])
+                if at[r['module_id']] not in x[r['word_id']]:
+                    x[r['word_id']].append(at[r['module_id']])
+    out = {'v': 'm1', 't': t, 'm': m}
+    if x:
+        out['x'] = {k: sorted(v) for k, v in sorted(x.items(), key=lambda kv: int(kv[0]))}
+    return out
 
 
 def main():
@@ -36,7 +50,7 @@ def main():
     raw = json.dumps(d, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
     gz = gzip.compress(raw, 9, mtime=0)
     b64 = base64.b64encode(gz).decode('ascii')
-    print('words', len(d['t']), 'modules', len(d['m']), 'json', len(raw), 'gzip', len(gz), 'base64', len(b64))
+    print('words', len(d['t']), 'modules', len(d['m']), 'links', sum(len(v) for v in d.get('x', {}).values()), 'json', len(raw), 'gzip', len(gz), 'base64', len(b64))
     if '--check' in sys.argv:
         return
     s = open(JSX, encoding='utf-8').read()

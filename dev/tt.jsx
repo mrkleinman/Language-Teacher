@@ -9496,14 +9496,40 @@ function yueDailyTargets(raw, vocab) {
     const pool = [...wv].sort((a, b) => (a.unlockOrder || 0) - (b.unlockOrder || 0))
     const g = yueGateTargets(list, vocab, pool)
     const t = jazhDailyTargets(g.targets, vocab, 'yue'), day = yueDay(t)
-    const kept = t.filter(w => g.ctx.teachable(w, day)), lost = t.filter(w => !g.ctx.teachable(w, day))
-    return { targets: kept.length === t.length ? t : kept.map((w, i) => ({ ...w, targetIndex: i })), deferred: g.deferred.concat(lost.map(w => ({ target: w, replacedBy: null, why: g.ctx.why(w, day) }))) }
+    let kept = t.filter(w => g.ctx.teachable(w, day)), lost = t.filter(w => !g.ctx.teachable(w, day)), deferred = g.deferred.concat(lost.map(w => ({ target: w, replacedBy: null, why: g.ctx.why(w, day) })))
+    // 18 Nov: the swap above replaces a word that cannot be taught yet by the NEXT word that can be taught ON ITS OWN, but the first words of the beginner order are taught as a DAY of
+    // five that lean on each other (你好 needs 我 你 係 唔 in the same track), so one by one nothing qualifies and the day came out empty. When the new words that survived are fewer than the
+    // belt allows, the next unseen words of the order are tried again as one set, and the set is used when it gives more new words.
+    try {
+      const NN = newWordsPerTrack('yue', 'daily', vocab), isNewW = w => w.selectionRole === 'new' || (w.status === 'new' && !hasBeenIntroduced(w))
+      const haveNew = kept.filter(isNewW).length
+      if (haveNew < NN && deferred.some(d => !d.replacedBy)) {        // only when a word was dropped with no substitute (a swap that found one keeps the planned count)
+        const taken = new Set(kept.map(w => w.id))
+        const unseen = pool.filter(w => w.status === 'new' && (w.repCount || 0) === 0 && !w.lastSeen && !taken.has(w.id) && yueTargetHasModule(w))
+        const fresh = unseen.slice(0, NN - haveNew).map(w => ({ ...w, selectionRole: 'new', originalSrsStatus: w.status }))
+        const reviewKept = kept.filter(w => !isNewW(w)), newKept = kept.filter(isNewW)
+        const g2 = yueGateTargets(newKept.concat(fresh), vocab, pool)
+        const set = g2.targets.map(w => w.selectionRole ? w : { ...w, selectionRole: 'new', originalSrsStatus: w.status })
+        if (set.filter(isNewW).length > haveNew) {
+          const day2 = yueDay(set.concat(reviewKept)), ctx2 = yueTeachCtx(vocab)
+          const rev2 = reviewKept.filter(w => ctx2.teachable(w, day2))
+          kept = set.concat(rev2).map((w, i) => ({ ...w, targetIndex: i }))
+          deferred = deferred.concat(g2.deferred)
+        }
+      }
+    } catch (e2) {}
+    return { targets: kept.length === t.length && kept.every((w, i) => w.id === t[i].id) ? t : kept.map((w, i) => ({ ...w, targetIndex: i })), deferred }
   } catch (e) { return { targets: list, deferred: [] } }
 }
 // NEW words for a Cantonese Daily: the same rule as Mandarin (the ONE configured count, carried slots never exceed it), words without a module are passed over
 function cantoneseSelectTargets(vocab, savedSlots) {
   const byOrder = (a, b) => (a.unlockOrder || a.id) - (b.unlockOrder || b.id)
-  const carried = (savedSlots || []).map(id => vocab.find(w => w.id === id)).filter(w => w && w.status === 'new' && yueTargetHasModule(w))
+  // 18 Nov: the words saved as "today's new words" can come from an EARLIER teaching order (v756-v759 taught 嘅 我 想 巴士 係 first): a saved word is kept only if the learner has
+  // already met it (a hard-rated word holds its place) or it is still among the next unseen words of the CURRENT order. Otherwise the stale slots filled the Daily with words that
+  // no lesson can teach yet, and the day came out empty ("No lesson fits yet").
+  const NN = newWordsPerTrack('yue', 'daily', vocab)
+  const unseenFirst = new Set(vocab.filter(w => w.status === 'new' && (w.repCount || 0) === 0 && !w.lastSeen && yueTargetHasModule(w)).sort(byOrder).slice(0, NN).map(w => w.id))
+  const carried = (savedSlots || []).map(id => vocab.find(w => w.id === id)).filter(w => w && w.status === 'new' && yueTargetHasModule(w) && (unseenFirst.has(w.id) || (w.repCount || 0) > 0 || w.lastSeen))
   const heldIds = new Set(carried.map(w => w.id))
   const pool = vocab.filter(w => w.status === 'new' && !heldIds.has(w.id) && (w.repCount || 0) === 0 && !w.lastSeen && yueTargetHasModule(w)).sort(byOrder)
   const N = newWordsPerTrack('yue', 'daily', vocab)

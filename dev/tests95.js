@@ -59,7 +59,11 @@ function app(o) {
   return c
 }
 async function mkTrack(c, k) {
-  const V = c.initCantoneseVocab(), tg = V.slice(0, k || 5).map(w => ({ ...w, selectionRole: 'new' }))
+  // TEST CHANGED (stage B-1): the track is the first day's 5 NEW words plus, for a longer track (the 90-line size test), words 6..k as LEARNED words under review, as a real Daily is.
+  // Before, all k words were NEW with nothing taught, which the learner-vocabulary rule (a line may only use taught words, free words and the day's own words) refuses for 30 new words
+  // once the starter modules are embedded; a track of 5 new + 25 learned words is the realistic shape and builds under the rule.
+  const V = c.initCantoneseVocab().map((w, i) => i >= 5 && i < (k || 5) ? { ...w, status: 'learning', lastSeen: '2026-11-01', introducedAt: '2026-10-01', repCount: 3, okStreak: 1, dueDate: '2026-11-12', interval: 3 } : w)
+  const tg = V.slice(0, k || 5).map((w, i) => ({ ...w, selectionRole: i < 5 ? 'new' : 'review' }))
   const res = await c.generateCantoneseTrack(tg, V, () => {}, () => {}, { cancelled: false }), tr = c.cantoneseBuildTrack(res, tg, 'daily', '2026-11-17T10:00:00.000Z')
   return { V, tg, tr }
 }

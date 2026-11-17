@@ -246,27 +246,35 @@ const html = el => RDS.renderToStaticMarkup(el).replace(/<[^>]+>/g, ' ').replace
 
   // ═════ F — Cantonese module tracks ════════════════════════════════════════════════════════════
   {
-    const Ly = learner('yue', 12), d = daily('yue', Ly.vocab), Vy = Ly.vocab
     // the module writer is switched on with the data, as tests93 does
     const zlib = require('zlib'); const DATA = JSON.parse(zlib.gunzipSync(Buffer.from(ev('YUE_MODULES_GZ'), 'base64')).toString('utf8'))
     c.yueModulesUseData(DATA); c.yueModulesSetEnabled(true)
+    // TEST CHANGED (stage B-1): the data is loaded BEFORE the Daily is computed, as on the real screen (the Cantonese Daily is gated by what a module can teach this learner, and the gate
+    // only knows once the modules are loaded); with the rule off (starter modules not merged yet) this changes nothing.
+    const Ly = learner('yue', 12), d = daily('yue', Ly.vocab), Vy = Ly.vocab
     c.yueStrictVocabSetEnabled(false)     // starter modules not merged yet: remove this switch when they are (a learner who has been taught 12 words builds a Daily of 17 words, which only the old rule can write)
     const res = await c.generateCantoneseTrack(d.targets, Vy, () => {}, () => {}, { cancelled: false }, { startedAt: '2026-11-17T08:00:00.000Z' })
     const tr = c.cantoneseBuildTrack(res, d.targets, 'daily', '2026-11-17T08:00:00.000Z'), ck = c.cantoneseTrackCheck(tr)
     // 18 Nov (stage B-1): every track carries 4 greeting / parting pairs on top of its lesson pairs (17 x 3 = 51 + 4 = 55; 12 x 3 = 36 + 4 = 40); the structure check counts the lesson pairs (ck.pairs)
-    T('F1', 'Cantonese: a 12-learned-word Daily builds a track of ' + d.targets.length + ' targets × 3 recalls, carries its plan (short by design) and passes the structure check',
-      d.targets.length === 17 && tr.pairs.length === 55 && tr.pairs.filter(p => !p._framing).length === 51 && tr.targetPlan && tr.targetPlan.planned === 17 && tr.targetPlan.shortByDesign === true && ck.ok && ck.targets === 17 && ck.pairs === 51, { n: d.targets.length, plan: tr.targetPlan, problems: ck.problems })
-    const lost = { ...tr, keywords: tr.keywords.slice(0, 16), targetPlan: { planned: 30, shortByDesign: false, wordCap: 30 } }
-    const lostShort = { ...tr, keywords: tr.keywords.slice(0, 16) }
+    // TEST CHANGED (stage B-1): the pins were the literal 17 / 55 / 51. With the learner-vocabulary rule ON (starter modules merged) the Daily of this learner is gated by what a lesson can
+    // teach, so its size follows the gate (a word no lesson can teach is swapped or left out: the words of the real Daily, not a fixed 17). What the test proves is unchanged and is
+    // now written with the real number n: n targets x 3 recalls + 4 framing pairs, the plan says n and short by design, the structure check passes. With the rule off n is still 17.
+    const n = d.targets.length
+    T('F1', 'Cantonese: a 12-learned-word Daily builds a track of n targets × 3 recalls (+ 4 greeting / parting pairs), carries its plan (short by design) and passes the structure check',
+      n >= 12 && (c.ev('YUE_STRICT.on') || n === 17) && tr.pairs.length === 3 * n + 4 && tr.pairs.filter(p => !p._framing).length === 3 * n && tr.targetPlan && tr.targetPlan.planned === n && tr.targetPlan.shortByDesign === true && ck.ok && ck.targets === n && ck.pairs === 3 * n, { n, plan: tr.targetPlan, problems: ck.problems })
+    const lost = { ...tr, keywords: tr.keywords.slice(0, n - 1), targetPlan: { planned: 30, shortByDesign: false, wordCap: 30 } }
+    const lostShort = { ...tr, keywords: tr.keywords.slice(0, n - 1) }
     T('F2', 'Cantonese: a track meant to hold 30 (plan 30) that holds 16, and a short track (plan 17) that lost one word, both fail the structure check; the 3-recall rule still applies',
-      !c.cantoneseTrackCheck(lost).ok && /planned with 30/.test(c.cantoneseTrackCheck(lost).problems.join('|')) && !c.cantoneseTrackCheck(lostShort).ok && /planned with 17/.test(c.cantoneseTrackCheck(lostShort).problems.join('|')) &&
+      !c.cantoneseTrackCheck(lost).ok && /planned with 30/.test(c.cantoneseTrackCheck(lost).problems.join('|')) && !c.cantoneseTrackCheck(lostShort).ok && new RegExp('planned with ' + n).test(c.cantoneseTrackCheck(lostShort).problems.join('|')) &&
       !c.cantoneseTrackCheck({ ...tr, pairs: tr.pairs.filter((p, i) => i !== 2) }).ok &&
       // 18 Nov (stage B-1): pairs[0] is now the opening greeting, so the recall that this check drops is the first LESSON pair (index 2); it must be the 3-recall rule that fails, not the framing rule
       /recalls \(3 needed\)/.test(c.cantoneseTrackCheck({ ...tr, pairs: tr.pairs.filter((p, i) => i !== 2) }).problems.join('|')))
     const rev = revision('yue', Vy), res2 = await c.generateCantoneseTrack(rev.targets, Vy, () => {}, () => {}, { cancelled: false }, { startedAt: '2026-11-17T08:00:00.000Z' })
     const tr2 = c.cantoneseBuildTrack(res2, rev.targets, 'revision', '2026-11-17T08:00:00.000Z')
-    T('F3', 'Cantonese: a 12-word Revision builds 12 × 3 = 36 recalls, 0 new words, plan 12 (short by design), structure check passes',
-      rev.targets.length === 12 && tr2.pairs.length === 40 && tr2.pairs.filter(p => !p._framing).length === 36 && tr2.selectedNewTargetIds.length === 0 && tr2.targetPlan.planned === 12 && tr2.targetPlan.shortByDesign && c.cantoneseTrackCheck(tr2).ok, { n: rev.targets.length, plan: tr2.targetPlan })
+    // TEST CHANGED (stage B-1): the literal 12 / 40 / 36 became m (the words of the Revision): with the rule ON a learned word no lesson can teach is swapped out (see F1)
+    const m = rev.targets.length
+    T('F3', 'Cantonese: a Revision of the learned words builds m × 3 recalls (+ 4 framing pairs), 0 new words, plan m (short by design), structure check passes',
+      m >= 1 && (c.ev('YUE_STRICT.on') || m === 12) && tr2.pairs.length === 3 * m + 4 && tr2.pairs.filter(p => !p._framing).length === 3 * m && tr2.selectedNewTargetIds.length === 0 && tr2.targetPlan.planned === m && tr2.targetPlan.shortByDesign && c.cantoneseTrackCheck(tr2).ok, { n: m, plan: tr2.targetPlan })
     c.yueModulesSetEnabled(false); c.yueStrictVocabSetEnabled(true)
   }
 

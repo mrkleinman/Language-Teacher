@@ -21,7 +21,10 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
   const useData = c.ev('yueModulesUseData'), fillEn = c.ev('jaModuleFillEn'), chunk = c.ev('yueModuleChunk')
   c.yueModulesSetEnabled(true)
   // 16 Nov gap fixes: the data is the full set now (4,174 modules for 2,500 words: 697 new top-up modules, every word has at least three); pins below follow the data
-  T('E0', 'the embedded data unpacks: 4,174 modules, every row has 15 fields, every chunk index is valid, every tag has 7 fields', useData(data) === data.m.length && data.m.length === 4174 && data.v === 'y1' &&
+  // TEST CHANGED (stage B-1): the module count was pinned to 4174. The starter modules (tiny-vocabulary exchanges for the first 200 words) are added to the embedded set later, which raises the
+  // count, so the pin now says "at least the 4,174 modules of the first full set" and G5 compares the log with the embedded count itself. What the test proves (the embed unpacks, every row and
+  // chunk is valid, the log names the data) is unchanged.
+  T('E0', 'the embedded data unpacks: at least 4,174 modules, every row has 15 fields, every chunk index is valid, every tag has 7 fields', useData(data) === data.m.length && data.m.length >= 4174 && data.v === 'y1' &&
     data.m.every(r => r.length === 15 && [4, 7, 10].every(i => Array.isArray(r[i]) && r[i].every(x => x === '{W}' || x === '{M}' || (Number.isInteger(x) && x >= 0 && x < data.c.length)))) &&
     Object.values(data.t).every(t => t.length === 7), { modules: data.m.length })
   const D = c.ev('YUE_MODULES').data
@@ -140,7 +143,7 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
   T('G4', 'every pair carries the shared identity the Player and the finisher read: language yue, targetId, wordId, recallIndex, pairId, thai / phonetic (= the Cantonese and the Yale), segments, spokenPinyin = pinyin (no tone sandhi)',
     content.every(p => p.language === 'yue' && p.isTargetPair === true && p.wordId === p.targetId && p.thai === p.chinese && p.phonetic === p.pinyin && p.spokenPinyin === p.pinyin && p.pairId && Array.isArray(p.segments) && p.segments.length && c.validateYale(p.pinyin).ok &&
       c.ev('assertTrackPairsProvenance')(res.pairs, 'yue').ok), content.slice(0, 1))
-  T('G5', 'the log says which module wrote each target and that no request was made', logs.some(l => /YUE_MODULE .*: module .* the three recalls, no request/.test(l)) && logs.some(l => /YUE_MODULES y1 · 4174 gap-fill modules/.test(l)) && logs.some(l => /0 model requests/.test(l)), logs.slice(0, 3))
+  T('G5', 'the log says which module wrote each target and that no request was made', logs.some(l => /YUE_MODULE .*: module .* the three recalls, no request/.test(l)) && logs.some(l => l.includes('YUE_MODULES y1 · ' + data.m.length + ' gap-fill modules')) && logs.some(l => /0 model requests/.test(l)), logs.slice(0, 3))
   const track = c.cantoneseBuildTrack(res, targets, 'daily', '2026-11-16T10:00:00.000Z'), chk = c.cantoneseTrackCheck(track)
   // 18 Nov (stage B-1): the track holds 90 lesson pairs + 4 greeting / parting pairs = 94 (chk.pairs counts the lesson lines, chk.framing the others); the generator version is v2 (framing + vocabulary rule)
   T('G6', 'the finished track record: language yue, mode, 30 keywords with Yale, 90 lesson pairs + 4 framing pairs, module marker, trackContext for yue; the structure check passes (every target 3 recalls, every line sound)',

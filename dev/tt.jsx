@@ -18661,6 +18661,9 @@ const GEMINI_SCHEMAS = {
     breakAfterLine: { type: 'INTEGER', nullable: true }, reason: { type: 'STRING' } }, required: ['scene', 'pass'] } }, overall: { type: 'INTEGER' }, reason: { type: 'STRING' } }, required: ['scenes'] },
   segmentation: { type: 'ARRAY', items: { type: 'OBJECT', properties: { id: { type: 'INTEGER' }, words: { type: 'ARRAY', items: { type: 'OBJECT',
     properties: { p: { type: 'STRING' }, e: { type: 'STRING' }, ph: { type: 'STRING' } }, required: ['p', 'e'] } } }, required: ['id', 'words'] } },
+  // 17 Nov — the Cantonese quality review: one verdict per line (ok, or a flag with a kind and a short reason) and an overall verdict. The reviewer only JUDGES: it is never asked for Yale or for a rewrite.
+  yueReview: { type: 'OBJECT', properties: { verdict: { type: 'STRING', enum: ['pass', 'review', 'fail'] }, summary: { type: 'STRING' },
+    lines: { type: 'ARRAY', items: { type: 'OBJECT', properties: { i: { type: 'INTEGER' }, ok: { type: 'BOOLEAN' }, kind: { type: 'STRING', enum: ['mandarin', 'meaning', 'yale', 'sense', 'register', 'other'], nullable: true }, reason: { type: 'STRING', nullable: true } }, required: ['i', 'ok'] } } }, required: ['verdict', 'lines'] },
   lines: { type: 'ARRAY', items: { type: 'OBJECT', properties: { speaker: { type: 'STRING' }, thai: { type: 'STRING' }, english: { type: 'STRING' }, prompt: { type: 'STRING' } }, required: ['speaker', 'thai', 'english', 'prompt'] } },
   // v657 §9 — a recovery candidate DECLARES which target it realises; the app then verifies it independently
   recoveryLines: { type: 'ARRAY', items: { type: 'OBJECT', properties: { targetId: { type: 'INTEGER' }, targetSurfaceUsed: { type: 'STRING' }, speaker: { type: 'STRING' }, thai: { type: 'STRING' }, english: { type: 'STRING' }, prompt: { type: 'STRING' } }, required: ['targetSurfaceUsed', 'speaker', 'thai', 'english', 'prompt'] } },
@@ -19145,6 +19148,23 @@ async function anthropicTestConnection() {
     _chain: ['anthropicTestConnection'], _promptText: 'Reply with the single word OK.', runCtl: AI_CTX.controller, runId })
   const row = AI_LEDGER.filter(r => r.runId === runId).slice(-1)[0] || {}
   return { text: String(text || '').trim().slice(0, 40), model: row.servedModel || null, costUsd: row.costUsd || 0 }
+}
+
+// 17 Nov: a model-based CHECK that is not part of a generation run (the Cantonese quality review of a finished module track) must know, before it sends
+// anything, whether the model chosen in Settings can be reached: the Gemini key for the default model, the site access code for the optional one. Same rule
+// geminiRequest applies (the optional model needs no Gemini key; the default needs one). Nothing is sent, nothing is switched.
+function aiSelectedModelStatus(geminiKey, kind) {
+  const id = aiRunGenerationModel(kind || 'quality-review'), m = AI_GEN_MODELS[id] || AI_GEN_MODELS[GEMINI_DEFAULT_MODEL], opt = m.provider === 'anthropic'
+  const ready = opt ? !!AI_ANTHROPIC_ACCESS : isGeminiApiKey(geminiKey)
+  return { model: m.id, provider: m.provider, label: aiGenModelLabel(m.id), optional: opt, ready,
+    reason: ready ? '' : opt ? 'the site access code for the selected model (' + m.label + ') is not saved in Settings \u2192 AI Generation Model' : 'no Gemini key is saved in Settings' }
+}
+
+// a message shown on screen or kept on a track never carries a credential: the keys it is given and the saved site access code are blanked out of it
+function aiScrubSecrets(text, keys) {
+  let msg = String(text == null ? '' : text)
+  ;(keys || []).concat([AI_ANTHROPIC_ACCESS]).forEach(secret => { const k = String(secret || ''); if (k.length > 5) msg = msg.split(k).join('…') })
+  return msg
 }
 
 // v688: the saved AI choice and site access code are loaded as soon as the app starts, whichever language it opens in (the
@@ -60344,6 +60364,112 @@ function cantoneseTrackCheck(track) {
   return { ok: !problems.length, targets: want.length, pairs: pairs.length, fromModules: pairs.filter(p => p && p._module).length, problems }
 }
 
+// ══ CANTONESE QUALITY REVIEW (17 Nov, stage 1) — a model judges the lines of a finished module track ════════════════════════════════════════════════
+// The module writer needs no model, so the structure check (cantoneseTrackCheck) stays the gate. This is the second opinion on the part a structure check cannot see:
+// does a Hong Kong speaker say it that way (not Mandarin, not written Chinese), does the English say what the Cantonese says, does the Yale match the characters, is the
+// target word used in the sense the word list means, does the register suit the speakers. ONE request per review, ALL lines in it. It follows the model setting every other
+// language follows (the run binds the model chosen in Settings, geminiRequest routes it), through the same transport, retries, credentials and cost ledger. The reviewer
+// only judges: Yale and every sentence stay exactly as the data has them, and nothing is rewritten. Never another language's reviewer.
+const YUE_REVIEW_VERSION = 'yue-review-v1'
+const YUE_REVIEW_RUN_KIND = 'yue-quality-review'            // a "quality-review" run: its own lane, it never cancels a track being written
+const YUE_REVIEW_STAGE = 'E_yue_review'                       // a judging stage (QC calls in the usage summary)
+const YUE_REVIEW_KINDS = Object.freeze({ mandarin: 'Mandarin or written Chinese', meaning: 'English does not match', yale: 'Yale does not match the characters', sense: 'target word in another sense', register: 'register or speaker', other: 'other problem' })
+const YUE_REVIEW_VERDICTS = Object.freeze({ pass: 'No problems found', review: 'Some lines need a look', fail: 'Many lines are wrong' })
+const YUE_REVIEW_RANK = Object.freeze({ pass: 0, review: 1, fail: 2 })
+const yueReviewLines = track => ((track && track.pairs) || []).filter(p => p && String(p.chinese || '').trim())
+function yueReviewMaxTokens(n) { return Math.max(1500, Math.min(9000, 500 + n * 45)) }
+// the question: the targets (with the sense the word list intends) first, then every line (A is a man, B a woman) with its Cantonese, Yale and English
+function yueReviewPrompt(track, vocab) {
+  const pairs = yueReviewLines(track), vmap = new Map((vocab || []).map(w => [w.id, w])), kw = new Map(((track && track.keywords) || []).map(k => [k.wordId, k]))
+  const ids = []; pairs.forEach(p => { if (p.targetId != null && !ids.includes(p.targetId)) ids.push(p.targetId) })
+  const tline = id => { const w = vmap.get(id) || {}, k = kw.get(id) || {}, ch = w.chinese || k.chinese || '?', ya = w.pinyin || k.pinyin || '', en = w.english || k.english || ''
+    return '- ' + ch + (ya ? ' (' + ya + ')' : '') + ' = ' + en + (w.partOfSpeech ? ' [' + w.partOfSpeech + ']' : '') + (w.note ? ' — ' + w.note : '') }
+  const system = 'You are a native Hong Kong Cantonese speaker and an experienced teacher of Cantonese to English-speaking beginners. You are reviewing the lines of a finished lesson track. You only JUDGE the lines: you never rewrite, correct or translate a line and you never write romanisation.\n' +
+    'Every line is spoken by A (a man) or B (a woman) in an ordinary, friendly everyday conversation. The learner sees the Cantonese in traditional characters, its Yale romanisation and an English translation, and practises one target word per line.\n' +
+    'Judge EVERY line on these points. Flag a line only for a real problem, never for taste or for a simple style choice.\n' +
+    '1. NATURAL HONG KONG CANTONESE (kind "mandarin"): colloquial spoken Cantonese as people say it in Hong Kong. Flag Mandarin (是 不 没有 了 的 在 他 什么 and Mandarin word order or phrasing where Cantonese says 係 唔 冇 咗 嘅 喺 佢 乜嘢) and flag stiff written Chinese that nobody says aloud.\n' +
+    '2. ENGLISH (kind "meaning"): the English says what the Cantonese says: nothing added, nothing missing, nothing changed.\n' +
+    '3. YALE (kind "yale"): the Yale matches the characters syllable by syllable: the same number of syllables and the right word for each character. Judge tone marks only where a tone is clearly wrong for the word. Flag a wrong, missing or extra syllable; do not write the correct Yale.\n' +
+    '4. TARGET WORD (kind "sense"): the line uses the target word in the sense the word list gives for it (see TARGET WORDS), not in a different sense.\n' +
+    '5. REGISTER (kind "register"): the wording suits the speaker and a friendly everyday conversation: not rude, not formal, not old-fashioned, nothing that clashes with a man speaking as A or a woman speaking as B.\n' +
+    'Use kind "other" for any other real fault (not a sentence anyone would say, unclear, contradicts the line before it). A line answers the line before it in its group of three, so judge it with that line in view.\n' +
+    'Reply with JSON only, in this shape: {"verdict":"pass|review|fail","summary":"one short sentence","lines":[{"i":1,"ok":true},{"i":2,"ok":false,"kind":"mandarin","reason":"under 15 words, in English"}]}\n' +
+    'Every line number from 1 to ' + pairs.length + ' must appear exactly once in "lines". A good line is {"i":N,"ok":true}. A flagged line has "ok":false, a "kind" and a short "reason". "verdict" is "pass" when no line is flagged, "review" when some lines are flagged but the track is mostly sound, and "fail" when many lines are wrong.'
+  const user = 'TARGET WORDS (the word, its Yale, the meaning the word list intends)\n' + ids.map(tline).join('\n') + '\n\nLINES (' + pairs.length + ')\n' +
+    pairs.map((p, k) => (k + 1) + '. [' + (p.speaker === 'B' ? 'B, woman' : 'A, man') + '] target: ' + (p.targetChinese || '?') + '\n   Cantonese: ' + p.chinese + '\n   Yale: ' + (p.pinyin || '') + '\n   English: ' + (p.english || '')).join('\n')
+  return { system, user, count: pairs.length }
+}
+// STRICT: the reply is one JSON object (an outer markdown fence is the only thing tolerated), an overall verdict from the list, and exactly one entry for every line 1…N with
+// a true/false "ok"; a kind (when given) from the list. Anything else is "malformed" and NO line counts as judged. A flag without a reason keeps a plain placeholder.
+function yueReviewParse(raw, n) {
+  let txt = String(raw == null ? '' : raw).trim()
+  const fence = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(txt); if (fence) txt = fence[1].trim()
+  if (!txt) return { ok: false, problem: 'the reply was empty' }
+  let o; try { o = JSON.parse(txt) } catch (e) { return { ok: false, problem: /^\s*\{/.test(txt) && !/\}\s*$/.test(txt) ? 'the reply was cut off before the JSON closed' : 'the reply is not valid JSON' } }
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return { ok: false, problem: 'the reply is not a JSON object' }
+  if (!Object.prototype.hasOwnProperty.call(YUE_REVIEW_RANK, o.verdict)) return { ok: false, problem: 'the overall verdict is missing or not one of pass / review / fail' }
+  if (!Array.isArray(o.lines)) return { ok: false, problem: 'the reply has no "lines" list' }
+  if (o.lines.length !== n) return { ok: false, problem: 'the reply judges ' + o.lines.length + ' lines, the track has ' + n }
+  const seen = new Set(), lines = []
+  for (const l of o.lines) {
+    if (!l || typeof l !== 'object' || !Number.isInteger(l.i) || l.i < 1 || l.i > n) return { ok: false, problem: 'a line entry has no valid line number' }
+    if (seen.has(l.i)) return { ok: false, problem: 'line ' + l.i + ' is judged twice' }
+    if (typeof l.ok !== 'boolean') return { ok: false, problem: 'line ' + l.i + ' has no true / false verdict' }
+    if (!l.ok && l.kind != null && !Object.prototype.hasOwnProperty.call(YUE_REVIEW_KINDS, l.kind)) return { ok: false, problem: 'line ' + l.i + ' has an unknown kind' }
+    seen.add(l.i)
+    lines.push(l.ok ? { i: l.i, ok: true, kind: null, reason: '' } : { i: l.i, ok: false, kind: l.kind || 'other', reason: String(l.reason || '').trim().slice(0, 200) || 'flagged, no reason given' })
+  }
+  lines.sort((a, b) => a.i - b.i)
+  return { ok: true, verdict: o.verdict, summary: String(o.summary || '').trim().slice(0, 300), lines }
+}
+// the outcome of one review (never throws): { review, usage?, calls?, cancelled? }. review.status is 'done' | 'not-run' (no key / model: nothing was sent) | 'failed' (sent, no usable answer).
+async function runCantoneseQualityReview(track, vocab, o) {
+  o = o || {}
+  const st = aiSelectedModelStatus(o.apiKey, YUE_REVIEW_RUN_KIND)
+  const base = { version: YUE_REVIEW_VERSION, ranAt: new Date().toISOString(), provider: st.provider, model: st.model, modelLabel: st.label }
+  const pairs = yueReviewLines(track)
+  if (!pairs.length) return { review: { ...base, status: 'failed', reason: 'the track has no Cantonese lines to review', total: 0, requests: 0, costUsd: 0 } }
+  if (!st.ready) return { review: { ...base, status: 'not-run', reason: st.reason, total: pairs.length, requests: 0, costUsd: 0 } }
+  const runId = aiBeginRun(YUE_REVIEW_RUN_KIND, track && track.createdAt)
+  o.onRun && o.onRun(runId)
+  const q = yueReviewPrompt(track, vocab)
+  const usageOf = () => { try { const sum = aiUsageSummary(runId); return { sum, usage: { ...sum, ranked: sum.ranked.slice(0, 12) }, calls: aiCompactRows(AI_LEDGER.filter(r => r.runId === runId)) } } catch (e) { return { sum: null, usage: null, calls: null } } }
+  const spent = u => ({ requests: u.sum ? u.sum.total : 0, costUsd: u.sum ? u.sum.costUsd : 0, inputTokens: u.sum ? u.sum.inputTokens : 0, outputTokens: u.sum ? u.sum.outputTokens : 0 })
+  const finish = async (u, review) => { if (u.sum && u.sum.total) { try { await recordLastTrackAiUsage(u.sum, track && track.createdAt, 'yue') } catch (e) {} }   // the header cost chip
+    return { review: { ...review, ...spent(u) }, usage: u.usage, calls: u.calls } }
+  let raw
+  try {
+    o.onLog && o.onLog('▶ Quality review: ' + q.count + ' lines in one request to ' + st.label)
+    raw = await geminiRequest({ apiKey: st.optional ? '' : o.apiKey, model: GEMINI_DEFAULT_MODEL, messages: [{ role: 'system', content: q.system }, { role: 'user', content: q.user }],
+      maxTokens: yueReviewMaxTokens(q.count), temperature: 0.2, stage: YUE_REVIEW_STAGE, json: GEMINI_SCHEMAS.yueReview })
+  } catch (e) {
+    if ((e && e.cancelled) || (o.cancelled && o.cancelled())) return { cancelled: true }
+    let msg = String((e && e.message) || e || 'the request failed')
+    msg = aiScrubSecrets(msg, [o.apiKey])         // an error text never carries a credential
+    return await finish(usageOf(), { ...base, status: 'failed', reason: msg.slice(0, 300), total: pairs.length })
+  }
+  if (o.cancelled && o.cancelled()) return { cancelled: true }
+  const u = usageOf(), p = yueReviewParse(raw, q.count)
+  if (!p.ok) return await finish(u, { ...base, status: 'failed', reason: 'the reviewer\'s answer could not be used (' + p.problem + '); no line was judged', malformed: true, total: pairs.length })
+  const flags = p.lines.filter(l => !l.ok).map(l => { const pr = pairs[l.i - 1]; return { n: l.i, pairIndex: (track.pairs || []).indexOf(pr), speaker: pr.speaker || '', targetChinese: pr.targetChinese || '', chinese: pr.chinese, kind: l.kind, reason: l.reason } })
+  const derived = !flags.length ? 'pass' : flags.length * 3 > pairs.length ? 'fail' : 'review'
+  const verdict = YUE_REVIEW_RANK[p.verdict] >= YUE_REVIEW_RANK[derived] ? p.verdict : derived      // the worse of the reviewer's own verdict and what its flags add up to
+  o.onLog && o.onLog((flags.length ? '⚠ ' + flags.length + ' of ' + pairs.length + ' lines flagged' : '✓ all ' + pairs.length + ' lines judged fine') + ' · ' + YUE_REVIEW_VERDICTS[verdict])
+  return await finish(u, { ...base, status: 'done', verdict, modelVerdict: p.verdict, summary: p.summary, total: pairs.length, flagged: flags.length, flags })
+}
+// the track with the outcome attached (a failed or not-run attempt never replaces an earlier completed review)
+function yueApplyReview(track, out) {
+  if (!track || !out || !out.review) return track
+  if (out.review.status !== 'done' && track.qualityReview && track.qualityReview.status === 'done') return track
+  const t = { ...track, qualityReview: out.review }
+  if (out.usage) { t.aiUsage = out.usage; t.aiCalls = out.calls }          // the latest review run's usage: the transcript prints it like any other track's
+  return t
+}
+function yueReviewCostText(r) {
+  if (!r || !(r.requests > 0)) return '0 requests'
+  return r.requests + ' request' + (r.requests === 1 ? '' : 's') + ' · ≈ ' + formatSgdChip((r.costUsd || 0) * AI_USD_TO_SGD) + ' (US$' + (r.costUsd || 0).toFixed(4) + ')'
+}
+
 // ── Japanese adapter for the target-group core ─────────────────────────────────────────
 // Structured output for the whole group. IDs are never asked of the model (injected locally).
 const JA_GROUP_SCHEMA = { type: 'OBJECT', properties: { targetConcept: { type: 'STRING' }, recalls: { type: 'ARRAY', items: JA_RECALL_SCHEMA } }, required: ['recalls'] }
@@ -61500,14 +61626,13 @@ function MandarinTeacher({ lang, onSetLang }) {
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 // CANTONESE PROGRAMME — screens (first slice: a module-driven Daily and Revision track, zero model requests)
-// Not available yet (each says so in the app, never a silent substitute): the Listening track, Topics, the model-written track, the quality review screen, the test
-// generator. See CantoneseNotYet and the "Not available for Cantonese yet" card of the dashboard.
+// Not available yet (each says so in the app, never a silent substitute): the Listening track, Topics, the model-written track and the test generator. The model-based
+// QUALITY REVIEW of a finished module track exists since 17 Nov (CantoneseReviewPanel). See CantoneseNotYet and the "Not available for Cantonese yet" card of the dashboard.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 const YUE_NOT_YET = Object.freeze([
   ['Listening track', 'a Cantonese Listening track needs a model-written conversation, and there is none yet'],
   ['Topics', 'there are no Cantonese topics yet'],
-  ['Quality review', 'the review screen asks a model to judge each sentence; a module track is checked by its structure only (Yale, word-by-word breakdown, target in the sentence)'],
-  ['Model-written tracks and the test generator', 'every Cantonese track is built from the ready-made lesson modules; no model is asked to write a Cantonese sentence'],
+  ['Model-written tracks and the test generator', 'every Cantonese track is built from the ready-made lesson modules; no model is asked to write a Cantonese sentence (a model only reviews them afterwards)'],
 ])
 function CantoneseNotYet({ what, onBack }) {
   const row = YUE_NOT_YET.find(r => r[0] === what) || [what, 'it is not part of the first Cantonese release']
@@ -61546,6 +61671,17 @@ function CantoneseTargetPill({ w, state, srcColor, recalls, slots, attrs, histor
     </div>
   )
 }
+// the quality-review block of the transcript: what was asked, what came back, which lines were flagged (never a credential of any kind)
+function yueReviewExportLines(track) {
+  const r = track && track.qualityReview, L = []
+  if (!r) return ['Quality review: not run (this track was made before the Cantonese quality review existed, or it was never started)']
+  if (r.status === 'not-run') return ['Quality review: NOT RUN — no model was asked, because ' + r.reason + ' · the track is checked by its structure only']
+  if (r.status === 'failed') return ['Quality review: NOT COMPLETED — ' + r.modelLabel + ' was asked and gave no usable answer: ' + r.reason + ' · ' + yueReviewCostText(r)]
+  L.push('Quality review: ' + (r.flagged ? r.flagged + ' of ' + r.total + ' lines flagged' : 'all ' + r.total + ' lines judged fine') + ' · ' + YUE_REVIEW_VERDICTS[r.verdict] + ' · reviewed by ' + r.modelLabel + ' on ' + String(r.ranAt || '').slice(0, 10) + ' · ' + yueReviewCostText(r) + ' · ' + r.version)
+  if (r.summary) L.push('  Reviewer\'s summary: ' + r.summary)
+  ;(r.flags || []).forEach(f => L.push('  FLAG line ' + f.n + ' (' + (f.speaker || 'A') + ', target ' + f.targetChinese + ') ' + f.chinese + ' — ' + (YUE_REVIEW_KINDS[f.kind] || f.kind) + ': ' + f.reason))
+  return L
+}
 // transcript: Cantonese, Yale, English (never labelled pinyin or Jyutping)
 function downloadCantoneseTrack(track) {
   const L = []
@@ -61553,11 +61689,12 @@ function downloadCantoneseTrack(track) {
   trackModeTranscriptLines(track).forEach(x => L.push(x))
   L.push('='.repeat(50))
   L.push('Date: ' + (track.date || ''))
-  L.push('Romanisation: Yale · written form: traditional characters (Hong Kong usage) · written by: ready-made lesson modules (no model request)')
+  L.push('Romanisation: Yale · written form: traditional characters (Hong Kong usage) · written by: ready-made lesson modules (no model request to write them)')
   L.push('Pairs: ' + (track.pairs || []).length)
   const chk = cantoneseTrackCheck(track)
   L.push('STRUCTURE CHECK: ' + (chk.ok ? 'passed' : chk.problems.length + ' problem(s)') + ' · ' + chk.fromModules + '/' + chk.pairs + ' lines from modules')
-  L.push('Quality review: not available for Cantonese yet')
+  yueReviewExportLines(track).forEach(x => L.push(x))
+  if (track.aiUsage) { aiUsageExportLines(track).forEach(x => L.push(x)); L.push('') }
   L.push('')
   L.push('TARGET VOCABULARY (' + (track.keywords || []).length + ')')
   L.push('-'.repeat(30))
@@ -61573,6 +61710,7 @@ function downloadCantoneseTrack(track) {
     L.push('  YALE:           ' + (p.pinyin || ''))
     L.push('  ENGLISH:        ' + (p.english || ''))
     if (p.targetChinese) L.push('  TARGET:         ' + p.targetChinese + '   (recall ' + p.recallIndex + ')')
+    { const fl = ((track.qualityReview && track.qualityReview.status === 'done' && track.qualityReview.flags) || []).find(f => f.pairIndex === i); if (fl) L.push('  REVIEW:         FLAGGED (' + (YUE_REVIEW_KINDS[fl.kind] || fl.kind) + '): ' + fl.reason) }
     if (Array.isArray(p.segments) && p.segments.length) L.push('  BREAKDOWN:      ' + p.segments.filter(s => s.type !== 'punct').map(s => s.surface + ' ' + (s.pinyin || '') + ' ' + (s.english || '')).join('  |  '))
     L.push('')
   })
@@ -61655,6 +61793,95 @@ function CantoneseLearnWords({ words, gcpTtsKey, onDone, onBack }) {
     </div>
   )
 }
+// The review card: runs the review (on its own right after a build, or on a button) and shows what came back. Used by the generator and by the saved-track screen.
+// Never a silent skip: with no key / model it says so in words, with a failed answer it says that, and in every case the track can still be studied (the structure check is the gate).
+function CantoneseReviewPanel({ track, vocab, cred, auto, onOutcome, onBusy }) {
+  const [phase, setPhase] = useState(auto ? 'running' : 'idle')       // idle | running | done | cancelled
+  const [out, setOut] = useState(null)
+  const live = useRef({ alive: true, cancelled: false, runId: null })
+  const n = yueReviewLines(track).length
+  const st = aiSelectedModelStatus(cred && cred.geminiKey, YUE_REVIEW_RUN_KIND)
+  const r = (out && out.review) || (track && track.qualityReview) || null
+  async function run() {
+    const mine = live.current = { alive: true, cancelled: false, runId: null }
+    setPhase('running'); onBusy && onBusy(true)
+    let res
+    try { res = await runCantoneseQualityReview(track, vocab, { apiKey: cred && cred.geminiKey, onRun: id => { mine.runId = id }, cancelled: () => mine.cancelled || !mine.alive }) }
+    catch (e) { res = { review: { version: YUE_REVIEW_VERSION, ranAt: new Date().toISOString(), status: 'failed', provider: st.provider, model: st.model, modelLabel: st.label, reason: aiScrubSecrets((e && e.message) || 'the review failed', [cred && cred.geminiKey]), total: n, requests: 0, costUsd: 0 } } }
+    if (!mine.alive) return
+    onBusy && onBusy(false)
+    if (res.cancelled) { setPhase('cancelled'); return }
+    setOut(res); setPhase('done'); onOutcome && onOutcome(res)
+  }
+  function cancel() { const c = live.current; c.cancelled = true; if (c.runId) { try { aiCancelRun(c.runId, 'the learner cancelled the quality review') } catch (e) {} } }
+  useEffect(() => {
+    if (auto) run()
+    return () => { const c = live.current; c.alive = false; if (c.runId && !c.cancelled) { try { aiCancelRun(c.runId, 'the quality review screen was left') } catch (e) {} } onBusy && onBusy(false) }
+  }, [])
+  const box = (color, key, children) => <Card data-yue-review={key} style={{ padding:'10px 14px', border:'1px solid ' + color }}>{children}</Card>
+  const again = <Btn onClick={run} variant="secondary" style={{ width:'100%', justifyContent:'center', marginTop:8 }}>{'↻'} {r && r.status === 'done' ? 'Run the quality review again' : 'Run the quality review'} ({st.label}, one request)</Btn>
+  if (phase === 'running') return box('var(--border)', 'running', <>
+    <div style={{ display:'flex', alignItems:'center', gap:8 }}><Spinner size={14} color="#10b981" /><span style={{ fontSize:12, fontWeight:700 }}>Quality review in progress</span></div>
+    <p style={{ fontSize:11, color:'var(--muted)', marginTop:5, lineHeight:1.5 }}>{st.label} is judging all {n} lines in one request: natural Hong Kong Cantonese, the English, the Yale, the target word and the register.</p>
+    <Btn onClick={cancel} variant="secondary" style={{ width:'100%', justifyContent:'center', marginTop:8 }}>Cancel the review</Btn>
+  </>)
+  if (phase === 'cancelled') return box('var(--border)', 'cancelled', <>
+    <p style={{ fontSize:12, fontWeight:700 }}>Quality review cancelled</p>
+    <p style={{ fontSize:11, color:'var(--muted)', marginTop:4 }}>Nothing was judged. You can still study the track.</p>
+    {st.ready && again}
+  </>)
+  if (!r) return box('var(--border)', st.ready ? 'idle' : 'not-run', st.ready ? <>
+    <p style={{ fontSize:12, fontWeight:700 }}>Quality review not run yet</p>
+    <p style={{ fontSize:11, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>{st.label} judges every line in one request. Nothing is sent until you press the button.</p>{again}
+  </> : <>
+    <p style={{ fontSize:12, fontWeight:700, color:'#f59e0b' }}>{'⚠'} Quality review not run</p>
+    <p style={{ fontSize:11, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>It needs a model, and {st.reason}. The track is checked by its structure only; you can still study it.</p>
+  </>)
+  if (r.status === 'not-run') return box('#f59e0b', 'not-run', <>
+    <p style={{ fontSize:12, fontWeight:700, color:'#f59e0b' }}>{'⚠'} Quality review not run</p>
+    <p style={{ fontSize:11, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>No model was asked, because {r.reason}. The track is checked by its structure only (Yale, word-by-word breakdown, target in the sentence); you can still study it. Nothing was sent to any other model.</p>
+    {st.ready && again}
+  </>)
+  if (r.status === 'failed') return box('#ef4444', 'failed', <>
+    <p style={{ fontSize:12, fontWeight:700, color:'#ef4444' }}>{'⚠'} Quality review could not be completed</p>
+    <p style={{ fontSize:11, color:'var(--muted)', marginTop:4, lineHeight:1.5, wordBreak:'break-word' }}>{r.reason}</p>
+    <p style={{ fontSize:11, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>{r.modelLabel} was asked; no other model was tried. {yueReviewCostText(r)}. You can still study the track.</p>
+    {st.ready && again}
+  </>)
+  const bad = r.verdict !== 'pass'
+  return box(r.verdict === 'fail' ? '#ef4444' : bad ? '#f59e0b' : '#2d6b2d', 'done', <>
+    <p data-yue-review-verdict={r.verdict} style={{ fontSize:12, fontWeight:700, color: r.verdict === 'fail' ? '#ef4444' : bad ? '#f59e0b' : '#4ade80' }}>
+      {bad || r.flagged ? '⚠' : '✓'} Quality review: {r.flagged ? r.flagged + ' of ' + r.total + ' lines flagged' : 'all ' + r.total + ' lines judged fine'} {'·'} {YUE_REVIEW_VERDICTS[r.verdict]}
+    </p>
+    {r.summary && <p style={{ fontSize:11, color:'var(--text)', marginTop:4, lineHeight:1.5 }}>{r.summary}</p>}
+    <p data-yue-review-cost="1" style={{ fontSize:10, color:'var(--muted)', marginTop:4 }}>Reviewed by {r.modelLabel} {'·'} {yueReviewCostText(r)}</p>
+    {r.flagged > 0 && <div data-yue-review-flags="1" style={{ marginTop:8, maxHeight:260, overflowY:'auto', display:'flex', flexDirection:'column', gap:6 }}>
+      {(r.flags || []).map(f => (
+        <div key={f.n} style={{ background:'var(--surface2)', borderRadius:8, padding:'7px 9px' }}>
+          <div style={{ fontSize:10, color:'var(--muted)' }}>Line {f.n} {'·'} {f.speaker || 'A'} {'·'} target {f.targetChinese} {'·'} {YUE_REVIEW_KINDS[f.kind] || YUE_REVIEW_KINDS.other}</div>
+          <div className="yue" lang="zh-HK" style={{ fontSize:14, color:'var(--text)', marginTop:2 }}>{f.chinese}</div>
+          <div style={{ fontSize:11, color:'#f59e0b', marginTop:2, lineHeight:1.4 }}>{f.reason}</div>
+        </div>))}
+    </div>}
+    {r.flagged > 0 && <p style={{ fontSize:10, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>Flagged lines stay in the track; they are listed here and in the exported transcript. Nothing was rewritten.</p>}
+    {st.ready && again}
+  </>)
+}
+// The review of a track that is already saved (opened from the player's Review button): the earlier result if there is one, and a button to run it (again). Nothing is sent until the button.
+function CantoneseQualityReview({ track, vocab, cred, onSave, onBack }) {
+  const [busy, setBusy] = useState(false)
+  return (
+    <div className="fade-in" data-yue-review-screen="1" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:12 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+        <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}><Icon name="arrow_left" size={20} /></button>
+        <span className="display" style={{ fontSize:18 }}>Quality review</span>
+      </div>
+      <p style={{ fontSize:11, color:'var(--muted)', lineHeight:1.5 }}>Cantonese track of {track.date} {'·'} {(track.pairs || []).length} lines. A model judges each line as a Hong Kong speaker would; it never rewrites anything.</p>
+      <CantoneseReviewPanel track={track} vocab={vocab} cred={cred} auto={false} onBusy={setBusy} onOutcome={out => onSave(yueApplyReview(track, out))} />
+      <Btn onClick={onBack} variant="ghost" disabled={busy} style={{ width:'100%', justifyContent:'center' }}>Back to the track</Btn>
+    </div>
+  )
+}
 // The Cantonese generator screen: no scene step and no model: the track is built from the lesson modules in a moment. The screen says what was built, what was checked,
 // and — when a word cannot be written — which word and why (nothing is replaced silently).
 function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks, onGenerated, onBack }) {
@@ -61665,6 +61892,8 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
   const [targetProgress, setTargetProgress] = useState({})
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)          // { track, check }
+  const [reviewed, setReviewed] = useState(null)      // the built track with its quality review attached (what Study hands on)
+  const [reviewBusy, setReviewBusy] = useState(false)
   const stopRef = useRef({ cancelled:false })
   useEffect(() => () => { stopRef.current.cancelled = true }, [])
   const isRev = trackMode === 'revision' || trackMode === 'srs'
@@ -61676,7 +61905,7 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
     else if (!targets || !targets.length) { setError('No Cantonese targets available.'); setPhase('error') }
   }, [])
   async function startGeneration() {
-    setPhase('generating'); setError(''); setRecallDone(0); setTargetProgress({}); setFullLog([])
+    setPhase('generating'); setError(''); setRecallDone(0); setTargetProgress({}); setFullLog([]); setReviewed(null); setReviewBusy(false)
     const startedAt = new Date().toISOString()
     try {
       const res = await generateCantoneseTrack(targets, vocab, (done, total, meta) => {
@@ -61700,6 +61929,7 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
     }
   }
   const pct = recallTotal ? Math.min(100, Math.round((recallDone / recallTotal) * 100)) : 0
+  const qr = reviewed && reviewed.qualityReview, nReviewReq = (qr && qr.requests) || 0, nFlagged = (qr && qr.status === 'done' && qr.flagged) || 0
   const stateOf = w => { if (phase === 'done') return 'done'; const p = targetProgress[w.id]; if (p && (p.recallsCompleted || 0) >= 3) return 'done'; return currentTargetId === w.id ? 'active' : 'future' }
   if (phase === 'error') return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, alignItems:'center', minHeight:'50vh', justifyContent:'center' }}>
@@ -61714,8 +61944,14 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
         leftNote={<>{(targets || []).length} words {'·'} {recallTotal} recalls</>} rightNote={<>{recallDone} / {recallTotal}</>} />
       {phase === 'idle' && (
         <Card style={{ padding:'12px 14px' }}>
-          <p style={{ fontSize:13, lineHeight:1.6 }}>This track is built from ready-made lesson modules: <b>no AI request is made</b> and no key is needed. Each word gets three lines (A, B, A) with Yale and a word-by-word breakdown.</p>
-          <p style={{ fontSize:11, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>A quality review by a model is not available for Cantonese yet; the track is checked by its structure.</p>
+          <p style={{ fontSize:13, lineHeight:1.6 }}>This track is built from ready-made lesson modules: <b>no AI request writes it</b> and no key is needed to build it. Each word gets three lines (A, B, A) with Yale and a word-by-word breakdown.</p>
+          {(() => {
+            // the review follows the model chosen in Settings (the same choice every language follows); say before the build what will happen after it
+            const st = aiSelectedModelStatus(cred && cred.geminiKey, YUE_REVIEW_RUN_KIND)
+            return <p data-yue-review-plan={st.ready ? 'on' : 'off'} style={{ fontSize:11, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>{st.ready
+              ? 'Afterwards ' + st.label + ' reviews every line in one request (natural Hong Kong Cantonese, the English, the Yale, the target word, the register) and the result is shown here.'
+              : 'A quality review by a model needs a model, and ' + st.reason + ', so it will not run; the track is checked by its structure only.'}</p>
+          })()}
           {(() => {
             // a short track is expected (the owner's rule, 17 Nov: a track holds min(30, the words that exist)): say so once, so it does not look like a mistake
             const note = shortTrackNote(targets, isRev)
@@ -61740,13 +61976,15 @@ function CantoneseGenerator({ vocab, targets, selection, cred, trackMode, tracks
       {phase === 'done' && result && (
         <Card style={{ padding:'10px 14px' }}>
           <p data-yue-check={result.check.ok ? 'ok' : 'bad'} style={{ fontSize:12, fontWeight:700, color: result.check.ok ? '#4ade80' : '#ef4444' }}>
-            {result.check.ok ? '✓ Structure check passed' : '⚠ ' + result.check.problems.length + ' structure problem(s)'} {'·'} {result.check.fromModules}/{result.check.pairs} lines from modules {'·'} 0 model requests
+            {result.check.ok ? '✓ Structure check passed' : '⚠ ' + result.check.problems.length + ' structure problem(s)'} {'·'} {result.check.fromModules}/{result.check.pairs} lines from modules {'·'} {nReviewReq} model request{nReviewReq === 1 ? '' : 's'}{nReviewReq > 0 ? ' (the review)' : ''}
           </p>
           {!result.check.ok && <p style={{ fontSize:11, color:'var(--muted)', marginTop:4 }}>{result.check.problems.slice(0, 3).join(' | ')}</p>}
         </Card>)}
+      {phase === 'done' && result && <CantoneseReviewPanel key={result.track.createdAt} track={result.track} vocab={vocab} cred={cred} auto onBusy={setReviewBusy}
+        onOutcome={out => setReviewed(yueApplyReview(result.track, out))} />}
       {phase === 'done' ? (
         <>
-          <Btn onClick={() => onGenerated(result.track)} style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>{'▶'} Study track</Btn>
+          <Btn onClick={() => onGenerated(reviewed || result.track)} disabled={reviewBusy} style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>{'▶'} {reviewBusy ? 'Study track (after the review)' : nFlagged > 0 ? 'Study anyway — ' + nFlagged + ' line' + (nFlagged === 1 ? '' : 's') + ' flagged' : 'Study track'}</Btn>
           <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
         </>
       ) : phase === 'generating' ? (
@@ -61826,7 +62064,7 @@ function CantoneseDashboard({ vocab, tracks, targets, trackTargets, onStartTrack
         <p style={{ fontSize:11, color:'var(--muted)', lineHeight:1.6 }}>
           {YUE_NOT_YET.map((r, i) => <span key={r[0]}>{i ? ' · ' : ''}<button onClick={() => onNotYet && onNotYet(r[0])} style={{ background:'none', border:'none', padding:0, color:'var(--muted)', cursor:'pointer', textDecoration:'underline', fontSize:11 }}>{r[0]}</button></span>)}
         </p>
-        <p style={{ fontSize:10, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>Daily and Revision tracks are built from ready-made lesson modules (no AI request).</p>
+        <p style={{ fontSize:10, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>Daily and Revision tracks are written from ready-made lesson modules (no AI request to write them). A quality review by the model chosen in Settings then judges every line, when a key is saved.</p>
         {YUE_NO_MODULE_IDS.length > 0 && <p data-yue-no-module-words="1" style={{ fontSize:10, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>
           {YUE_NO_MODULE_IDS.length} words (<span className="yue" lang="zh-HK">{(vocab || []).filter(w => YUE_NO_MODULE_SET.has(w.id)).map(w => w.chinese).join(' ')}</span>) have no lesson module yet, so no track teaches them and their belts cannot be completed until they do.</p>}
       </Card>
@@ -61871,6 +62109,7 @@ function CantoneseTeacher({ lang, onSetLang }) {
   const [activeTrack, setActiveTrack] = useState(null)
   const [trackMode, setTrackMode] = useState('daily')     // 'daily' | 'revision'
   const [notYet, setNotYet] = useState('Listening track')
+  const [reviewFromComplete, setReviewFromComplete] = useState(false)   // the review was opened from the end-of-lesson screen: Back returns there
 
   useEffect(() => {
     let dead = false
@@ -61934,7 +62173,7 @@ function CantoneseTeacher({ lang, onSetLang }) {
     saveTracksYue([...tracks, track])
     if (trackMode === 'daily') saveSlots((targets || []).map(t => t.id))
     try { if (trackMode === 'daily') { const _cl = thaiQueueClearUsed(vocab, { ...track, selectedTargetIds: track.selectedTargetIds || (targets || []).map(t => t.id) }); if (_cl) saveVocabYue(_cl) } } catch (e) {}
-    // no quality-review screen for Cantonese yet: the module track goes straight to the player
+    // the track arrives with its quality review (or the statement that it was not run) already on it: straight to the player
     setActiveTrack(track); setPlayerResumeCompleted(false); setView('player')
   }
   function onTrackComplete(keywords) {
@@ -61989,7 +62228,13 @@ function CantoneseTeacher({ lang, onSetLang }) {
         {view === 'rank-test' && <RankTestView vocab={vocab} lang="yue" onBack={() => setView('dashboard')} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="yue" onBack={() => setView('dashboard')} />}
         {(view === 'topics' || view === 'listening-track') && <CantoneseNotYet what={view === 'topics' ? 'Topics' : 'Listening track'} onBack={() => setView('dashboard')} />}
-        {view === 'quality-review' && <CantoneseNotYet what="Quality review" onBack={() => setView('dashboard')} />}
+        {view === 'quality-review' && activeTrack && (
+          <ErrorBoundary>
+            <CantoneseQualityReview key={(activeTrack.createdAt || '') + ':' + ((activeTrack.qualityReview && activeTrack.qualityReview.ranAt) || '')} track={tracks.find(t => t.createdAt && t.createdAt === activeTrack.createdAt) || activeTrack} vocab={vocab} cred={cred}
+              onSave={t => { saveTracksYue(tracks.map(x => (x.createdAt && x.createdAt === t.createdAt) ? t : x)); setActiveTrack(t) }}
+              onBack={() => { setPlayerResumeCompleted(reviewFromComplete); setView('player') }} />
+          </ErrorBoundary>
+        )}
         {view === 'not-yet' && <CantoneseNotYet what={notYet} onBack={() => setView('dashboard')} />}
         {String(view).startsWith('browse-') && <WordListView vocab={vocab} lang="yue" initialFilter={String(view).slice(7)} onBack={() => setView('dashboard')} onVocabUpdate={saveVocabYue} />}
         {view === 'learn' && (
@@ -62014,7 +62259,7 @@ function CantoneseTeacher({ lang, onSetLang }) {
                 await saveTracksYue(updated)
                 setActiveTrack(prev => ({ ...prev, bookmark: pairIdx }))
               }}
-              startCompleted={playerResumeCompleted} onComplete={onTrackComplete} onReviewQuality={null}
+              startCompleted={playerResumeCompleted} onComplete={onTrackComplete} onReviewQuality={ctx => { setReviewFromComplete(ctx === 'lesson-complete'); setView('quality-review') }}
               onBack={() => { setActiveTrack(null); setPlayerResumeCompleted(false); setView('dashboard') }} />
           </ErrorBoundary>
         )}

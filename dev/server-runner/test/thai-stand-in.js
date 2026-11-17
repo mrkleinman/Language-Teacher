@@ -15,7 +15,7 @@ const FRAMES = [
 function thaiHandlers(seen) {
   seen = seen || { unhandled: [], handled: {} }
   const hit = k => { seen.handled[k] = (seen.handled[k] || 0) + 1 }
-  const list = []
+  const list = [], recN = {}
   // scene design
   list.push(ctx => {
     if (!/You design Thai language lesson scenarios/.test(ctx.q)) return undefined
@@ -95,7 +95,8 @@ function thaiHandlers(seen) {
     const id = +((/"targetId":(\d+)/.exec(ctx.q) || [])[1] || 0), T = (/"targetSurfaceUsed":"([^"]+)"/.exec(ctx.q) || [])[1], g = first((/TARGET WORD: "[^"]+" = ([^\n]+)/.exec(ctx.q) || [])[1])
     if (!T) return undefined
     hit('recovery')
-    return JSON.stringify(Array.from({ length: n }, (_, k) => { const f = REC[k % REC.length]; return { targetId: id, targetSurfaceUsed: T, speaker: f[0], thai: f[1].replace('{T}', T), english: f[2].replace('{g}', g), prompt: f[3].replace(/\{g\}/g, g) } }))
+    const k0 = recN[T] = (recN[T] || 0) + n                  // each call for the same word starts further on, so a later call is not a repeat of an earlier line
+    return JSON.stringify(Array.from({ length: n }, (_, k) => { const f = REC[(2 + k0 - n + k) % REC.length]; return { targetId: id, targetSurfaceUsed: T, speaker: f[0], thai: f[1].replace('{T}', T), english: f[2].replace('{g}', g), prompt: f[3].replace(/\{g\}/g, g) } }))
   })
   list.push(ctx => { if (!/Reply ONLY with JSON \{"bad":\[\{"gap":N/.test(ctx.q)) return undefined; hit('bridge-judge'); return JSON.stringify({ bad: [] }) })
   // anything else: counted

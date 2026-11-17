@@ -89,6 +89,11 @@ function startFakeModel(opts) {
       if (opts.onRequest) opts.onRequest({ system: ctx.system, user: ctx.user, schema, max_tokens: body.max_tokens })
       let text; for (const h of handlers) { text = h(Object.assign({ schema }, ctx)); if (text != null) break }
       if (text == null) text = JSON.stringify(synth(schema))
+      // the page wraps a schema whose root is not an object as {"items": ...} (the model function's structured output needs an object root) and unwraps the reply again
+      if (schema && schema.type === 'object' && Array.isArray(schema.required) && schema.required.length === 1 && schema.required[0] === 'items' && Object.keys(schema.properties || {}).length === 1) {
+        let parsed; try { parsed = JSON.parse(text) } catch (e) { parsed = undefined }
+        if (parsed !== undefined && !(parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'items' in parsed)) text = JSON.stringify({ items: parsed })
+      }
       return send(res, 200, { id: 'msg_standin', type: 'message', role: 'assistant', model: HAIKU, stop_reason: 'end_turn', stop_details: null,
         content: [{ type: 'text', text }], usage: { input_tokens: 1500, output_tokens: 600, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } })
     })

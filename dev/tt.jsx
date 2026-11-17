@@ -17170,7 +17170,7 @@ function Header({ view, onNav, onHome, lastTrackCost, geminiKey, geminiSpend, la
     { id: 'add-words', icon: 'plus', label: 'Add' },
     { id: 'settings', icon: 'settings', label: 'Settings' },
     { id: 'data', icon: 'bookmark', label: 'Data' },
-  ]
+  ].filter(item => item.id !== 'lessons' || (lang || 'th') === 'th')     // 17 Nov: the lessons are Thai-only content; a button that leads nowhere is worse than none
   // v648: Gemini is the only AI service — no provider picker. The badge shows the
   // token-based Gemini spend tracked by the Gemini client (USD, estimate).
   const isNum = v => typeof v === 'number' && Number.isFinite(v)
@@ -47644,7 +47644,10 @@ function DataManager({ onBack, vocab, tracks, onImport, onSaveTracks, fillApiKey
   )
 }
 
-function GcpTtsSection({ gcpTtsKey, onSaveGcpTtsKey }) {
+// the test sentence of the voice check, per language (Thai is the original; the others use their own voice from TTS_VOICES)
+const GCP_TTS_TEST_TEXT = { th: 'สวัสดีครับ', ja: 'こんにちは', zh: '你好', yue: '你好' }
+function GcpTtsSection({ gcpTtsKey, onSaveGcpTtsKey, lang }) {
+  const vl = lang && TTS_VOICES[lang] ? lang : 'th', other = vl !== 'th'
   const [draft, setDraft] = useState(gcpTtsKey || '')
   const [saved, setSaved] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -47657,7 +47660,7 @@ function GcpTtsSection({ gcpTtsKey, onSaveGcpTtsKey }) {
       const resp = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${draft.trim()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: { text: 'สวัสดีครับ' }, voice: { languageCode: 'th-TH', name: 'th-TH-Chirp3-HD-Charon' }, audioConfig: { audioEncoding: 'MP3' } })
+        body: JSON.stringify({ input: { text: GCP_TTS_TEST_TEXT[vl] }, voice: { languageCode: TTS_VOICES[vl].languageCode, name: TTS_VOICES[vl].male }, audioConfig: { audioEncoding: 'MP3' } })
       })
       if (resp.ok) {
         const data = await resp.json()
@@ -47674,8 +47677,8 @@ function GcpTtsSection({ gcpTtsKey, onSaveGcpTtsKey }) {
 
   return (
     <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, background: 'var(--surface2)' }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>🔊 Thai Voices (Google Cloud TTS)</div>
-      <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>Chirp3 HD Thai — Charon (male A) · Aoede (female B). 1M chars/month free.</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>🔊 {other ? 'Voices (Google Cloud TTS)' : 'Thai Voices (Google Cloud TTS)'}</div>
+      <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>{other ? 'One key for every language (it is the same key as in the Thai profile). Voices used here: ' + TTS_VOICES[vl].male + ' (male) · ' + TTS_VOICES[vl].female + ' (female).' : 'Chirp3 HD Thai — Charon (male A) · Aoede (female B). 1M chars/month free.'}</div>
       <input placeholder="AIza..." value={draft} onChange={e => { setDraft(e.target.value); setSaved(false); setTestResult('') }}
         style={{ width: '100%', padding: '8px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 13, boxSizing: 'border-box', marginBottom: 8, fontFamily: 'DM Mono, monospace' }} />
       <div style={{ display: 'flex', gap: 8 }}>
@@ -47805,7 +47808,7 @@ function NonThaiExtraView({ view, lang, onBack }) {
 }
 // v648: Gemini is the only AI service. One Gemini key (Google AI Studio) plus an
 // optional backup Gemini key that the Gemini client uses only for same-model retries.
-function Settings({ onBack, geminiKey, onSaveGeminiKey, geminiSpend, onResetGeminiSpend, gcpTtsKey, onSaveGcpTtsKey, geminiBackupKey, onSaveGeminiBackupKey }) {
+function Settings({ onBack, geminiKey, onSaveGeminiKey, geminiSpend, onResetGeminiSpend, gcpTtsKey, onSaveGcpTtsKey, geminiBackupKey, onSaveGeminiBackupKey, lang }) {
   const [draftKey, setDraftKey] = useState(geminiKey || '')
   const [backupKey, setBackupKey] = useState(geminiBackupKey || '')
   const [backupSaved, setBackupSaved] = useState(false)
@@ -47909,10 +47912,10 @@ function Settings({ onBack, geminiKey, onSaveGeminiKey, geminiSpend, onResetGemi
 
 
         {/* Google Cloud TTS */}
-        <GcpTtsSection gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={onSaveGcpTtsKey} />
+        <GcpTtsSection gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={onSaveGcpTtsKey} lang={lang} />
 
-        {/* Restore progress */}
-        {(() => {
+        {/* Restore progress — Thai only: it rewrites the Thai word list (tt-vocab) with a fixed Thai rank, so it is never shown in another language */}
+        {(!lang || lang === 'th') && (() => {     // `lang` never changes while this screen is mounted (each language has its own screen), so the hook below is called on every render or on none
           const [restoreState, setRestoreState] = React.useState('idle') // idle | confirm | done
           function runRestore() {
             try {
@@ -52655,7 +52658,8 @@ function useSharedCredentials() {
     return () => { dead = true }
   }, [])
 
-  return { geminiKey, apiKey: geminiKey, model: GEMINI_DEFAULT_MODEL, geminiSpend, gcpTtsKey }
+  // the setters are for the shared Settings screen of the Japanese / Mandarin / Cantonese profiles (LangSettingsView): a key saved there is used by the screen at once
+  return { geminiKey, apiKey: geminiKey, model: GEMINI_DEFAULT_MODEL, geminiSpend, gcpTtsKey, setGeminiKey, setGeminiSpend, setGcpTtsKey }
 }
 
 function JapaneseSpeechStyle({ value, onChange }) {

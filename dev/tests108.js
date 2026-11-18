@@ -32,6 +32,7 @@ const L = (speaker, thai, english) => ({ speaker, thai, english, prompt: (speake
     const SRC = require('fs').readFileSync('tt.jsx', 'utf8')
     T('R5', 'the Haiku request timeout waits through appSleep (counts in a worker while the page is hidden) instead of an ordinary timer: a call that hangs is abandoned on time (live: 154 / 243 / 515 s calls under a 180 s limit)',
       /appSleep\(ANTHROPIC_CONFIG\.timeoutMs\)\.then\(\(\) => \{ if \(!_timedOut\)/.test(SRC) && !/setTimeout\(\(\) => controller\.abort\(\), ANTHROPIC_CONFIG\.timeoutMs\)/.test(SRC))
+    T('R5b', 'the Gemini request timeout waits through appSleep too', /appSleep\(GEMINI_TIMEOUT_MS\)\.then\(\(\) => \{ if \(!_gTimedOut\)/.test(SRC) && !/setTimeout\(\(\) => controller\.abort\(\), GEMINI_TIMEOUT_MS\)/.test(SRC))
     T('R6', 'after one bridge batch is cut off with thinking on, the later batches of the run start with thinking off', /let _cutOnce = false/.test(SRC) && /const noThinkFirst = _cutOnce/.test(SRC))
   }
   console.log('\n' + (n - fails) + '/' + n + ' passed'); process.exit(fails ? 1 : 0)

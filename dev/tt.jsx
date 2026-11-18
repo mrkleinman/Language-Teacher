@@ -19232,11 +19232,13 @@ async function _geminiSend({ key, modelId, messages, maxTokens, temperature, sig
     const useKey = attempt > 1 && isGeminiApiKey(backup) && backup.trim() !== key ? backup.trim() : key
     const row = aiRecordStart({ provider: 'gemini', stage, model: modelId, chain: _chain, prompt: _promptText, maxTokens, attempt, retryReason: why })
     const controller = aiNewController()
-    const tid = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS)
+    // 18 Nov: the timeout waits through appSleep (counts in a worker while the page is hidden), as the Haiku request's does, so a hung call is abandoned on time in a background tab
+    let _gTimedOut = false
+    appSleep(GEMINI_TIMEOUT_MS).then(() => { if (!_gTimedOut) { _gTimedOut = true; controller.abort() } })
     const onAbort = () => controller.abort()
     if (signal && signal.addEventListener) signal.addEventListener('abort', onAbort)
     if (runCtl && runCtl.signal.addEventListener) runCtl.signal.addEventListener('abort', onAbort)
-    const detach = () => { clearTimeout(tid); if (signal && signal.removeEventListener) signal.removeEventListener('abort', onAbort); if (runCtl && runCtl.signal.removeEventListener) runCtl.signal.removeEventListener('abort', onAbort) }
+    const detach = () => { _gTimedOut = true; if (signal && signal.removeEventListener) signal.removeEventListener('abort', onAbort); if (runCtl && runCtl.signal.removeEventListener) runCtl.signal.removeEventListener('abort', onAbort) }
     let res = null
     const _t0 = Date.now()
     try {
@@ -52719,6 +52721,14 @@ async function _qrReplace(group, allPairs, apiKey, model, knownWords) {
   return await _qrImproveGroup(group, allPairs, apiKey, model, knownWords)
 }
 
+// 18 Nov (the owner's 18 Nov Thai Daily, NOT_READY 87/90 with เวลาที่ 0/3): "Save & Study" copied the finalised PAIRS but not the track's word list, so when the final check swapped a stuck revision
+// word for the next due word (เวลาที่ -> อ่าน: three อ่าน lines were written) the saved track still named เวลาที่ and the three อ่าน lines counted as "lines for no selected target". The saved
+// track now takes the finalised word list (keywords, selected ids, trackContext, targetSubstitutions) together with the pairs, exactly as the Generator and the save gate already do.
+function qcSavedTrack(track, finalised, updatedPairs) {
+  return finalised ? { ...track, ...finalTrackIdentityFields(finalised), pairs: finalised.pairs, integrity: finalised.integrity, finalTrack: finalised.finalTrack,
+    _finalAudit: finalised._finalAudit, _coverage: finalised._coverage, _semanticAudit: finalised._semanticAudit, _closedVocab: finalised._closedVocab }
+    : { ...track, pairs: updatedPairs || track.pairs }
+}
 function QualityReview({ track, vocab, apiKey, model, onSave, onSkip }) {
   const [phase, setPhase] = useState('summary')
   const [progress, setProgress] = useState(0)
@@ -52885,9 +52895,7 @@ function QualityReview({ track, vocab, apiKey, model, onSave, onSkip }) {
           {changed === 0 && results.error === 0 && results.clean > 0 && <p style={{ fontSize: 13, color: '#10b981', fontWeight: 600, marginTop: 4 }}>Track looks great — nothing needed fixing.</p>}
           {changed === 0 && results.error === 0 && results.clean === 0 && qcMode !== 'phonetics_translations' && qcMode !== 'phonetics' && qcMode !== 'translations' && <p style={{ fontSize: 13, color: '#f59e0b', fontWeight: 600, marginTop: 4 }}>⚠ Couldn't read track groups — pairs may be missing target word markers.</p>}
         </Card>
-        <Btn onClick={() => onSave(finalised ? { ...track, pairs: finalised.pairs, integrity: finalised.integrity, finalTrack: finalised.finalTrack,
-          _finalAudit: finalised._finalAudit, _coverage: finalised._coverage, _semanticAudit: finalised._semanticAudit, _closedVocab: finalised._closedVocab }
-          : { ...track, pairs: updatedPairs || track.pairs })} style={{ width: '100%', justifyContent: 'center' }}>
+        <Btn onClick={() => onSave(qcSavedTrack(track, finalised, updatedPairs))} style={{ width: '100%', justifyContent: 'center' }}>
           Save & Study ▶
         </Btn>
         {qrLog.length > 0 && (

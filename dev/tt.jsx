@@ -11693,7 +11693,42 @@ function appSleep(ms) {
 // a Web Lock (a page that holds one is not frozen) and a silent audio signal (a page that is playing audio is exempt from the strongest timer throttling and is kept alive on
 // phones). The audio is a 20 Hz tone at about -74 dB: far below hearing and below any speaker's output, and it exists only while a request runs. Browsers only allow audio after a
 // tap, so the first tap anywhere in the app unlocks it. Every part is optional: a browser without it simply does without, and nothing here can make a request fail.
-let _kaHolds = 0, _kaCtx = null, _kaNode = null, _kaLockRelease = null, _kaStopAt = 0
+let _kaHolds = 0, _kaCtx = null, _kaNode = null, _kaLockRelease = null, _kaStopAt = 0, _kaMedia = null
+// 18 Nov (the owner: "track still throttling in minimised Chrome mobile tab"): Chrome on a phone does not count the quiet WEB AUDIO tone below as playing media, so the tab was still throttled the
+// moment it left the screen. A page that is playing a MEDIA ELEMENT (and says so to the phone: a "now playing" entry) is kept running when it is in the background, so while a track is being
+// written a looping, almost silent sound plays in an <audio> element. Side effect: the phone may pause music from another app while it plays (audio focus); switch off with
+// keepAliveMediaSetEnabled(false). Everything is optional: a browser without it simply does without.
+const KA_MEDIA = { on: true }
+function keepAliveMediaSetEnabled(on) { KA_MEDIA.on = !!on; if (!on) _kaMediaStop() }
+function _kaWavUrl() {
+  const rate = 8000, n = rate * 2, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf)
+  const w = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)) }
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true)
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.round(24 * Math.sin(2 * Math.PI * 40 * i / rate)), true)      // 40 Hz, about -62 dB: not heard, not digital silence
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }))
+}
+function _kaMediaStart() {
+  if (!KA_MEDIA.on || _kaMedia) return
+  try {
+    const a = new Audio(_kaWavUrl()); a.loop = true; a.setAttribute && a.setAttribute('playsinline', ''); a.volume = 1
+    const pr = a.play(); if (pr && pr.catch) pr.catch(() => {})
+    _kaMedia = a
+    try {
+      const ms = typeof navigator !== 'undefined' && navigator.mediaSession
+      if (ms) {
+        if (typeof MediaMetadata !== 'undefined') ms.metadata = new MediaMetadata({ title: 'Writing your track…', artist: 'Language Teacher' })
+        ms.playbackState = 'playing'
+        try { ms.setActionHandler('pause', () => { try { a.play() } catch (e) {} }) } catch (e) {}      // a tap on the notification must not stop the writing
+      }
+    } catch (e) {}
+  } catch (e) { _kaMedia = null }
+}
+function _kaMediaStop() {
+  const a = _kaMedia; _kaMedia = null
+  try { if (a) { a.pause(); try { a.removeAttribute && a.removeAttribute('src') } catch (e) {} } } catch (e) {}
+  try { const ms = typeof navigator !== 'undefined' && navigator.mediaSession; if (ms) { ms.playbackState = 'none'; ms.metadata = null; try { ms.setActionHandler('pause', null) } catch (e) {} } } catch (e) {}
+}
 function keepAliveUnlock() {
   try {
     const AC = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext); if (!AC) return
@@ -11703,6 +11738,7 @@ function keepAliveUnlock() {
 }
 try { if (typeof document !== 'undefined' && document.addEventListener) { document.addEventListener('pointerdown', keepAliveUnlock, { passive: true }); document.addEventListener('keydown', keepAliveUnlock, { passive: true }) } } catch (e) {}
 function _kaStart() {
+  _kaMediaStart()
   try {
     keepAliveUnlock()
     if (_kaCtx && !_kaNode && _kaCtx.state === 'running') {
@@ -11717,6 +11753,7 @@ function _kaStart() {
   } catch (e) {}
 }
 function _kaStop() {
+  _kaMediaStop()
   try { if (_kaNode) { _kaNode.o.stop(); _kaNode.o.disconnect(); _kaNode.g.disconnect() } } catch (e) {}
   _kaNode = null
   try { if (_kaLockRelease) _kaLockRelease() } catch (e) {}
@@ -11732,7 +11769,7 @@ function keepAliveHold() {
     appSleep(20000).then(() => { if (_kaHolds === 0 && _kaStopAt === mark) _kaStop() })
   }
 }
-function keepAliveState() { return { holds: _kaHolds, audio: !!_kaNode, lock: !!_kaLockRelease } }
+function keepAliveState() { return { holds: _kaHolds, audio: !!_kaNode, lock: !!_kaLockRelease, media: !!_kaMedia } }
 
 // Japanese storage namespace — never collides with the Thai keys (tt-vocab, tt-tracks…)
 const JA = {

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v771"/>
+<meta name="app-version" content="v772"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v771';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v771').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v772';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v772').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -19501,14 +19501,20 @@ const ANTHROPIC_STAGE_EFFORT = Object.freeze({
   O_listening_meaning_plan: 'high', O_listening_semantic_audit: 'high',          // the Japanese / Mandarin listening path: its plan and its final audit
   // listening — writing, fixing, repair and the per-scene checks
   O_listening_story_write: 'medium', O_listening_story_edit: 'medium', O_listening_story_line_fix: 'medium', O_listening_story_repair: 'medium', O_listening_story_qc_repair: 'medium', O_listening_story_usage: 'medium', O_listening_story_groups: 'medium',
+  O_listening_story_facts: 'medium',        // 18 Nov (second round): a short cross-check of the facts of a finished story, listing facts and naming contradictions — not the plan or the coherence judge
   O_listening_plan_repair: 'medium', O_listening_scene: 'medium', O_listening_scene_check: 'medium', O_listening_repair: 'medium', O_listening_qc: 'medium', O_listening_word_check: 'medium', O_listening_module_scene: 'medium', O_word_usage: 'medium',
   // listening — translation stays low
   O_listening_story_english: 'low' })
 // 18 Nov (owner: "change the effort of daily, revision and topic to your suggestion across all languages"): the sentence-writing and judging stages of Daily, Revision and Topic tracks run at
 // MEDIUM (scene, generation and its retries, the group and naturalness judges, replace / improve, recovery, and the Japanese / Mandarin plan-generate-judge-repair path); the cue checks and the
 // word-by-word work (segmentation, romanisation, gloss) stay LOW. The labels are partly classified from the prompt, so the rule is by prefix after the exact table above.
+// 18 Nov (second round) F4 — while the Listening speed switch (LN_SPEED) is on, the editor's whole-story read runs at MEDIUM instead of HIGH: the contradictions of fact, the order of the beat and the
+// lines the naturalness judge scored low are now found before it reads (the fact check, the scene validators, the naturalness judge) and reach the editor as named faults, so the read no longer
+// has to discover them; the plan, the meaning plan, the semantic audit and the whole-conversation coherence judge keep HIGH (the table above is the switch-off value)
+const LN_LIGHT_EFFORT = Object.freeze({ O_listening_story_review: 'medium' })
 function anthropicStageEffort(stage) {
   const s = String(stage || '')
+  if (LN_SPEED.on && Object.prototype.hasOwnProperty.call(LN_LIGHT_EFFORT, s)) return LN_LIGHT_EFFORT[s]
   if (Object.prototype.hasOwnProperty.call(ANTHROPIC_STAGE_EFFORT, s)) return ANTHROPIC_STAGE_EFFORT[s]
   if (/^(E_cue|L_final_cue|CUE_CHECK|I_|J_|K_)/.test(s)) return 'low'
   if (/^(A0_|A_|B_|C_|F_|G_|H_recovery|V684_|NATURALNESS_CHECK)/.test(s)) return 'medium'
@@ -32065,7 +32071,7 @@ async function listeningQualityVerdicts(pairs, apiKey, model, log) {
       else out.set(p.thai, { state: QUALITY.UNVERIFIED, error: error || 'no verdict returned for this line' })
     })
   }
-  for (let i = 0; i < chunks.length; i += 3) await Promise.all(chunks.slice(i, i + 3).map(judgeChunk))
+  for (let i = 0; i < chunks.length; i += 3) await Promise.all(chunks.slice(i, i + 3).map(c => lnSlotRun(() => judgeChunk(c))))      // 18 Nov: while a story is composed, the chunks share the three request slots with every other check
   return out
 }
 // Scene coherence with an explicit state (the shared helper returns null on outage).
@@ -32075,7 +32081,7 @@ function _gateCodes(problems) {
   return (problems || []).map(p => (map[p.code] || 'QUALITY_REJECTED') + ': ' + p.why)
 }
 // Export block for the Listening coverage of a track.
-function listeningCoverageExportLines(lt) {
+function listeningCoverageExportLines(lt, mainTrack) {
   const c = lt && lt.coverage
   if (!c || !c.requiredTargetIds) return ['LISTENING COVERAGE', 'not recorded (Listening built before v640)']
   if (c.contract === 'ALL_SELECTED_TARGETS') {
@@ -32085,6 +32091,9 @@ function listeningCoverageExportLines(lt) {
       'Status: ' + (lt.readiness === 'READY' ? 'READY' : 'NOT_READY — Listening track needs repair') + ' · ' + (lt.listeningQuality || ''),
       'Turns: ' + lt.lines.length + ' in ' + (lt.sceneGroups || []).length + ' scene(s) · speakers A ' + ((lt.dialogueStats || {}).speakers || {}).A + ' / B ' + ((lt.dialogueStats || {}).speakers || {}).B]
     if (lt.gates) out.push('Gates: ' + Object.entries(lt.gates).map(([k, v]) => k + '=' + v).join(' · '))
+    // 18 Nov (second round) G — which scene and which line failed, one plain sentence each
+    if (LN_EXPLAIN.on && lt.readiness !== 'READY') { const why = mainTrack && Array.isArray(mainTrack.whyNotReady) && mainTrack.whyNotReady.length ? mainTrack.whyNotReady : listeningWhyNotReady(lt)
+      if (why.length) { out.push('WHY NOT READY (' + why.length + '):'); why.forEach(w => out.push('  - ' + w.text)) } }
     if (lt.episodes) out.push('FORMAT: separate short scenes (the situations did not read as one story, so each scene was judged on its own; the player shows each scene\'s heading)')
     // v700 — the salvage, stated plainly: what was cut and which words stay due for the next Revision (SRS untouched)
     if (lt.salvage) { out.push('SALVAGE: ' + lt.salvage.removedTurns + ' turn(s) cut' + (lt.salvage.droppedScenes.length ? ' · situation(s) dropped ' + lt.salvage.droppedScenes.join(', ') : '') + ' after ' + lt.salvage.from + ' · every remaining line passed every check')
@@ -36860,7 +36869,7 @@ const LISTENING_SCHEMAS = {
       romaji: { type: 'STRING', nullable: true }, pinyin: { type: 'STRING', nullable: true } } } } }, required: ['lines'] } } }, required: ['scenes'] },
 }
 function _lnSceneRows(scenes, la) {
-  return scenes.map((sc, si) => 'Scene ' + (si + 1) + (sc.title ? ' — ' + sc.title : '') + '\n' + sc.lines.map((l, li) =>
+  return scenes.map((sc, si) => 'Scene ' + (si + 1) + (sc.title ? ' — ' + sc.title : '') + (sc.note ? '\n  (planned opening: ' + String(sc.note).slice(0, 200) + ')' : '') + '\n' + sc.lines.map((l, li) =>
     '  ' + (li + 1) + '. ' + (l.speaker || '?') + ': ' + la.text(l.pair) + ' — ' + String(l.pair.english || '')).join('\n')).join('\n\n')
 }
 // §15 — WHOLE-LISTENING COHERENCE AUDIT (separate from per-line naturalness). Deterministic
@@ -36869,7 +36878,11 @@ async function listeningWholeCoherenceAudit(scenes, la, o, log) {
   const det = scenes.map(sc => sc.lines.length > 1 ? listeningCoherenceCheck(sc.lines.map((l, i) => ({ idx: i, pair: l.pair, speaker: l.speaker, ...(l.meaning ? { meaning: l.meaning } : {}) }))) : { score: 5, coherent: true, reason: 'single line' })
   let model = null, state = QUALITY.UNVERIFIED, reason = ''
   const multi = scenes.some(sc => sc.lines.length > 1)
+  // 18 Nov (second round) D — scenes judged before and not changed since (o.reuse: scene index → { pass, breakAfterLine, reason }) are not judged again; when nothing new is left to judge no request is sent
+  const reuse = o.reuse instanceof Map && o.reuse.size ? o.reuse : null
+  const toJudge = scenes.map((sc, si) => sc.lines.length > 1 && !(reuse && reuse.has(si)) ? si : -1).filter(si => si >= 0)
   if (!multi) state = QUALITY.VERIFIED
+  else if (reuse && !toJudge.length) { state = QUALITY.VERIFIED; model = { scenes: [], overall: o.reuseOverall != null ? o.reuseOverall : null, reason: o.reuseReason || '' } }
   else if (!o.apiKey) reason = 'no model credentials'
   else {
     const prompt = (o.storyScenes
@@ -36880,7 +36893,10 @@ async function listeningWholeCoherenceAudit(scenes, la, o, log) {
       ? 'Judge the listening track below: ONE outing of two close friends told in scenes, in natural ' + la.label + '. A is a man and B a woman, the same two friends in every scene; nobody else speaks. ' +
         'A new scene is the next stop of the same day (its title says where) — that needs no explanation. Things they talk about from another time (work, a wedding, childhood) are told in the past and are fine.\n' +
         LN_COHERENCE_CHECKLIST +
-        'Speakers: ' + la.speakerContract + '.\nA scene PASSES only if it is coherent in itself AND fits the story so far. If a scene fails, give breakAfterLine = the line number after which it breaks (or null).\n\n'
+        'Speakers: ' + la.speakerContract + '.\nA scene PASSES only if it is coherent in itself AND fits the story so far. If a scene fails, give breakAfterLine = the line number INSIDE the scene (numbered from 1 in each scene) after which it breaks (or null).\n' +
+        // 18 Nov (second round) D — fixed criteria, so the same scene is judged the same way each time
+        'Judge every scene against EXACTLY the checklist above and nothing else: a scene that meets it PASSES (never fail a scene for style, or for something the scene after it explains). Start the reason of a failed scene with the number of the checklist item it fails.\n' +
+        (reuse ? 'Scenes ' + [...reuse.keys()].map(i => i + 1).join(', ') + ' were already judged and are final: they are here only as context for the scenes after them. Give an entry for the OTHER scenes only, and "overall" for the whole conversation.\n' : '') + '\n'
       : o.oneConversation
       // v672 §2 — ONE conversation: the parts are internal generation chunks, NOT scenes; continuity across parts is judged too
       ? 'Judge the WHOLE listening track below as ONE continuous, natural ' + la.label + ' conversation between the SAME two people. It was written in internal parts (numbered as "scenes" below) — they are NOT separate scenes: every part must continue directly from the previous part.\n' +
@@ -36912,7 +36928,7 @@ async function listeningWholeCoherenceAudit(scenes, la, o, log) {
     }
   }
   const verdicts = scenes.map((sc, si) => {
-    const m = model ? model.scenes.find(x => Number(x.scene) === si + 1) : null
+    const m = (reuse && reuse.get(si)) || (model ? model.scenes.find(x => Number(x.scene) === si + 1) : null)
     // v654: a 3/5 lexical-overlap heuristic ("reply does not answer", "unrelated question") is advisory
     // when the whole-conversation judge explicitly PASSES the scene; 2/5 (contradiction, time jump) vetoes
     const detOk = det[si].score >= 4 || (det[si].score === 3 && !!m && m.pass !== false)
@@ -41034,7 +41050,7 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     // v692 — the standalone Listening Track is planned MEANING FIRST (the legacy template planner stays behind the switch)
     const _env = { lang, la, log, tel, targets, ctx, extra, sc0, lessonCtx, o, progress, naturalness, tRow, turnsMin, turnsMax }
     // v712 — Thai: a fresh story written around the frozen revision words (no stored conversation, no stitched bank exchanges)
-    if (lang === 'th' && o.standalone && LN_MODULE_EXAMPLES.on) { await thaiLoadRecentLines(log); await thaiModulesLoad(log); thaiModulesBeginRun(ctx.vocab, log) }
+    if (lang === 'th' && o.standalone && (LN_MODULE_EXAMPLES.on || LN_USAGE_EXAMPLES.on)) { await thaiLoadRecentLines(log); await thaiModulesLoad(log); thaiModulesBeginRun(ctx.vocab, log) }
     const _story = lang === 'th' && o.standalone && !o.legacyScenes && thaiListeningStoryOn() ? await _lnComposeThaiStoryBest(_env) : null
     const r = _story || (listeningMeaningFirstOn() && o.standalone && !o.legacyScenes ? await _lnComposeMeaningFirst(_env) : await _lnComposeByScenes(_env))
     // v669 §17: no scene validated → nothing enters the track; the reason names the uncommitted INVALID candidates
@@ -43128,7 +43144,7 @@ function lnStoryPrefix(la, ctx, targets, never) {
     (never.length ? 'NOT TAUGHT to this learner — never use: ' + never.join(' ') + '\n' : '') +
     'KNOWN WORDS (use only these, the lesson words, particles and numbers): ' + known.join(' ') + '\n'
 }
-function lnStoryTargetRows(targets) { return targets.map(t => 'T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + (t.sense ? ' (sense: ' + t.sense + ')' : '')).join('\n') }
+function lnStoryTargetRows(targets, note) { return targets.map(t => 'T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + (t.sense ? ' (sense: ' + t.sense + ')' : '') + (note ? note(t) : '')).join('\n') }
 function lnStoryScenes(la, plan, written, targets, ctx) {
   return plan.scenes.map((s, si) => ({ sceneId: 'LS' + (si + 1), setting: s.title, turns: (written[si] || []).map((x, k) => {
     // นะค่ะ is a misspelling of นะคะ (S31 blind reviews)
@@ -43156,7 +43172,7 @@ function lnStoryLineFaults(t) {
   if (/ลาก่อน/.test(x)) out.push('ลาก่อน is a final farewell — use แล้วเจอกัน / ไปก่อนนะ')
   return out
 }
-function lnStorySceneProblems(la, sc, si, nScenes, sceneTargets, ctx) {
+function lnStorySceneProblems(la, sc, si, nScenes, sceneTargets, ctx, steps, byId) {
   const out = []
   listeningConversationAudit([sc], sceneTargets, la, ctx).issues.filter(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN|EXACT_DUPLICATE|NEAR_DUPLICATE)$/.test(x.code))
     .forEach(x => out.push({ line: x.line, code: x.code, detail: String(x.detail || '').slice(0, 160) }))
@@ -43164,6 +43180,7 @@ function lnStorySceneProblems(la, sc, si, nScenes, sceneTargets, ctx) {
   sc.turns.forEach((tn, k) => {
     const t = la.text(tn.pair)
     lnStoryLineFaults(t).forEach(d => out.push({ line: k + 1, code: 'LINE_QUALITY', detail: d }))
+    if (LN_USAGE_EXAMPLES.on) lnCollocationFaults(t, sceneTargets, ctx.vocab).forEach(d => out.push({ line: k + 1, code: 'LINE_QUALITY', detail: d }))
     if (k >= 2 && sc.turns[k - 1].speaker === tn.speaker && sc.turns[k - 2].speaker === tn.speaker) out.push({ line: k + 1, code: 'TURN_TAKING', detail: 'three lines in a row by ' + tn.speaker })
     if (si > 0 && G.test(t)) out.push({ line: k + 1, code: 'CONTINUITY', detail: 'a greeting outside the first scene' })
     if (si < nScenes - 1 && B.test(t)) out.push({ line: k + 1, code: 'CONTINUITY', detail: 'a goodbye before the last scene' })
@@ -43171,6 +43188,8 @@ function lnStorySceneProblems(la, sc, si, nScenes, sceneTargets, ctx) {
   const heard = new Set(sc.turns.flatMap(tn => tn.intendedTargetIds || []))
   sceneTargets.filter(t => !heard.has(t.id)).forEach(t => out.push({ line: 0, code: 'LESSON_WORD_MISSING', detail: 'T' + t.id + ' ' + t.surface + ' (' + t.gloss + ') is not heard — use it naturally' }))
   if (sc.turns.length < LN_STORY_TURNS.sceneMin) out.push({ line: 0, code: 'SCENE_TOO_SHORT', detail: sc.turns.length + ' lines (write ' + LN_STORY_TURNS.sceneMin + '–' + LN_STORY_TURNS.sceneMax + ')' })
+  // 18 Nov (second round) A — the lesson words follow the scene's beat: set-up words are not heard after ending words
+  if (steps) lnStoryBeatProblems(sc, steps, byId || new Map()).forEach(x => out.push(x))
   return out
 }
 function lnStorySceneText(sc, la) { return sc.turns.map((tn, k) => (k + 1) + '. ' + tn.speaker + ' | ' + la.text(tn.pair) + ' | ' + (tn.pair.english || '')).join('\n') }
@@ -43762,7 +43781,7 @@ function lnStoryNormaliseGroups(raw, targets, opts) {
       const s = String(w == null ? '' : w).trim()
       if (s && s.length <= 24 && !/\s/.test(s) && !support.includes(s) && (!o.allowed || o.allowed(s))) support.push(s)
     })
-    groups.push({ place: String(r.place || r.title || '').replace(/\s+/g, ' ').trim().slice(0, 80), ids, mention, support: support.slice(0, LN_GROUPS.maxSupport) })
+    groups.push({ place: String(r.place || r.title || '').replace(/\s+/g, ' ').trim().slice(0, 80), ids, mention, support: support.slice(0, LN_GROUPS.maxSupport), flow: lnFlowTag(r.flow || r.stage) })
   })
   if (groups.length < LN_GROUPS.minScenes || groups.length > LN_GROUPS.maxScenes) return null
   const smallest = skip => groups.filter(g => g !== skip).sort((a, b) => a.ids.length - b.ids.length)[0]
@@ -43794,6 +43813,8 @@ function lnStoryNormaliseGroups(raw, targets, opts) {
   // 5) mention cap, and a frame for every mention
   let m = 0
   groups.forEach(g => g.ids.forEach(id => { if (!(id in g.mention)) return; if (++m > lnStoryMentionCap(byId.size)) delete g.mention[id]; else if (!g.mention[id]) g.mention[id] = LN_MENTION_DEFAULT_FRAME }))
+  // 6) the places in the order a day goes (arrive, wait, travel, eat, an activity, shop, leave), not the order the words came in; a reply without flow tags keeps the model's own order
+  if (LN_LINKED.on && o.flowOrder !== false) { const sorted = lnFlowSort(groups); groups.flowMoved = sorted.some((g, i) => g !== groups[i]); groups.splice(0, groups.length, ...sorted) }
   return groups
 }
 // the places and words as one short log line
@@ -43827,11 +43848,245 @@ function listeningTimingLine(rows) {
     ' · by stage: ' + (t.stages.slice(0, 12).map(s => s.stage + ' ×' + s.calls + ' ' + fmt(s.ms)).join(' · ') || 'none')
 }
 
+// ══ 18 Nov (second round) — STORY BEATS, LINKED SCENES, A FACT CHECK BEFORE THE EDITOR, STABLE JUDGING, REVIEWED USES, FEWER AND FASTER CALLS ═══════════════════
+// The owner's 18 Nov Thai Listening after the word groups: 7 scenes, 88 lines, 57 paid calls, content much better, still NOT_READY on one line ("ได้ครับ ข่าวบอกว่าเงินเติบโตครับ"
+// answering "shall we watch the news?") and on whole-conversation coherence. The scenes hopped beach → food → waves → a shop → the weather and the news with no word that
+// said so, and the judges' verdicts moved from scene to scene after small edits (scene 1 fails, then 5, then 4 and 5). Every change has its own switch (a setter below), so
+// the owner can compare them one at a time; lnSecondRoundSet(false) restores the whole earlier behaviour at once (except the three-request limit, which is a rule).
+//   LN_BEATS            A  each scene is ONE short story beat (setup, middle, ending) and every lesson word's line advances it; a word that cannot is a mention, with its frame
+//   LN_LINKED           B  the places are ordered by the flow of a day, a later scene opens with a spoken move from where the one before ended, facts are carried by label
+//   LN_FACT_CHECK       C  before the editor: the facts of every scene are listed and contradictions (a fare settled then asked again, a date given two ways) are named
+//   LN_STABLE_JUDGE     D  a scene is judged once; only a scene whose text (or the end of the scene before it) changed is judged again; a rewrite is kept or undone scene by scene
+//   LN_USAGE_EXAMPLES   E  the writer and the editor see a few reviewed lines for each lesson word (the lesson modules, the vetted bank) and a known-awkward collocation is refused
+//   LN_SPEED            F  independent checks run together (never more than three requests at once), one editor round unless the grade clearly rises, lighter judges
+//   LN_PARALLEL_SCENES  F5 scenes written at the same time (off by default)
+//   LN_EXPLAIN          G  which scene and which line failed, in plain words, on the screen and in the export; a NOT_READY track can be played with a clear label
+//   LN_SAVE_EARLY       H  the track is saved the moment it is finished
+const LN_BEATS = { on: true }
+const LN_LINKED = { on: true }
+const LN_FACT_CHECK = { on: true, model: true }
+const LN_STABLE_JUDGE = { on: true }
+const LN_USAGE_EXAMPLES = { on: true, n: 3 }
+const LN_SPEED = { on: true, gradeRise: 1, maxSlots: 3 }
+const LN_PARALLEL_SCENES = { on: false }
+const LN_EXPLAIN = { on: true }
+const LN_SAVE_EARLY = { on: true }
+function lnBeatsSetEnabled(on) { LN_BEATS.on = !!on }
+function lnLinkedSetEnabled(on) { LN_LINKED.on = !!on }
+function lnFactCheckSetEnabled(on) { LN_FACT_CHECK.on = !!on }
+function lnStableJudgeSetEnabled(on) { LN_STABLE_JUDGE.on = !!on }
+function lnUsageExamplesSetEnabled(on) { LN_USAGE_EXAMPLES.on = !!on }
+function lnSpeedSetEnabled(on) { LN_SPEED.on = !!on }
+function lnParallelScenesSetEnabled(on) { LN_PARALLEL_SCENES.on = !!on }
+function lnExplainSetEnabled(on) { LN_EXPLAIN.on = !!on }
+function lnSaveEarlySetEnabled(on) { LN_SAVE_EARLY.on = !!on }
+// every switch of this round at once (the parallel scenes stay as they are)
+function lnSecondRoundSet(on) { [lnBeatsSetEnabled, lnLinkedSetEnabled, lnFactCheckSetEnabled, lnStableJudgeSetEnabled, lnUsageExamplesSetEnabled, lnSpeedSetEnabled, lnExplainSetEnabled, lnSaveEarlySetEnabled].forEach(f => f(on)) }
+// the turn budget of 75 was set for five scenes; a story of more scenes (the owner: a higher line count is fine as long as the track is coherent) gets a budget that grows with them.
+// Never a reason to cut a scene or a lesson word: the budget is a soft target and the gate allows 20 more.
+function lnStoryTurnMax(nScenes) { return Math.max(LN_STORY_TURNS.max, (Number(nScenes) || 0) * LN_STORY_TURNS.sceneMax) }
+// at most N model requests at once while one Listening story is composed (the composer sets the limit and clears it again); 0 = no limit
+const LN_SLOTS = { limit: 0, active: 0, peak: 0, waiters: [] }
+function lnSlotRun(fn) {
+  if (!LN_SLOTS.limit) return Promise.resolve().then(fn)
+  return new Promise((resolve, reject) => {
+    const go = () => { LN_SLOTS.active++; LN_SLOTS.peak = Math.max(LN_SLOTS.peak, LN_SLOTS.active)
+      Promise.resolve().then(fn).then(resolve, reject).then(() => { LN_SLOTS.active--; const w = LN_SLOTS.waiters.shift(); if (w) w() }) }
+    if (LN_SLOTS.active < LN_SLOTS.limit) go(); else LN_SLOTS.waiters.push(go)
+  })
+}
+// ── B: the order of the places follows the flow of a day ──
+const LN_FLOW_ORDER = { arrive: 0, wait: 1, travel: 2, eat: 3, activity: 4, shop: 5, leave: 6 }
+const LN_FLOW_ALIAS = { start: 'arrive', meet: 'arrive', meeting: 'arrive', arrival: 'arrive', waiting: 'wait', ride: 'travel', trip: 'travel', transport: 'travel', journey: 'travel', drive: 'travel', lunch: 'eat', food: 'eat', meal: 'eat', dinner: 'eat', swim: 'activity', swimming: 'activity', walk: 'activity', play: 'activity', visit: 'activity', see: 'activity', sightseeing: 'activity', beach: 'activity', shopping: 'shop', market: 'shop', buy: 'shop', home: 'leave', goodbye: 'leave', end: 'leave', depart: 'leave', return: 'leave', leaving: 'leave' }
+function lnFlowTag(v) {
+  const t = String(v == null ? '' : v).toLowerCase().replace(/[^a-z]/g, '')
+  const k = LN_FLOW_ALIAS[t] || t
+  return Object.prototype.hasOwnProperty.call(LN_FLOW_ORDER, k) ? k : ''
+}
+// places sorted by their flow tag (stable); a place without a tag stays right behind the place that was before it. Fewer than two tagged places: the order is left as the model gave it.
+function lnFlowSort(groups) {
+  if (groups.filter(g => g.flow).length < 2) return groups
+  const heads = []
+  groups.forEach((g, i) => { if (g.flow || !heads.length) heads.push({ rank: g.flow ? LN_FLOW_ORDER[g.flow] : -1, i, list: [g] }); else heads[heads.length - 1].list.push(g) })
+  return heads.slice().sort((a, b) => a.rank - b.rank || a.i - b.i).flatMap(h => h.list)
+}
+// ── A: one beat per scene ──
+const LN_STEP_RANK = { setup: 0, middle: 1, ending: 2 }
+function lnStepOf(v) {
+  const s = String(v == null ? '' : v).toLowerCase().trim()
+  return !s ? '' : /^(set|start|open|begin|first|intro)/.test(s) ? 'setup' : /^(end|clos|finish|last|final|resolv|wrap)/.test(s) ? 'ending' : 'middle'
+}
+// the beat of a plan scene: its own three sentences, else the plan's own words for the scene (where they are → what happens → what is true after it)
+function lnBeatOf(s) {
+  const b = (s && s.beat) || {}, t = x => String(x || '').replace(/\s+/g, ' ').trim().slice(0, 220)
+  const out = { setup: t(b.setup) || t(s && s.present), middle: t(b.middle) || t(s && s.happens), ending: t(b.ending) || t(s && s.facts) }
+  return out.setup || out.middle || out.ending ? out : null
+}
+// the lesson words of a scene in beat order. rows: the planner's step per id (a missing step comes from the word's place in the scene: first third setup, last third ending)
+function lnBeatOrder(ids, given) {
+  const n = ids.length, steps = {}
+  ids.forEach((id, k) => { steps[id] = lnStepOf(given && given[id]) || (n < 3 ? 'middle' : k < n / 3 ? 'setup' : k >= (2 * n) / 3 ? 'ending' : 'middle') })
+  const order = ids.map((id, k) => ({ id, k })).sort((a, b) => LN_STEP_RANK[steps[a.id]] - LN_STEP_RANK[steps[b.id]] || a.k - b.k).map(x => x.id)
+  return { order, steps }
+}
+// deterministic: a lesson word planned for the END of the beat must not be heard only BEFORE one planned for its SET-UP — every use of the ending word comes before every use of the set-up word (a clear inversion;
+// a function word that also slips into an earlier line, or words of the same or adjacent parts, are left alone)
+function lnStoryBeatProblems(sc, steps, byId) {
+  if (!steps) return []
+  const first = new Map(), last = new Map()
+  ;(sc.turns || []).forEach((tn, k) => (tn.intendedTargetIds || []).forEach(id => { if (!first.has(id)) first.set(id, k); last.set(id, k) }))
+  const at = st => Object.keys(steps).filter(id => steps[id] === st && first.has(Number(id))).map(id => Number(id))
+  const out = []
+  for (const sid of at('setup')) for (const eid of at('ending')) if (last.get(eid) < first.get(sid) && out.length < 2) {
+    const nm = id => (byId.get(id) || {}).surface || id
+    out.push({ line: 0, code: 'BEAT_ORDER', detail: nm(eid) + ' (the ENDING of the scene\'s beat) is heard at line ' + (last.get(eid) + 1) + ', before ' + nm(sid) + ' (its SET-UP) at line ' + (first.get(sid) + 1) + ': follow the beat — set-up, then middle, then ending' })
+  }
+  return out
+}
+// ── C: facts of the story ──
+const LN_MONTHS_TH = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
+const LN_NUMW = 'ศูนย์|หนึ่ง|เอ็ด|สอง|ยี่|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|สิบ|ร้อย|พัน|หมื่น|แสน|ล้าน'
+// Thai number words or digits → a whole number, or null
+function lnThaiNumber(s) {
+  const t = String(s == null ? '' : s).replace(/[\s,]/g, '')
+  if (/^\d+$/.test(t)) return Number(t)
+  const U = { 'ศูนย์': 0, 'หนึ่ง': 1, 'เอ็ด': 1, 'สอง': 2, 'ยี่': 2, 'สาม': 3, 'สี่': 4, 'ห้า': 5, 'หก': 6, 'เจ็ด': 7, 'แปด': 8, 'เก้า': 9 }, M = { 'สิบ': 10, 'ร้อย': 100, 'พัน': 1000, 'หมื่น': 10000, 'แสน': 100000 }
+  const toks = t.match(new RegExp(LN_NUMW, 'g'))
+  if (!t || !toks || toks.join('') !== t) return null
+  let total = 0, cur = null
+  for (const w of toks) {
+    if (w in U) cur = U[w]
+    else if (w === 'ล้าน') { total = (total + (cur || 0)) * 1000000; cur = null }
+    else { total += (cur == null ? 1 : cur) * M[w]; cur = null }
+  }
+  return total + (cur || 0)
+}
+// the lines that state or ask a fact (a number, a price, a date, a time, what was ordered or paid): only these go to the fact check
+const LN_FACT_LINE_RX = new RegExp('\\d|' + LN_NUMW + '|บาท|โมง|นาฬิกา|ทุ่ม|วันที่|เดือน|สัปดาห์|ปี|' + LN_MONTHS_TH.join('|') + '|จันทร์|อังคาร|พุธ|พฤหัส|ศุกร์|เสาร์|อาทิตย์|สั่ง|จ่าย|ซื้อ|ค่า|ราคา|เท่าไ|กี่|จอง|เที่ยว|คัน|ที่นั่ง|ตั๋ว')
+// rows: [{ n (line number in the whole conversation), scene, speaker, thai }] → the contradictions a program can see without a model:
+// a date given with two different days, a price asked again after it was answered, a price answered two ways
+function lnFactContradictions(rows) {
+  const out = [], sq = x => String(x || '').replace(/\s+/g, ''), list = (rows || []).map(r => ({ ...r, t: sq(r.thai) }))
+  const monthRx = new RegExp('(?:วันที่)?(\\d{1,2}|(?:' + LN_NUMW + ')+)(' + LN_MONTHS_TH.join('|') + ')', 'g')
+  const byMonth = new Map()
+  list.forEach(r => { let m; monthRx.lastIndex = 0; while ((m = monthRx.exec(r.t))) { const d = lnThaiNumber(m[1]); if (d >= 1 && d <= 31) { const l = byMonth.get(m[2]) || []; l.push({ d, r }); byMonth.set(m[2], l) } } })
+  byMonth.forEach((l, mo) => { const days = [...new Set(l.map(x => x.d))]
+    if (days.length > 1) { const a = l[0], b = l.find(x => x.d !== a.d); out.push({ kind: 'DATE', lines: [a.r.n, b.r.n], problem: 'a date given two ways: ' + mo + ' ' + a.d + ' (L' + a.r.n + ') and ' + mo + ' ' + b.d + ' (L' + b.r.n + ')', fix: 'say one day only' }) } })
+  const amtRx = new RegExp('(\\d[\\d,]*|(?:' + LN_NUMW + ')+)\\s*บาท', 'g')
+  const amountIn = r => { amtRx.lastIndex = 0; const m = amtRx.exec(r.t); return m ? lnThaiNumber(m[1]) : null }
+  const stemOf = r => {
+    const i = r.t.search(/เท่าไหร่|เท่าไร|กี่บาท/); if (i < 0) return null
+    const s = r.t.slice(0, i).replace(/(ครับ|ค่ะ|คะ|นะ)/g, '').replace(/^(ผม|ฉัน|คุณ|ขอถาม|ถามหน่อย|ไม่ทราบว่า|ว่า)+/, '').replace(/(อันนี้|อันนั้น|ตัวนี้|ตัวนั้น|ทั้งหมด|นี้|นั้น|อีก|ก็|แล้ว|รวม)/g, '')
+    return s.length >= 4 ? s.slice(-30) : null
+  }
+  const answer = k => { for (let j = k; j <= k + 2 && j < list.length; j++) { const a = amountIn(list[j]); if (a != null) return a } return null }
+  const asks = list.map((r, k) => ({ r, k, stem: stemOf(r) })).filter(x => x.stem)
+  const seen = new Set()
+  for (let a = 0; a < asks.length; a++) for (let b = a + 1; b < asks.length; b++) {
+    const A = asks[a], B = asks[b]
+    if (!(A.stem.includes(B.stem) || B.stem.includes(A.stem)) || seen.has(B.k)) continue
+    const x = answer(A.k)
+    if (x == null) continue
+    const y = answer(B.k); seen.add(B.k)
+    out.push({ kind: 'PRICE', lines: [A.r.n, B.r.n], problem: y != null && y !== x ? 'the price of "' + A.stem + '" is answered two ways: ' + x + ' baht (L' + A.r.n + ') and ' + y + ' baht (L' + B.r.n + ')' : 'the price of "' + A.stem + '" was already asked and answered (' + x + ' baht, L' + A.r.n + ') and is asked again at L' + B.r.n, fix: 'do not ask it again — refer to the price already said' })
+  }
+  return out
+}
+// ── E: reviewed lines for a lesson word ──
+// up to n lines per word where the word is used (with the line before it as its cue): the vetted bank first, then the lesson modules; every exchange is pre-checked for THIS learner (closed
+// vocabulary and the writer's other rules) before a line of it is offered. targets: [{ id, surface, gloss }]. A line is shown for its sense and its neighbouring words, never as a script.
+function lnUsageExamples(targets, vocab, la, ctx, n) {
+  const out = new Map(), want = Math.max(1, n || 3)
+  ;(targets || []).forEach(t => {
+    const tg = { id: t.id, wordId: t.id, thai: t.surface, english: t.gloss }, lines = []
+    const take = (ex, from) => (ex || []).forEach(x => {
+      const k = x.findIndex(l => la.present(l.thai, t.surface, ctx)); if (k < 0 || lines.length >= want) return
+      const l = x[k]; if (lines.some(y => y.thai === l.thai)) return
+      // the very gate the story's own lines face: a line with a word this learner was not taught is never shown as a model
+      if (Array.isArray(ctx && ctx.exposed) && [x[k], k > 0 ? x[k - 1] : null].filter(Boolean).some(q => listeningUnexposedWords('th', { thai: q.thai, speaker: q.speaker || 'A' }, ctx.exposed || [], ctx.eligTargets || [], ctx.vocab).length)) return
+      lines.push({ thai: l.thai, english: l.english || '', cue: k > 0 ? { thai: x[k - 1].thai, english: x[k - 1].english || '' } : null, from })
+    })
+    try {
+      const bank = THAI_EXCHANGE_BANK[t.surface]
+      if (Array.isArray(bank)) bank.forEach(v => { if (lines.length >= want || !Array.isArray(v) || v.length !== 3) return
+        const ls = v.map(l => ({ speaker: l.speaker, thai: l.thai, english: l.english, prompt: l.prompt || '.' }))
+        if (!thaiModuleLinesProblems(ls, tg, vocab).length) take([ls], 'bank') })
+      if (lines.length < want) take(thaiModuleExamples(tg, vocab, want - lines.length), 'module')
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
+    out.set(t.id, lines)
+  })
+  return out
+}
+function lnUsageExamplesBlock(targets, map) {
+  const rows = (targets || []).map(t => { const ex = (map && map.get(t.id)) || []
+    return ex.length ? t.surface + ' (' + t.gloss + '): ' + ex.map(e => (e.cue ? '[' + e.cue.thai + '] → ' : '') + e.thai + ' — ' + e.english).join('  |  ') : null }).filter(Boolean)
+  return rows.length ? '\nREVIEWED USES of these words (native-checked lines from other situations): they show the SENSE of a word and the words that go with it. Copy neither the sentence nor the situation; a use that does not fit what the word means here is a fault:\n' + rows.join('\n') + '\n' : ''
+}
+// a known-awkward collocation: a word that means "grow, develop, mature" is said of living things, businesses, cities, economies — never of money, a price or a fare ("ข่าวบอกว่าเงินเติบโต",
+// the owner's 18 Nov Listening). The subject class comes from the app's own dictionary (the English gloss of the word right before it), not from a list of sentences.
+function lnCollocationFaults(text, targets, vocab) {
+  const t = String(text || '').replace(/\s+/g, ''), out = []
+  ;(targets || []).filter(x => x && x.surface && /^(to )?(grow|develop|mature|flourish)\b/i.test(String(x.gloss || '').trim())).forEach(x => {
+    let i = t.indexOf(x.surface)
+    while (i > 0) {
+      const before = t.slice(Math.max(0, i - 8), i)
+      const hit = lnMoneyWords(vocab).find(w => before.endsWith(w))
+      if (hit) { out.push(hit + ' + ' + x.surface + ': "' + x.gloss + '" is said of living things, businesses, cities or an economy, not of money, a price or a fare — rewrite the line'); break }
+      i = t.indexOf(x.surface, i + 1)
+    }
+  })
+  return out
+}
+let _LN_MONEY_CACHE = null
+function lnMoneyWords(vocab) {
+  if (_LN_MONEY_CACHE && _LN_MONEY_CACHE.src === vocab) return _LN_MONEY_CACHE.words
+  const words = [...new Set((vocab || []).filter(w => w && (w.thai || w.t) && LN_SEM.MONEY.test(String(w.english || '').toLowerCase()) && !/^to\s/.test(String(w.english || '').toLowerCase())).map(w => String(w.thai || w.t).replace(/\s+/g, '')).filter(s => s.length >= 2 && s.length <= 8))]
+    .sort((a, b) => b.length - a.length)
+  _LN_MONEY_CACHE = { src: vocab, words }
+  return words
+}
+// ── G: why a Listening track is NOT_READY, in plain words ──
+// One short sentence for each thing that failed: which scene, which line (its Thai and English), what is wrong. lt: the finished Listening object (lines, issues, gates, coherenceAudit, coverage).
+function listeningWhyNotReady(lt) {
+  const lines = (lt && lt.lines) || [], out = [], q = s => '"' + String(s || '').replace(/\s+/g, ' ').trim().slice(0, 60) + '"'
+  const sceneOf = n => (lines[n - 1] && (lines[n - 1].scene || null)) || null
+  const at = n => { const l = lines[n - 1]; return l ? 'Scene ' + (l.scene || '?') + ', line ' + n + ' (' + q(l.thai) + (l.english ? ' — ' + q(l.english) : '') + ')' : 'Line ' + n }
+  const clean = d => String(d || '').replace(/^[A-Z_]+: /, '').replace(/^naturalness \d(\.\d)?\/5 — /, '').replace(/\s+/g, ' ').trim().slice(0, 110)
+  const seen = new Set(), add = (scene, line, text) => { const k = scene + '|' + line + '|' + text.slice(0, 40); if (!seen.has(k)) { seen.add(k); out.push({ scene: scene || null, line: line || null, text }) } }
+  ;((lt && lt.issues) || []).forEach(x => {
+    const n = Number(x.line) || 0, d = clean(x.detail), code = String(x.code || '')
+    if (code === 'TARGET_MISSING') { add(null, null, 'The lesson word ' + (x.surface || d || '?') + ' is never heard in the conversation.'); return }
+    if (!n) { add(null, null, code + (d ? ': ' + d : '') + '.'); return }
+    const what = code === 'UNNATURAL' ? 'does not sound like something a Thai friend would say' + (d ? ' (' + d + ')' : '') : code === 'NATURALNESS_UNVERIFIED' ? 'could not be checked for natural wording'
+      : /CLOSED_VOCAB|TOKENIZATION_ERROR/.test(code) ? 'uses a word the learner has not been taught' + (d ? ' (' + d + ')' : '') : code === 'TOO_COMPLEX' ? 'is longer than the learner\'s level allows'
+      : /SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS/.test(code) ? 'has a speaker or wording fault' + (d ? ' (' + d + ')' : '') : code === 'MAX_TARGETS_PER_TURN' ? 'carries more lesson words than one line may'
+      : /DUPLICATE/.test(code) ? 'repeats another line' : code === 'CONTINUITY' ? 'has a greeting or a goodbye in the wrong place' : code === 'PRONUNCIATION' ? 'has a pronunciation that does not match the Thai' + (d ? ' (' + d + ')' : '') : code.toLowerCase().replace(/_/g, ' ') + (d ? ' (' + d + ')' : '')
+    add(sceneOf(n), n, at(n) + ' ' + what + '.')
+  })
+  const ca = lt && lt.coherenceAudit
+  ;((ca && ca.verdicts) || []).filter(v => v && !v.pass).forEach(v => {
+    const first = lines.findIndex(l => Number(l.scene) === Number(v.scene)), count = lines.filter(l => Number(l.scene) === Number(v.scene)).length
+    const rel = Number(v.breakAfterLine), where = first >= 0 && rel > 0 && rel <= count ? ' (it breaks after line ' + (first + rel) + ')' : ''
+    add(v.scene, first >= 0 && rel > 0 && rel <= count ? first + rel : null, 'Scene ' + v.scene + (lines[first] && lines[first].sceneTitle ? ' ("' + String(lines[first].sceneTitle).slice(0, 40) + '")' : '') + ' does not hold together as one conversation' + where + ': ' + (clean(v.reason) || 'a reply does not follow') + '.')
+  })
+  const g = (lt && lt.gates) || {}, cov = lt && lt.coverage
+  if (cov && (cov.uncoveredTargetIds || []).length && !out.some(o => /^The lesson word /.test(o.text))) add(null, null, (cov.uncoveredTargetIds || []).length + ' lesson word(s) are not heard: ' + (cov.uncoveredTargetIds || []).map(id => { const r = (cov.rows || []).find(x => x.targetId === id); return r ? r.target : id }).slice(0, 8).join(', ') + '.')
+  if (g.WHOLE_CONVERSATION_COHERENCE === 'UNVERIFIED' && !out.some(o => /hold together/.test(o.text))) add(null, null, 'The whole-conversation check could not be completed, so the story could not be confirmed.')
+  if (g.WHOLE_CONVERSATION_COHERENCE === 'FAIL' && !out.some(o => /hold together/.test(o.text))) add(null, null, 'The whole-conversation judge did not accept the story as one conversation' + (ca && ca.reason ? ': ' + clean(ca.reason) : '') + '.')
+  if (g.TURN_BUDGET === false) add(null, null, 'The conversation is outside the length the track allows (' + (g.TURN_COUNT || '?') + ' lines).')
+  return out
+}
 // v715 — each scene can be checked (grammar, naturalness, coherence, lesson words) as soon as it is written (owner's suggestion).
 // OFF: two paid runs each, blind-reviewed — with the check 5.05 / 4.85, without it 5.5 / 5.2 (its line fixes did not repair story
 // faults, and it replaced the three-round whole-story edit). Kept switchable for the tests and for later trials.
 const LN_SCENE_CHECK = { on: false }
+// the story is composed with at most LN_SPEED.maxSlots (three) model requests at once, whatever runs together (the owner's rule); the limit is set for this composition only
 async function _lnComposeThaiStory(env, avoid) {
+  const keep = LN_SLOTS.limit
+  LN_SLOTS.limit = LN_SPEED.maxSlots > 0 ? LN_SPEED.maxSlots : 3; LN_SLOTS.active = 0; LN_SLOTS.waiters = []
+  try { return await _lnComposeThaiStoryCore(env, avoid) } finally { LN_SLOTS.limit = keep; LN_SLOTS.waiters = [] }
+}
+async function _lnComposeThaiStoryCore(env, avoid) {
   const { la, log, targets, ctx, o, tel } = env
   if (la.lang !== 'th') return null
   const byId = new Map(targets.map(t => [t.id, t]))
@@ -43855,7 +44110,7 @@ async function _lnComposeThaiStory(env, avoid) {
       tel[kind] = (tel[kind] || 0) + 1
       try {
         // the model writes ~210 tokens / s and thinking counts toward the cap: caps of ~5,700 tokens finish inside the ~30 s cut-off
-        const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: (bare ? '' : prefix + PROMPT_CACHE_MARK) + prompt + '\nKeep your reasoning brief and answer directly.' }], maxTokens, temperature: kind === 'LISTENING_GENERATION_CALLS' ? 0.8 : 0.4, json: true, stage })
+        const raw = await lnSlotRun(() => geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: (bare ? '' : prefix + PROMPT_CACHE_MARK) + prompt + '\nKeep your reasoning brief and answer directly.' }], maxTokens, temperature: kind === 'LISTENING_GENERATION_CALLS' ? 0.8 : 0.4, json: true, stage }))
         return lnStoryJson(raw)
       } catch (e) {
         const transient = !(e && (e.fatalProvider || e.cancelled)) && /\b(5\d\d|429)\b|overloaded|timeout|ECONNRESET|MAX_TOKENS|cut off|no JSON|Unexpected end/i.test(String((e && (e.status || '')) + ' ' + (e && e.message || e)))
@@ -43876,6 +44131,15 @@ async function _lnComposeThaiStory(env, avoid) {
     const rows = targets.map(t => ({ t, u: thaiUsageOf(t.surface) })).filter(x => x.u)
     env._lnUsageNotes = rows.map(x => x.t.surface + ' — ' + x.u.use + (x.u.situations && x.u.situations.length ? ' (natural situations: ' + x.u.situations.join(' / ') + ')' : '')).join('\n')
     log && log('  📖 LISTENING_STORY usage notes for ' + rows.length + ' of ' + targets.length + ' lesson words')
+  }
+  // 18 Nov (second round) E — a few reviewed lines for each lesson word (the vetted bank, the lesson modules), pre-checked for this learner, so a use such as "money grows" is not invented
+  if (LN_USAGE_EXAMPLES.on && env._lnExamples == null && !LN_MODULE_STORY.on) {
+    env._lnExamples = new Map()
+    try {
+      env._lnExamples = lnUsageExamples(planTargets, ctx.vocab, la, ctx, LN_USAGE_EXAMPLES.n)
+      const withEx = [...env._lnExamples.values()].filter(x => x.length)
+      log && log('  📚 LISTENING_STORY reviewed uses for ' + withEx.length + ' of ' + planTargets.length + ' lesson words (' + withEx.reduce((n, x) => n + x.length, 0) + ' line(s) from the vetted bank and the lesson modules); the others are written from their usage notes only')
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY reviewed uses unavailable: ' + String(e && e.message || e).slice(0, 100)) }
   }
   // the notes go to the English script and the review (short calls); added to the shared prefix they made every call longer and the
   // plan / fix replies ran out of tokens (paid run S21)
@@ -43899,10 +44163,12 @@ async function _lnComposeThaiStory(env, avoid) {
         '- A word that belongs to NO place of this day (a beauty queen, a company\'s losses, a speech about trust) is never forced into the live action. Mark it "mention": the friends only MENTION it inside something read, told or quoted — read off a sign, ticket, menu, poster, message or the news, told as something that happened elsewhere or earlier, or quoted from another person. Give its "frame" in one short English phrase (who reads or tells it, and from what). At most ' + gcap + ' words may be "mention"; use "say" whenever the word fits the place.\n' +
         '- Small function words (it, myself, sometimes, most, both, all) fit almost any place: they fill places that need a word and are never "mention".\n' +
         '- "support": for each place up to ' + LN_GROUPS.maxSupport + ' everyday words the friends would use THERE for what is around them (what they see, eat, carry, ride), taken ONLY from the KNOWN WORDS list above and spelled exactly as in it. Never a word that is not in the list.\n' +
-        'Every id exactly once.\nReply ONLY with JSON: {"scenes":[{"place":"…","words":[{"id":123,"use":"say"},{"id":456,"use":"mention","frame":"…"}],"support":["…"]}]}', 2400, 'LISTENING_GENERATION_CALLS')
+        (LN_LINKED.on ? '- "flow": the stage of the day each place is — one of arrive (meeting, the first place), wait, travel (on the way), eat, activity (swimming, a walk, a visit), shop, leave (heading home). A day goes arrive → wait → travel → eat → activity → shop → leave; two places may share a stage. The friends must be able to get from each place to the next one (never a beach, then a market in town, then the weather news): prefer FEWER places with more words each over a hop that has no way of happening.\n' : '') +
+        'Every id exactly once.\nReply ONLY with JSON: {"scenes":[{"place":"…",' + (LN_LINKED.on ? '"flow":"eat",' : '') + '"words":[{"id":123,"use":"say"},{"id":456,"use":"mention","frame":"…"}],"support":["…"]}]}', 2400, 'LISTENING_GENERATION_CALLS')
       groups = lnStoryNormaliseGroups(raw, planTargets, { allowed })
       if (!groups) log && log('  ℹ LISTENING_STORY word groups unusable (' + (raw && Array.isArray(raw.scenes) ? raw.scenes.length + ' scene(s)' : 'no scenes') + ') — the planner groups the words itself')
-      else log && log('  🗂 LISTENING_STORY word groups: ' + lnStoryGroupLine(groups, byId) + (groups.some(g => Object.keys(g.mention).length) ? ' · * = mentioned (read, told or quoted), not part of the live action' : ''))
+      else log && log('  🗂 LISTENING_STORY word groups: ' + lnStoryGroupLine(groups, byId) + (groups.some(g => Object.keys(g.mention).length) ? ' · * = mentioned (read, told or quoted), not part of the live action' : '') +
+        (groups.flowMoved ? ' · the places were put in the order of a day (' + groups.map(g => g.flow || '·').join(' → ') + '), not the order the words came in' : ''))
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; groups = null; log && log('  ⚠ LISTENING_STORY word grouping unusable: ' + String(e && e.message || e).slice(0, 100) + ' — the planner groups the words itself') }
   }
   const fixedScenes = groups ? 'THE SCENES ARE ALREADY CHOSEN — the lesson words were grouped by what belongs together, so every word fits the place it is in. Keep these scenes, in this order, with exactly these words:\n' +
@@ -43943,19 +44209,27 @@ async function _lnComposeThaiStory(env, avoid) {
         'EPISODES: inside a scene, each lesson word is its own small EPISODE of 3–5 lines — the SET-UP (something asked, offered, seen or done by the other friend), then the lesson word, then a short reaction. ' +
         'Two words share an episode only when they really belong together. An episode NEVER changes the situation for later scenes: nobody loses, forgets, breaks or buys something that matters later, and no new plan is made — the outing itself is the only thread.\n' +
         'Give each scene: a title (the place), "present" (where the two are, e.g. "together on the bus"), what happens (1–2 sentences), ' +
-        '"facts" (what is true after this scene), and "uses": one entry per lesson word — the id, the SET-UP (what the other friend says or does just before, at most 10 English words) and the MOMENT (who says the word and why, at most 10 words) ' +
+        '"facts" (what is true after this scene' + (LN_LINKED.on ? ': who is there, where they are going next, the time or date said, what was ordered or paid — short, and only what the friends will actually say' : '') + '), and "uses": one entry per lesson word — the id, the SET-UP (what the other friend says or does just before, at most 10 English words) and the MOMENT (who says the word and why, at most 10 words) ' +
         '(e.g. {"id":842,"setup":"B holds up two heavy bags at the till","moment":"A offers to carry one"}). ' +
+        // 18 Nov (second round) A — each scene is ONE short story beat and every lesson word's line advances it
+        (LN_BEATS.on ? 'ONE BEAT PER SCENE: write "beat":{"setup":"…","middle":"…","ending":"…"} — one short sentence each (what the friends are doing as the scene starts · what happens or is decided in the middle · how the scene ends, which leads to the next place). ' +
+          'EVERY lesson word of the scene advances that beat: give it a "step" (setup, middle or ending) and write its set-up and moment so that its line follows from the line before it and moves the beat on. A line that adds an unrelated fact or a new topic (a news item, a price of something else) does not belong in the beat. ' +
+          'A word that cannot advance the beat — it only fits as something READ, TOLD or QUOTED — is "use":"mention" with a "frame" (who reads or tells it, from what), never forced into what the friends are doing. ' : '') +
+        // B — a hop between places is a spoken move, never a jump
+        (LN_LINKED.on ? 'LINKED SCENES: every scene after the first has a "transition": ONE sentence saying how the friends get from where the scene before it ended to this place and what one of them SAYS aloud to move (e.g. "the bus reaches the beach; A says they have arrived and B points to the sand"). Scene k starts from the "ending" of scene k-1. No hop without a transition. ' : '') +
         (groups ? 'Keep the whole plan short (no explanations). One "uses" entry for each lesson word of the scene, with the ids given above; never move a word to another scene and never leave one out.\n'
           : 'Keep the whole plan short (no explanations). Every id in exactly one scene, exactly 5 per scene (the last scene may have fewer). Every lesson word must be placed: none may be left out.\n') +
         (attempt > 1 ? 'YOUR PREVIOUS PLAN WAS INVALID: every id must appear exactly once.\n' : '') +
-        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","uses":[{"id":123,"setup":"…","moment":"…"}]}]}', 2400, 'LISTENING_GENERATION_CALLS')
+        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…",' + (LN_BEATS.on ? '"beat":{"setup":"…","middle":"…","ending":"…"},' : '') + (LN_LINKED.on ? '"transition":"…",' : '') +
+        '"uses":[{"id":123,' + (LN_BEATS.on ? '"step":"middle",' : '') + '"setup":"…","moment":"…"}]}]}', 2400, 'LISTENING_GENERATION_CALLS')
       // with word groups the plan must keep the groups' scenes: as many scenes as groups, scene k = group k (the planner only fleshes them out)
       const rowsIn = (p && Array.isArray(p.scenes) ? p.scenes : []).filter(x => x && typeof x === 'object')
       const sc = (groups ? rowsIn : rowsIn.filter(x => x.title)).slice(0, groups ? groups.length : 6)
       if (groups) sc.forEach((x, i) => { if (!x.title) x.title = groups[i].place || 'Scene ' + (i + 1) })
       if (sc.length < (groups ? groups.length : 2)) throw new Error(groups ? 'fewer scenes than the ' + groups.length + ' word groups' : 'fewer than 2 scenes')
       const used = new Set()
-      sc.forEach(x => { x.moments = {}; x.setups = {}; (Array.isArray(x.uses) ? x.uses : []).forEach(u => { const id = Number(String(u && u.id).replace(/\D/g, '')); if (byId.has(id)) { x.moments[id] = String(u.moment || '').slice(0, 200); if (u.setup) x.setups[id] = String(u.setup).slice(0, 200) } })
+      sc.forEach(x => { x.moments = {}; x.setups = {}; x.stepsIn = {}; x.mentionIn = {}; (Array.isArray(x.uses) ? x.uses : []).forEach(u => { const id = Number(String(u && u.id).replace(/\D/g, '')); if (byId.has(id)) { x.moments[id] = String(u.moment || '').slice(0, 200); if (u.setup) x.setups[id] = String(u.setup).slice(0, 200)
+          if (u.step) x.stepsIn[id] = u.step; if (/mention/i.test(String(u.use || '')) && u.frame) x.mentionIn[id] = String(u.frame).replace(/\s+/g, ' ').trim().slice(0, 140) } })
         x.targets = (Array.isArray(x.uses) && x.uses.length ? x.uses.map(u => u && u.id) : (x.targets || [])).map(v => Number(String(v).replace(/\D/g, ''))).filter(id => byId.has(id) && !used.has(id) && used.add(id)) })
       // bounded deferral: at most LN_STORY_MAX_DEFER words the planner says have no natural place stay out of the story (they stay due in
       // SRS and are reported as deferred); any other word the plan left out joins the scene with the fewest lesson words
@@ -43974,16 +44248,43 @@ async function _lnComposeThaiStory(env, avoid) {
           g.ids.forEach(id => { if (mo[id]) x.moments[id] = mo[id]; if (se[id]) x.setups[id] = se[id]; if (id in g.mention) { x.mentions[id] = g.mention[id]; if (!x.moments[id]) x.moments[id] = g.mention[id] } })
         })
       }
-      plan = { title: String(p.title || 'Listening'), story: String(p.story || ''), scenes: sc.map(x => ({ title: String(x.title).slice(0, 80), present: String(x.present || ''), happens: String(x.happens || ''), facts: String(x.facts || ''), targets: x.targets, moments: x.moments || {}, setups: x.setups || {}, mentions: x.mentions || {}, support: x.support || [] })), deferred: [...deferIds], grouped: !!groups }
+      // 18 Nov (second round) — A: each scene is one beat and its lesson words are put in the order of the beat (set-up, middle, ending); a word the planner says only fits as something read, told or
+      // quoted becomes a mention (within the same cap as the grouping's). B: a scene after the first has a spoken move from the end of the scene before; a missing one is written from the scenes' own words
+      {
+        const stepAll = {}, menAll = {}
+        sc.forEach(x => { Object.assign(stepAll, x.stepsIn || {}); Object.assign(menAll, x.mentionIn || {}) })
+        sc.forEach(x => { x.mentions = x.mentions || {} })
+        const mentionTotal = () => sc.reduce((n, x) => n + Object.keys(x.mentions).length, 0)
+        sc.forEach(x => {
+          if (LN_BEATS.on) {
+            x.targets.forEach(id => { if (!(id in x.mentions) && menAll[id] && mentionTotal() < lnStoryMentionCap(planTargets.length)) { x.mentions[id] = menAll[id]; if (!x.moments[id]) x.moments[id] = menAll[id] } })
+            const bo = lnBeatOrder(x.targets, stepAll); x.targets = bo.order; x.steps = bo.steps
+            const b = x.beat && typeof x.beat === 'object' ? x.beat : (typeof x.beat === 'string' && x.beat.trim() ? { middle: x.beat } : null)
+            x.beat = b ? lnBeatOf({ beat: b }) : null
+          }
+          x.transition = String(x.transition || '').replace(/\s+/g, ' ').trim().slice(0, 240)
+        })
+        if (LN_LINKED.on) {
+          const noMove = []
+          sc.forEach((x, i) => { if (i && x.transition.split(' ').filter(Boolean).length < 3) { noMove.push(i + 1)
+            const pb = lnBeatOf(sc[i - 1]), ends = pb && pb.ending ? ' (' + pb.ending.replace(/[.\s]+$/, '') + ')' : ''
+            x.transition = 'the friends finish at "' + String(sc[i - 1].title).slice(0, 60) + '"' + ends + ' and go on to "' + String(x.title).slice(0, 60) + '"; one of them says so aloud' } })
+          if (noMove.length) log && log('  ℹ LISTENING_STORY the plan gave no move into scene' + (noMove.length > 1 ? 's ' : ' ') + noMove.join(', ') + ' — one was written from the scenes\' own words (they still open with a spoken move)')
+        }
+      }
+      plan = { title: String(p.title || 'Listening'), story: String(p.story || ''), scenes: sc.map(x => ({ title: String(x.title).slice(0, 80), present: String(x.present || ''), happens: String(x.happens || ''), facts: String(x.facts || ''), targets: x.targets, moments: x.moments || {}, setups: x.setups || {}, mentions: x.mentions || {}, support: x.support || [],
+        beat: LN_BEATS.on ? x.beat || null : null, steps: LN_BEATS.on ? x.steps || null : null, transition: LN_LINKED.on ? x.transition || '' : '' })), deferred: [...deferIds], grouped: !!groups }
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY plan attempt ' + attempt + ' unusable: ' + String(e && e.message || e).slice(0, 100)) }
   }
   if (!plan) return { ok: false, scenes: [], reason: 'LISTENING_STORY_PLAN_FAILED: the story plan could not be made', composer: 'story', uncommitted: [] }
   log && log('🎧 LISTENING_STORY plan "' + plan.title + '" — ' + plan.story + ' · ' + plan.scenes.map((s, i) => 'S' + (i + 1) + ' ' + s.title + ' [' + s.targets.map(id => byId.get(id).surface).join(', ') + ']').join(' · '))
+  if (LN_BEATS.on || LN_LINKED.on) log && log('  🎞 LISTENING_STORY beats and moves: ' + plan.scenes.map((s, i) => 'S' + (i + 1) + (s.beat ? ' beat ' + [s.beat.setup, s.beat.middle, s.beat.ending].filter(Boolean).join(' → ') : '') + (i && s.transition ? ' · move: ' + s.transition : '')).join(' ‖ ').slice(0, 1200))
   // why a candidate line fails the line gates ('' = it passes)
   const lineGateWhy = (si, cand) => {
     const one = lnStoryScenes(la, { scenes: [plan.scenes[si]] }, [[cand]], targets, ctx)[0]
     const iss = listeningConversationAudit([one], targets, la, ctx).issues.filter(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN)$/.test(x.code))
     one.turns.forEach(tn => lnStoryLineFaults(la.text(tn.pair)).forEach(d => iss.push({ code: 'LINE_QUALITY', detail: d })))
+    if (LN_USAGE_EXAMPLES.on) one.turns.forEach(tn => lnCollocationFaults(la.text(tn.pair), targets, ctx.vocab).forEach(d => iss.push({ code: 'LINE_QUALITY', detail: d })))
     return { why: iss.map(x => x.code + (x.detail ? ' (' + String(x.detail).replace(/^[A-Z_]+: /, '').slice(0, 60) + ')' : '')).join('; '), ids: one.turns[0].intendedTargetIds || [] }
   }
   // ── WRITE each scene in order, then CHECK and rewrite it (≤ 2 rounds) ──
@@ -43992,6 +44293,10 @@ async function _lnComposeThaiStory(env, avoid) {
   const soFar = upto => plan.scenes.slice(0, upto).map((s, i) => '— ' + s.title + '\n' + (written[i] || []).map(x => x.speaker + ': ' + x.thai + ' (' + x.english + ')').join('\n')).join('\n')
   const remainingTurns = si => Math.max(LN_STORY_TURNS.sceneMin, Math.min(LN_STORY_TURNS.sceneMax, Math.round((LN_STORY_TURNS.min + 8 - written.reduce((n, w) => n + (w || []).length, 0)) / (nS - si))))
   const sceneOf = si => lnStoryScenes(la, { scenes: [plan.scenes[si]] }, [written[si]], targets, ctx)[0]
+  // the part of its scene's beat a lesson word belongs to (set-up, middle, ending), shown next to the word wherever the words of a scene are listed
+  const stepNoteOf = (si, t) => LN_BEATS.on && plan.scenes[si].steps && plan.scenes[si].steps[t.id] ? ' — beat step: ' + plan.scenes[si].steps[t.id] + ((plan.scenes[si].mentions || {})[t.id] ? ' (MENTION)' : '') : ''
+  const rowsFor = (si, list) => lnStoryTargetRows(list, t => stepNoteOf(si, t))
+  const probsOf = (sc, si, st) => lnStorySceneProblems(la, sc, si, nS, st, ctx, LN_BEATS.on ? plan.scenes[si].steps : null, byId)
   const take = r => (r && Array.isArray(r.turns) ? r.turns : []).filter(x => x && x.thai).map(x => ({ speaker: x.speaker === 'B' ? 'B' : 'A', thai: String(x.thai).trim(), english: String(x.english || '').trim(), ...(Number(x.ep) > 0 ? { ep: Number(x.ep) } : {}) }))
   // each call is kept short (the provider path cuts a request off at about 30 s: one call for the whole conversation, or a long edit,
   // never finished — paid runs S4–S6): scenes are written one by one, each with the whole plan and every earlier scene as context
@@ -44000,26 +44305,48 @@ async function _lnComposeThaiStory(env, avoid) {
   // scenes and every edit get them as a short list they must not contradict (S39 / S40: a wallet forgotten, then a purchase; a lunch
   // at home moved to a restaurant; the same question asked twice) — no extra call
   const factsLedger = []
-  const factsLine = () => { const f = factsLedger.flat(); return f.length ? '\nFACTS ESTABLISHED SO FAR (keep every one true; never contradict or repeat them):\n' + f.map(x => '- ' + x).join('\n') + '\n' : '' }
+  // upto: with scenes written at the same time, the facts the PLAN says are true after each scene before this one
+  const factsLine = upto => { const f = upto != null ? plan.scenes.slice(0, upto).map(x => String(x.facts || '').trim()).filter(Boolean) : factsLedger.flat(); return f.length ? '\nFACTS ESTABLISHED SO FAR' + (upto != null ? ' (as planned)' : '') + ' (keep every one true; never contradict or repeat them):\n' + f.map(x => '- ' + x).join('\n') + '\n' : '' }
+  const planSoFar = upto => plan.scenes.slice(0, upto).map(x => '— ' + x.title + ': ' + [x.happens, (lnBeatOf(x) || {}).ending ? '(it ends: ' + lnBeatOf(x).ending + ')' : ''].filter(Boolean).join(' ')).join('\n')
   // 18 Nov — what the word groups give the writer of ONE scene: the known words for this place (checked against the closed-vocabulary gate when the groups were made) and
   // the words that are only MENTIONED here (read, told or quoted), each with its frame. Placed before the TASK line, so the repair and rewrite prompts built from the brief carry them too.
   const mentionsOf = si => { const m = (plan.scenes[si] || {}).mentions || {}; return Object.keys(m).map(id => ({ id: Number(id), frame: m[id] })).filter(x => byId.has(x.id)) }
   const placeWords = si => { const sc0 = plan.scenes[si] || {}; return sc0.support && sc0.support.length ? '\nWORDS FOR THIS PLACE (the learner knows every one; use them for what is around the friends before you reach for any other word): ' + sc0.support.join(' ') + '\n' : '' }
   const mentionNote = si => { const ms = mentionsOf(si); return ms.length ? '\nMENTION WORDS (the friends only MENTION these here, inside something read, told or quoted — never as something they are doing or seeing right now):\n' + ms.map(x => '- ' + byId.get(x.id).surface + ' — ' + x.frame).join('\n') + '\n' : '' }
-  const sceneNotes = si => placeWords(si) + mentionNote(si)
+  // 18 Nov (second round) — the beat of the scene (A), how it opens from the end of the scene before (B), reviewed uses of its lesson words (E)
+  const beatNote = si => {
+    if (!LN_BEATS.on) return ''
+    const b = lnBeatOf(plan.scenes[si]); if (!b) return ''
+    return '\nTHE BEAT OF THIS SCENE (ONE short story beat — write the scene so it plays out like this): set-up: ' + (b.setup || '—') + ' · middle: ' + (b.middle || '—') + ' · ending: ' + (b.ending || '—') + '.\n' +
+      'Every lesson word\'s line ADVANCES this beat, in the order the words are listed (set-up words first, ending words last): the line before it gives the reason to say it, and the word moves the beat on. A line that brings in an unrelated fact or topic does not belong. A MENTION word never advances the live action: it is read, told or quoted with its frame.\n'
+  }
+  const openingNote = si => {
+    if (!LN_LINKED.on || !si) return ''
+    const prevScene = plan.scenes[si - 1], last = par ? [] : (written[si - 1] || []).slice(-2)
+    const from = last.length ? 'the last lines were "' + last.map(x => x.speaker + ': ' + x.thai + ' (' + x.english + ')').join(' / ') + '"' : 'the scene before ends: ' + ((lnBeatOf(prevScene) || {}).ending || prevScene.happens || prevScene.title)
+    return '\nHOW THIS SCENE OPENS (it follows from where the last scene ended): ' + from + '. The planned move: ' + (plan.scenes[si].transition || 'the friends go on to this place') + '. Open with one or two lines in which a friend SAYS that move aloud (we have arrived / let\'s go and eat / the food is here): the move is spoken, never skipped. Then go on with the beat.\n'
+  }
+  const examplesNote = si => LN_USAGE_EXAMPLES.on && env._lnExamples ? lnUsageExamplesBlock(sceneTargets(si), env._lnExamples) : ''
+  const sceneNotes = si => placeWords(si) + mentionNote(si) + beatNote(si) + openingNote(si) + examplesNote(si)
   const mentionAll = () => { const all = plan.scenes.flatMap((x, i) => mentionsOf(i).map(m => '- ' + byId.get(m.id).surface + ' (scene ' + (i + 1) + '): ' + m.frame)); return all.length ? '\nThese lesson words are MEANT as mentions (read off a sign, told as past or quoted) — judge them as that, not as forced live action:\n' + all.join('\n') + '\n' : '' }
   // 18 Nov — only facts about what the friends actually SAID with known words: a fact such as "A also ordered a big crab" that the learner has no word for could never be
   // referred to again except as "the big one" (17 Nov run, scene 4: the crab was never named, and three editor rounds could not repair it)
-  const factsAsk = '\nAlso give "facts": up to 5 short English facts this scene made TRUE that later scenes must respect (who has, bought or lost what; where they are going next; what was decided; what was already asked and answered), e.g. {"turns":[…],"facts":["B paid for both bus tickets"]}. Only facts about things the friends actually NAMED in the scene with known words; never a thing they had no known word for.'
-  for (let si = 0; si < nS; si++) {
-    if (pre) { written[si] = pre.written[si].map(x => ({ ...x })); factsLedger.push(pre.facts[si] || []); continue }
-    const s = plan.scenes[si], st = sceneTargets(si), n = remainingTurns(si)
+  const factsAsk = LN_LINKED.on
+    ? '\nAlso give "facts": up to 5 short English facts this scene made TRUE that later scenes must respect, each starting with a label — WHO (who is there) · WHERE (where they are now, or are going next) · TIME (the day, date or clock time said) · ORDERED (what was ordered or bought) · PAID (what was paid, or the price said) · DECIDED (a plan made), e.g. {"turns":[…],"facts":["PAID: B paid for both bus tickets","WHERE: they are going to the beach next"]}. Only facts about things the friends actually NAMED in the scene with known words; never a thing they had no known word for.'
+    : '\nAlso give "facts": up to 5 short English facts this scene made TRUE that later scenes must respect (who has, bought or lost what; where they are going next; what was decided; what was already asked and answered), e.g. {"turns":[…],"facts":["B paid for both bus tickets"]}. Only facts about things the friends actually NAMED in the scene with known words; never a thing they had no known word for.'
+  // 18 Nov (second round) F5 — the body of the loop is one scene; the scenes are written one after the other (each sees every earlier scene as written) or, with LN_PARALLEL_SCENES on, at the same time:
+  // then a scene depends on the earlier ones only through the PLAN — its beat, the spoken move that opens it, and the facts the plan says are true before it — never through their wording
+  const par = LN_PARALLEL_SCENES.on && !pre && nS > 1
+  const writeScene = async si => {
+    if (pre) { written[si] = pre.written[si].map(x => ({ ...x })); factsLedger[si] = pre.facts[si] || []; return null }
+    const s = plan.scenes[si], st = sceneTargets(si), n = par ? Math.max(LN_STORY_TURNS.sceneMin, Math.min(LN_STORY_TURNS.sceneMax, Math.round((LN_STORY_TURNS.min + 8) / nS))) : remainingTurns(si)
+    const stepNote = t => stepNoteOf(si, t)
     const brief = 'STORY: "' + plan.title + '" — ' + plan.story + '\nALL SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ': ' + x.happens + (x.facts ? ' (true after it: ' + x.facts + ')' : '')).join(' | ') + '\n' +
-      (si ? '\nTHE CONVERSATION SO FAR:\n' + soFar(si) + '\n' : '') + factsLine() + sceneNotes(si) +
+      (si ? '\nTHE CONVERSATION SO FAR' + (par ? ' (the earlier scenes are being written at the same time: this is their PLAN)' : '') + ':\n' + (par ? planSoFar(si) : soFar(si)) + '\n' : '') + factsLine(par ? si : null) + sceneNotes(si) +
       '\nTASK: write scene ' + (si + 1) + ' of ' + nS + ' — "' + s.title + '"' + (s.present ? ' — ' + s.present : '') + ': ' + s.happens + '\nOnly A and B speak, to each other, as the same two friends; respect everything the earlier scenes established. About ' + n + ' lines (' + LN_STORY_TURNS.sceneMin + '–' + LN_STORY_TURNS.sceneMax + '), continuing directly from the conversation so far. ' +
       (si === 0 ? 'It opens the conversation (a greeting is fine). ' : 'Do NOT greet again. ') + (si === nS - 1 ? 'It ends the conversation with a natural goodbye. ' : 'Do NOT say goodbye yet. ') +
       '\nUse EVERY ONE of these lesson words at least once, spelled exactly, in its common sense (not more than 3 lesson words in one line), at its planned moment:\n' +
-      st.map(t => 'T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + (s.setups && s.setups[t.id] ? ' — set-up: ' + s.setups[t.id] : '') + (s.moments && s.moments[t.id] ? ' — moment: ' + s.moments[t.id] : '')).join('\n') +
+      st.map(t => 'T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + stepNote(t) + (s.setups && s.setups[t.id] ? ' — set-up: ' + s.setups[t.id] : '') + (s.moments && s.moments[t.id] ? ' — moment: ' + s.moments[t.id] : '')).join('\n') +
       thaiModuleExamplesBlock(st, ctx.vocab) +
       '\nThe line just BEFORE each lesson word gives the reason to say it (a question, an offer, something that happens). A new topic or event in this scene must follow from something said before it. Every line moves the story on (no filler such as a bare ดีค่ะ / ขอบคุณครับ after every line); most lines ' + lnStoryLen(ctx).min + '–' + lnStoryLen(ctx).aim + ' words.' +
       '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}'
@@ -44045,10 +44372,10 @@ async function _lnComposeThaiStory(env, avoid) {
       'a few words may lead from one episode into the next. A and B alternate; about ' + n + ' lines in all; most lines ' + lnStoryLen(ctx).min + '–' + lnStoryLen(ctx).aim + ' words. ' +
       (si === 0 ? 'The first line greets. ' : 'Do NOT greet again. ') + (si === nS - 1 ? 'End with a natural goodbye. ' : 'Do NOT say goodbye yet. ') +
       'Nothing in an episode may change the situation for later (nobody loses, forgets or breaks anything; no new plans).\nEpisodes:\n' +
-      st.map((t, k) => (k + 1) + ') T' + t.id + ' ' + t.surface + ' (' + t.gloss + ') — set-up: ' + (s.setups[t.id] || 'something that makes it the natural thing to say') + (s.moments && s.moments[t.id] ? ' — then: ' + s.moments[t.id] : '')).join('\n') +
+      st.map((t, k) => (k + 1) + ') T' + t.id + ' ' + t.surface + ' (' + t.gloss + ')' + stepNote(t) + ' — set-up: ' + (s.setups[t.id] || 'something that makes it the natural thing to say') + (s.moments && s.moments[t.id] ? ' — then: ' + s.moments[t.id] : '')).join('\n') +
       '\nUse each lesson word spelled exactly, in its common sense. Reply ONLY with JSON: {"turns":[{"ep":1,"speaker":"A","thai":"…","english":"…"}]}' : null
     const writeTask = epTask ? epTask : beats ? brief.replace(/\nTASK: [\s\S]*$/, '') + '\n\nTASK: put scene ' + (si + 1) + ' of ' + nS + ' — "' + s.title + '" — into Thai: write it DIRECTLY as natural spoken Thai dialogue (about ' + n + ' lines, A and B alternating) that follows these story beats. Do not translate English sentences — say each thing the way two Thai speakers would. ' +
-      'Each lesson word must appear at its marked beat, spelled exactly, in its common sense. Say each line the way a Thai speaker would — it may be shorter than the English, but keep the small words Thai grammar needs (ที่, กัน, อยู่, เป็น, เรื่อง, มา / ไป).\nLesson words:\n' + lnStoryTargetRows(st) +
+      'Each lesson word must appear at its marked beat, spelled exactly, in its common sense. Say each line the way a Thai speaker would — it may be shorter than the English, but keep the small words Thai grammar needs (ที่, กัน, อยู่, เป็น, เรื่อง, มา / ไป).\nLesson words:\n' + rowsFor(si, st) +
       '\nSCENE (English):\n' + beats.map((x, k) => (k + 1) + '. ' + x.english + (x.ids.length ? '   [' + x.ids.map(id => byId.get(id).surface).join(', ') + ']' : '')).join('\n') +
       '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}' : brief
     if (beats) log && log('  📜 LISTENING_STORY scene ' + (si + 1) + ' outlined first · ' + beats.length + ' story beats')
@@ -44060,7 +44387,7 @@ async function _lnComposeThaiStory(env, avoid) {
         const ok = st.filter(t => [...eps.values()].some(ls => ls.length >= 2 && !ls[0].thai.includes(t.surface) && ls.slice(1).some(l => l.thai.includes(t.surface)))).length
         log && log('  🧩 LISTENING_STORY scene ' + (si + 1) + ' written as ' + eps.size + ' episode(s) · ' + ok + ' of ' + st.length + ' lesson word(s) come after a set-up line') } } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = []; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' reply unusable: ' + String(e && e.message || e).slice(0, 100)) }
     for (let round = 0; round <= 2; round++) {
-      const sc = sceneOf(si), probs = lnStorySceneProblems(la, sc, si, nS, st, ctx)
+      const sc = sceneOf(si), probs = probsOf(sc, si, st)
       learnNever(probs, si)
       if (!best || probs.length < best.probs.length) best = { turns: written[si].slice(), probs }
       log && log('  ✍ LISTENING_STORY scene ' + (si + 1) + (round ? ' rewrite ' + round : ' written') + ' · ' + sc.turns.length + ' lines · ' + (probs.length ? probs.length + ' problem(s): ' + probs.slice(0, 4).map(p => (p.line ? 'L' + p.line + ' ' : '') + p.code).join(', ') : 'all checks pass'))
@@ -44078,7 +44405,7 @@ async function _lnComposeThaiStory(env, avoid) {
             'The earlier drafts kept failing (' + probs.slice(0, 4).map(p => p.code + (p.detail ? ': ' + String(p.detail).slice(0, 60) : '')).join('; ') + '). Keep only the plainest version of what happens: the two friends talk about what they are doing right there. ' +
             LN_STORY_TURNS.sceneMin + '–' + Math.min(LN_STORY_TURNS.sceneMax, n + 1) + ' lines, A and B alternating, short plain sentences (' + lnStoryLen(ctx).min + '–' + lnStoryLen(ctx).aim + ' words). Each lesson word once, in its common sense, most easily in a question or in the answer to one. ' +
             (si === 0 ? 'It opens the conversation. ' : 'Do NOT greet again. ') + (si === nS - 1 ? 'It ends with a natural goodbye. ' : 'Do NOT say goodbye yet. ') +
-            '\nLesson words:\n' + lnStoryTargetRows(st) + '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1900, 'LISTENING_GENERATION_CALLS'))
+            '\nLesson words:\n' + rowsFor(si, st) + '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1900, 'LISTENING_GENERATION_CALLS'))
           if (r.length >= 2) written[si] = r
           log && log('  ↺ LISTENING_STORY scene ' + (si + 1) + ' still failing after a repair — written again from a simpler plan (no further patching)')
         } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' simpler rewrite unusable: ' + String(e && e.message || e).slice(0, 100)) }
@@ -44089,7 +44416,7 @@ async function _lnComposeThaiStory(env, avoid) {
           const lines = [...new Set(probs.map(p => p.line))]
           const r = await call('O_listening_story_repair', brief.replace(/\nTASK: [\s\S]*$/, '') + '\n\nSCENE ' + (si + 1) + ' AS WRITTEN:\n' + lnStorySceneText(sc, la) +
             '\n\nPROBLEMS:\n' + probs.map(p => '- line ' + p.line + ' ' + p.code + ': ' + p.detail).join('\n') +
-            '\nRewrite ONLY lines ' + lines.join(', ') + ': same speaker, same meaning in the scene, natural spoken Thai, only known words, keeping any lesson word the line has.\nLesson words of this scene:\n' + lnStoryTargetRows(st) +
+            '\nRewrite ONLY lines ' + lines.join(', ') + ': same speaker, same meaning in the scene, natural spoken Thai, only known words, keeping any lesson word the line has.\nLesson words of this scene:\n' + rowsFor(si, st) +
             '\nReply ONLY with JSON: {"fixes":[{"line":3,"thai":"…","english":"…"}]}', 1200, 'LISTENING_REPAIR_CALLS')
           let kept = 0
           ;(r && Array.isArray(r.fixes) ? r.fixes : []).forEach(fx => {
@@ -44106,11 +44433,11 @@ async function _lnComposeThaiStory(env, avoid) {
       try {
         const r = take(await call('O_listening_story_repair', brief.replace(/\nTASK: [\s\S]*$/, '') + '\n\nSCENE ' + (si + 1) + ' AS WRITTEN:\n' + lnStorySceneText(sc, la) +
           '\n\nPROBLEMS (fix every one; keep every lesson word of this scene; change as little as possible; keep the story):\n' + probs.map(p => '- ' + (p.line ? 'line ' + p.line + ' ' : '') + p.code + ': ' + p.detail).join('\n') +
-          '\nLesson words of this scene:\n' + lnStoryTargetRows(st) + '\nReply ONLY with JSON: the WHOLE corrected scene {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1900, 'LISTENING_REPAIR_CALLS'))
+          '\nLesson words of this scene:\n' + rowsFor(si, st) + '\nReply ONLY with JSON: the WHOLE corrected scene {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1900, 'LISTENING_REPAIR_CALLS'))
         if (r.length >= 2) written[si] = r
       } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' rewrite unusable: ' + String(e && e.message || e).slice(0, 100)) }
     }
-    if (best && lnStorySceneProblems(la, sceneOf(si), si, nS, st, ctx).length > best.probs.length) written[si] = best.turns
+    if (best && probsOf(sceneOf(si), si, st).length > best.probs.length) written[si] = best.turns
     // a scene the provider could not write at all stops the composition here (QC on an empty conversation would only spend money)
     if (!written[si].length) return { ok: false, scenes: [], composer: 'story', reason: 'LISTENING_STORY_WRITE_FAILED: scene ' + (si + 1) + ' could not be written (provider error) — nothing to play; no QC run', uncommitted: [] }
     // v715 (owner's suggestion after S42) — SCENE CHECK as soon as the scene is written: a native-teacher read of THIS scene against the
@@ -44152,8 +44479,71 @@ async function _lnComposeThaiStory(env, avoid) {
           (refused.length ? ' · refused at first: ' + refused.slice(0, 3).map(x => 'L' + x.line + ' ' + String(x.why).slice(0, 50)).join(' | ') : '') + (still.length ? ' · still refused: ' + still.length : ''))
       } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' check unusable: ' + String(e && e.message || e).slice(0, 100)) }
     }
+    return null
   }
+  if (par) {
+    log && log('  ⏩ LISTENING_STORY scenes written at the same time (never more than ' + LN_SLOTS.limit + ' requests at once): each gets the plan, its beat, the spoken move that opens it and the facts planned for the scenes before it')
+    const bad = (await Promise.all(plan.scenes.map((_, si) => writeScene(si)))).find(Boolean)
+    if (bad) return bad
+  } else for (let si = 0; si < nS; si++) { const bad = await writeScene(si); if (bad) return bad }
   const build = () => lnStoryScenes(la, plan, written, targets, ctx)
+  const _protoRaw = !!(pre && LN_MODULE_STORY.noRepair)      // v722 prototype: the story is scored as built, with no edit rounds
+  // v713 — LESSON-WORD USAGE CHECK: one short call per scene, all scenes in parallel, that looks ONLY at how each lesson word is used
+  // (S32 / S33 blind reviews: ทุกท่าน to one man, ทานกันเลย by a man eating alone, ไม่ทราบว่า + a statement, ให้อภัย with nothing to
+  // forgive — the whole-story editor names 3 faults a round and never reached them). A fix replaces that one line and is kept only if
+  // it passes every line gate and keeps the line's lesson words. (v715: replaced by the scene check made as each scene is written)
+  // 18 Nov (second round) — find() asks every scene (the requests are limited to three at once), apply() keeps the fixes that pass the line gates and asks once more for the refused ones;
+  // with LN_SPEED.on find() runs in the same wave as the other independent reads, otherwise the two run one after the other, as before
+  const wordCheck = !LN_SCENE_CHECK.on && !_protoRaw ? (() => {
+    // S35: every fix the check proposed was refused (11 words for a 7-word belt; an untaught word) — the call is told the line length and
+    // the words this learner does not know, and a refused fix gets ONE more try that names the reason
+    const lenR = lnStoryLen(ctx)
+    const limits = 'Each new line: at most ' + lenR.max + ' Thai words (the particle not counted), only simple everyday words a beginner knows' + (never.length ? ' — NOT these untaught words: ' + never.join(' ') : '') + '.\n'
+    const ask = (s, si, extra) => call('O_listening_word_check', 'You are a native Thai teacher checking ONE scene of a Thai listening lesson. A is a man (ผม / ครับ), B a woman (ฉัน / ค่ะ).\n' +
+      'SCENE: "' + s.title + '"' + (s.present ? ' [' + s.present + ']' : '') + '\n' + lnStorySceneText(sceneOf(si), la) +
+      '\nLESSON WORDS in this scene: ' + sceneTargets(si).map(t => t.surface + ' (' + t.gloss + ')').join(', ') + mentionNote(si) + extra, 1200, 'LISTENING_REPAIR_CALLS', true)
+    const tryFix = (si, fx, refused) => {
+      const sc = sceneOf(si), k = Number(fx && fx.line) - 1, tn = sc.turns[k], cur = written[si][k]
+      if (!tn || !cur || !fx || !fx.thai) return false
+      const cand = { speaker: cur.speaker, thai: String(fx.thai).trim(), english: String(fx.english || '').trim() }
+      const g = lineGateWhy(si, cand), lost = (tn.intendedTargetIds || []).filter(id => !g.ids.includes(id))
+      if (g.why || lost.length) { refused.push({ si, line: k + 1, thai: cand.thai, why: g.why || 'lesson word lost' }); return false }
+      written[si][k] = cand; return true
+    }
+    const find = () => Promise.all(plan.scenes.map(async (s, si) => {
+      const st = sceneTargets(si)
+      if (!st.length || !written[si] || !written[si].length) return { si, fixes: [] }
+      const notes = env._lnUsageNotes ? env._lnUsageNotes.split('\n').filter(l => st.some(t => l.startsWith(t.surface + ' — '))).join('\n') : ''
+      try {
+        const r = await ask(s, si, (notes ? '\nHOW THAI SPEAKERS USE THEM:\n' + notes : '') +
+          '\n\nCheck ONLY how each lesson word is used: said by the right person, to the right listener (a word for a group needs a group; "let\'s …" / กัน needs two people doing it together), ' +
+          'in a situation where a Thai speaker would really say it, with the grammar it needs (e.g. ไม่ทราบว่า opens a polite question). ' +
+          // 18 Nov (second round) A — the scene is one beat; a lesson word's line must advance it (the owner's "shall we watch the news?" → "the news says money is growing")
+          (LN_BEATS.on && lnBeatOf(s) ? 'Also check that its line ADVANCES this scene\'s beat (set-up: ' + (lnBeatOf(s).setup || '—') + ' · middle: ' + (lnBeatOf(s).middle || '—') + ' · ending: ' + (lnBeatOf(s).ending || '—') + '): a use that brings in an unrelated fact or topic, or does not follow from the line right before it, is a WRONG use too — rewrite the line so it follows and moves the beat on (a MENTION word is read, told or quoted instead). ' : '') +
+          'For each WRONG use, rewrite that ONE line so the word is used correctly: keep the word, the same speaker, and make it fit between the lines around it. ' + limits +
+          'Reply {"fixes":[]} if every use is right.\nReply ONLY with JSON: {"fixes":[{"line":3,"thai":"…","english":"…","why":"…"}]}')
+        return { si, fixes: (r && Array.isArray(r.fixes) ? r.fixes : []).slice(0, 4) }
+      } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; return { si, fixes: [] } }
+    }))
+    const apply = async res => {
+    let named = 0, kept = 0, retried = 0; const refused = []
+    res.forEach(({ si, fixes }) => { named += fixes.length; fixes.forEach(fx => { if (tryFix(si, fx, refused)) kept++ }) })
+    // one more try for the refused fixes, per scene, with the reason each was refused
+    const bySc = new Map(); refused.forEach(x => { if (!bySc.has(x.si)) bySc.set(x.si, []); bySc.get(x.si).push(x) })
+    const still = []
+    await Promise.all([...bySc.entries()].map(async ([si, xs]) => {
+      try {
+        const r = await ask(plan.scenes[si], si, '\n\nYOUR FIXES FOR THESE LINES WERE REFUSED — rewrite each again so it passes (same lesson word, same speaker, fits between the lines around it). ' + limits +
+          xs.map(x => 'L' + x.line + ' "' + x.thai + '" — refused: ' + String(x.why).slice(0, 120)).join('\n') + '\nReply ONLY with JSON: {"fixes":[{"line":3,"thai":"…","english":"…"}]}')
+        ;(r && Array.isArray(r.fixes) ? r.fixes : []).slice(0, 4).forEach(fx => { retried++; if (tryFix(si, fx, still)) kept++ })
+      } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
+    }))
+    const fmt = xs => xs.slice(0, 3).map(x => 'S' + (x.si + 1) + ' L' + x.line + ': ' + x.why).join(' | ').slice(0, 200)
+    log && log('  🔎 LISTENING_STORY lesson-word check · ' + named + ' wrong use(s) named across ' + plan.scenes.length + ' scene(s) · ' + kept + ' line(s) fixed' +
+      (refused.length ? ' · refused at first: ' + fmt(refused) + ' · ' + retried + ' retried' : '') + (still.length ? ' · still refused: ' + fmt(still) : ''))
+    }
+    return { find, apply }
+  })() : null
   // ── EDIT: a strict native-teacher read of the WHOLE conversation (the way the independent grader reads it) lists every faulty line
   //    with a replacement; each replacement is kept only if it passes every line gate and keeps the line's lesson words (≤ 3 rounds) ──
   let rejected = [], editorGrade = null
@@ -44161,37 +44551,120 @@ async function _lnComposeThaiStory(env, avoid) {
   // whether round n-1 helped. 17 Nov run: grades 6 → 6 → 4; round 2 kept two fixes on a text that had not improved, and the grade fell to 4 (the three fixes of
   // round 3 were never graded). Now the round that is not better than the one before is not paid for (no fix call), and a round that made the grade WORSE is undone.
   let prevGrade = null, prevText = null
+  const askReview = flat => call('O_listening_story_review', 'You are a strict native Thai teacher grading a Thai listening lesson (one outing of two close friends in scenes; A is a man, B a woman — always the same friend).\n' +
+        'SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '') + (LN_BEATS.on && lnBeatOf(x) ? ' {beat: ' + [lnBeatOf(x).setup, lnBeatOf(x).middle, lnBeatOf(x).ending].filter(Boolean).join(' → ') + '}' : '') + (LN_LINKED.on && i && x.transition ? ' {opens: ' + x.transition + '}' : '')).join(' | ') + factsLine() +
+        '\n\nTHE CONVERSATION (numbered):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '')).join('\n') +
+        '\n\nRead it start to finish as the listener will. List the worst faults (at most 6), most damaging first: STORY (a reply that does not follow, a question not answered, a contradiction with an earlier line or scene, ' +
+        'time running backwards, a person / thing / event mentioned before it is set up, B speaking as anyone other than A\'s friend, a lesson word forced into a line where nobody would say it, ' + (LN_BEATS.on ? 'a lesson word\'s line that does not advance its scene\'s beat (an unrelated fact or topic; a non sequitur such as a news item answering "shall we sit and watch?"), ' : '') + (LN_LINKED.on ? 'a scene that does not open with a spoken move from where the one before ended, ' : '') + ' the scene title not matching what is said (together vs on the phone, the place), a day or time that clashes with another scene (on Thursday asking about "this Wednesday"), feelings words piled into one melodramatic exchange without a real cause), THAI (ungrammatical, a missing small word, bookish, wrong collocation, a word in an odd sense), EN (does not match the Thai). ' +
+        (env._lnUsageNotes ? 'How the lesson words are really used (a lesson word in another sense is a fault):\n' + env._lnUsageNotes + '\n' : '') + (LN_USAGE_EXAMPLES.on && env._lnExamples ? lnUsageExamplesBlock(planTargets, env._lnExamples) : '') + mentionAll() + LN_COHERENCE_CHECKLIST +
+        'Give the line span to change (the cause, often an earlier line) and in a few words how to fix it. Also give "score": the grade 0–10 it deserves now.\n' +
+        'Reply ONLY with JSON: {"score":5.5,"faults":[{"from":12,"to":13,"problem":"…","fix":"…"}]}', 1800, 'LISTENING_REPAIR_CALLS', true)
+  // ── 18 Nov (second round) — the reads that do not depend on each other, the fact check, and a coherence judge that remembers what it judged ──
+  const scenesFlat = () => build().flatMap((sc, si) => sc.turns.map((tn, k) => ({ si, k, tn })))
+  // D — a scene is judged ONCE against the fixed checklist: its verdict is kept for as long as its own text and the end of the scene before it stay the same (the log of 17 Nov showed the
+  // verdicts moving between scenes after small edits: scene 1 fails, then 5, then 4 and 5); only a scene whose text changed goes to the judge again. Switch: lnStableJudgeSetEnabled(false).
+  const cohCache = new Map(), cohRuns = []
+  const sceneKey = (scs, i) => scs[i].turns.map(tn => la.text(tn.pair)).join('|') + '␟' + (i ? scs[i - 1].turns.slice(-2).map(tn => la.text(tn.pair)).join('|') : '') + '␟' + i
+  const cohOf = async scs => {
+    const keys = scs.map((_, i) => sceneKey(scs, i)), reuse = new Map()
+    if (LN_STABLE_JUDGE.on) keys.forEach((k, i) => { if (cohCache.has(k)) reuse.set(i, cohCache.get(k)) })
+    const fresh = scs.map((sc, i) => sc.turns.length > 1 && !reuse.has(i) ? i : -1).filter(i => i >= 0)
+    if (fresh.length) tel.LISTENING_QC_CALLS = (tel.LISTENING_QC_CALLS || 0) + 1
+    // the overall grade of the run that judged the most of these very scenes (nothing new to judge: that is the grade still standing)
+    const run = cohRuns.map((r, k) => ({ r, k, n: keys.filter(x => r.keys.has(x)).length })).sort((a, b) => b.n - a.n || b.k - a.k)[0]
+    if (reuse.size) log && log('  ♻ LISTENING_STORY coherence: ' + reuse.size + ' scene verdict(s) kept as judged (the scene and the end of the one before are unchanged) · ' + (fresh.length ? 'judged again: scene ' + fresh.map(i => i + 1).join(', ') : 'nothing new to judge, no request'))
+    const c = await lnSlotRun(() => listeningWholeCoherenceAudit(scs.map((sc, i) => ({ title: sc.setting, ...(LN_LINKED.on && i && plan.scenes[i].transition ? { note: plan.scenes[i].transition } : {}), lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair, ...(tn.meaning ? { meaning: tn.meaning } : {}) })) })), la,
+      { ...o, oneConversation: true, storyScenes: true, ...(reuse.size ? { reuse, reuseOverall: run ? run.r.overall : null, reuseReason: run ? run.r.reason : '' } : {}) }, log))
+    if (LN_STABLE_JUDGE.on && c.state === QUALITY.VERIFIED) {
+      if (fresh.length) cohRuns.push({ keys: new Set(keys), overall: c.overall, reason: c.reason })
+      c.verdicts.forEach((v, i) => { if (!reuse.has(i) && (v.model === 'pass' || v.model === 'fail')) cohCache.set(keys[i], { pass: v.model === 'pass', breakAfterLine: v.breakAfterLine, reason: v.reason }) })
+    }
+    return c
+  }
+  // C — the facts of the story. A program lists what it can see (a date given two ways, a price asked again or answered two ways); ONE short call lists each scene's facts from the lines that state a fact
+  // and the facts the writers recorded, and names the contradictions. Each contradiction becomes a named fault for the editor, BEFORE the editor rounds, so the editor fixes the real fault.
+  const factCheckRun = async () => {
+    const out = { faults: [], called: false, det: 0, model: 0 }
+    if (!LN_FACT_CHECK.on || _protoRaw) return out
+    try {
+      const flat = scenesFlat(), rows = flat.map((f, i) => ({ n: i + 1, scene: f.si + 1, speaker: f.tn.speaker, thai: la.text(f.tn.pair), english: f.tn.pair.english || '' }))
+      const inRange = n => Number.isInteger(n) && n >= 1 && n <= rows.length
+      const add = (lines, problem, fix) => { const ls = (lines || []).map(Number).filter(inRange); if (!ls.length || ls.length !== (lines || []).length) return false      // a line number outside the conversation drops the whole contradiction
+        const from = Math.max(...ls); if (out.faults.some(x => x.from === from)) return false
+        out.faults.push({ from, to: from, problem: 'FACT — ' + String(problem || '').slice(0, 150), fix: String(fix || '').slice(0, 100) }); return true }
+      lnFactContradictions(rows).forEach(d => { if (add(d.lines, d.problem, d.fix)) out.det++ })
+      const bearing = rows.filter(r => LN_FACT_LINE_RX.test(r.thai.replace(/\s+/g, '')))
+      const ledger = factsLedger.map((fs, i) => (fs || []).length ? 'S' + (i + 1) + ': ' + fs.join(' · ') : '').filter(Boolean)
+      if (LN_FACT_CHECK.model && (new Set(bearing.map(r => r.scene)).size >= 2 || ledger.length >= 2)) {
+        out.called = true
+        const r = await call('O_listening_story_facts', 'You check ONE Thai listening conversation for contradictions of FACT only — not style, grammar or naturalness. A and B are the same two friends on one day out.\n' +
+          (ledger.length ? 'THE FACTS EACH SCENE\'S WRITER RECORDED:\n' + ledger.join('\n') + '\n' : '') +
+          '\nTHE LINES THAT STATE OR ASK A FACT (line number | scene | speaker | Thai | English):\n' + bearing.slice(0, 60).map(r => r.n + ' | S' + r.scene + ' | ' + r.speaker + ' | ' + r.thai + ' | ' + r.english).join('\n') +
+          '\n\nFirst list, for each scene, the facts it settles (at most 4 short items: who is there, where, the day, date or time said, what was ordered, what was paid or the price, how many). Then name every CONTRADICTION: two lines that cannot both be true ' +
+          '(a date given two ways, a number or a price that changes, a place or a time that changes without being said), or something already settled that is asked or decided again (a fare agreed and then asked again, a dish ordered twice, a first meeting after they have met). ' +
+          'Give the two line numbers (the line to change is the LATER one), what clashes, and how to fix it in a few words. Two lines that only CONFIRM a fact ("so it is 200 baht?" — "yes, 200") are not a contradiction. Reply {"contradictions":[]} when there are none.\n' +
+          'Reply ONLY with JSON: {"scenes":[{"scene":1,"facts":["…"]}],"contradictions":[{"lines":[12,47],"problem":"…","fix":"…"}]}', 1500, 'LISTENING_QC_CALLS', true)
+        ;(r && Array.isArray(r.contradictions) ? r.contradictions : []).slice(0, 4).forEach(x => { if (x && add(Array.isArray(x.lines) ? x.lines : [x.line], x.problem, x.fix)) out.model++ })
+        const fl = (r && Array.isArray(r.scenes) ? r.scenes : []).map(x => x && Array.isArray(x.facts) && x.facts.length ? 'S' + Number(x.scene) + ': ' + x.facts.slice(0, 4).map(f => String(f).slice(0, 60)).join('; ') : '').filter(Boolean)
+        if (fl.length) log && log('  🧾 LISTENING_STORY facts listed · ' + fl.join(' ‖ ').slice(0, 900))
+      }
+      log && log('  🧾 LISTENING_STORY fact check · ' + bearing.length + ' line(s) state a fact · ' + out.faults.length + ' contradiction(s) named (' + out.det + ' seen by the program, ' + out.model + ' by the check)' + (out.faults.length ? ' · ' + out.faults.map(x => 'L' + x.from + ': ' + x.problem.replace(/^FACT — /, '')).join(' | ').slice(0, 500) : ''))
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY fact check unusable: ' + String(e && e.message || e).slice(0, 100)) }
+    return out
+  }
+  // F — one wave of reads of the SAME text that do not depend on each other (the editor's read, the fact check, the lesson-word check of every scene, the naturalness and coherence judges), never more than
+  // three requests at once; what they find is applied afterwards, in order: lesson-word fixes, then the editor's fixes. Switch: lnSpeedSetEnabled(false) runs them one after the other, as before.
+  let wave = null, preFaults = []
+  if (LN_SPEED.on && !_protoRaw && !LN_SCENE_CHECK.on) {
+    const t0 = Date.now(), flat0 = scenesFlat(), scenes0 = build(), settle = p => p.then(ok => ({ ok }), err => ({ err }))
+    const [rv, fc, wc, nc] = await Promise.all([settle(askReview(flat0)), factCheckRun(), wordCheck ? settle(wordCheck.find()) : Promise.resolve(null),
+      LN_STABLE_JUDGE.on ? settle(Promise.all([env.naturalness(scenes0), cohOf(scenes0)])) : Promise.resolve(null)])
+    ;[rv, wc, nc].forEach(x => { if (x && x.err && (x.err.fatalProvider || x.err.cancelled)) throw x.err })
+    wave = { review: rv }
+    preFaults = fc.faults.slice()
+    if (nc && nc.ok) nc.ok[0].filter(x => x.code === 'UNNATURAL' && x.line > 0 && /naturalness [012](\.\d)?\/5/.test(String(x.detail))).slice(0, 2).forEach(x => { if (!preFaults.some(f => f.from === x.line)) preFaults.push({ from: x.line, to: x.line, problem: 'the naturalness judge: ' + String(x.detail).replace(/^naturalness /, '').slice(0, 110), fix: '' }) })
+    if (wc && wc.ok) await wordCheck.apply(wc.ok)
+    log && log('  ⏱ LISTENING_STORY one wave of reads · editor read, fact check, ' + plan.scenes.length + ' lesson-word check(s), naturalness and coherence together (at most ' + LN_SLOTS.limit + ' requests at once) · ' + Math.round((Date.now() - t0) / 1000) + ' s')
+  } else if (LN_FACT_CHECK.on && !_protoRaw) preFaults = (await factCheckRun()).faults
   // 3 rounds: more rounds made the track WORSE in blind review (S31: 10 rounds ran → 4.7 / 4.3; S29: ~3 rounds → 5.7 / 5.5) — each
   // fix can bring new faults the gates do not see
+  // 18 Nov (second round) F — the editor is one round unless the grade CLEARLY rises: a later round starts only when the round before changed something and the grade was below 7.5, and its fix call
+  // only when the new grade is at least LN_SPEED.gradeRise above the one before (a read that finds nothing to fix and grades 7 or more costs no fix call either). Switch: lnSpeedSetEnabled(false).
+  let keptLast = true
   for (let round = 1; round <= (pre && LN_MODULE_STORY.noRepair ? 0 : LN_SCENE_CHECK.on ? 1 : 3); round++) {      // v722: the module-led prototype is scored as built
+    if (LN_SPEED.on && round > 1 && (!keptLast || (prevGrade != null && prevGrade >= 7.5))) {
+      log && log('  📝 LISTENING_STORY edit round ' + round + ' not started — ' + (!keptLast ? 'round ' + (round - 1) + ' changed nothing' : 'the grade was already ' + prevGrade + '/10') + ' (a further round runs only when the last one changed something, or was refused with reasons to answer, and the grade is below 7.5)')
+      break
+    }
     const flat = build().flatMap((sc, si) => sc.turns.map((tn, k) => ({ si, k, tn })))
     let r = null, review = null
     // 1) FIND: a short call without the Thai word list (it thinks harder, at medium effort) reads the whole story the way the blind
     //    grader does and lists the faults; 2) FIX: the editor below replaces those spans within the word list. One call doing both
     //    under every Thai constraint kept missing story faults (blind reviews of S13 / S17 / S18: story 3–3.5 / 10).
     try {
-      review = await call('O_listening_story_review', 'You are a strict native Thai teacher grading a Thai listening lesson (one outing of two close friends in scenes; A is a man, B a woman — always the same friend).\n' +
-        'SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '')).join(' | ') + factsLine() +
-        '\n\nTHE CONVERSATION (numbered):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '')).join('\n') +
-        '\n\nRead it start to finish as the listener will. List the worst faults (at most 6), most damaging first: STORY (a reply that does not follow, a question not answered, a contradiction with an earlier line or scene, ' +
-        'time running backwards, a person / thing / event mentioned before it is set up, B speaking as anyone other than A\'s friend, a lesson word forced into a line where nobody would say it, the scene title not matching what is said (together vs on the phone, the place), a day or time that clashes with another scene (on Thursday asking about "this Wednesday"), feelings words piled into one melodramatic exchange without a real cause), THAI (ungrammatical, a missing small word, bookish, wrong collocation, a word in an odd sense), EN (does not match the Thai). ' +
-        (env._lnUsageNotes ? 'How the lesson words are really used (a lesson word in another sense is a fault):\n' + env._lnUsageNotes + '\n' : '') + mentionAll() + LN_COHERENCE_CHECKLIST +
-        'Give the line span to change (the cause, often an earlier line) and in a few words how to fix it. Also give "score": the grade 0–10 it deserves now.\n' +
-        'Reply ONLY with JSON: {"score":5.5,"faults":[{"from":12,"to":13,"problem":"…","fix":"…"}]}', 1800, 'LISTENING_REPAIR_CALLS', true)
+      if (round === 1 && wave && wave.review) { if (wave.review.err) throw wave.review.err; review = wave.review.ok }      // the first review was read in the same wave as the other checks
+      else review = await askReview(flat)
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY review round ' + round + ' unusable: ' + String(e && e.message || e).slice(0, 100)) }
     const gradeNow = review && review.score != null && review.score !== '' && isFinite(Number(review.score)) ? Number(review.score) : null
-    if (round > 1 && gradeNow != null && prevGrade != null && gradeNow <= prevGrade) {
+    if (round > 1 && gradeNow != null && prevGrade != null && (gradeNow <= prevGrade || (LN_SPEED.on && gradeNow < prevGrade + LN_SPEED.gradeRise))) {
       const worse = gradeNow < prevGrade
       if (worse && prevText) written.splice(0, written.length, ...prevText.map(w => w.slice()))
       editorGrade = worse ? prevGrade : gradeNow
-      log && log('  📝 LISTENING_STORY edit round ' + round + ' · editor grade ' + gradeNow + '/10, not better than the ' + prevGrade + '/10 before round ' + (round - 1) + ' — ' +
+      log && log('  📝 LISTENING_STORY edit round ' + round + ' · editor grade ' + gradeNow + '/10, ' + (gradeNow > prevGrade ? 'up only ' + (Math.round((gradeNow - prevGrade) * 10) / 10) + ' on' : 'not better than') + ' the ' + prevGrade + '/10 before round ' + (round - 1) + (gradeNow > prevGrade ? ' (not clearly better)' : '') + ' — ' +
         (worse ? 'round ' + (round - 1) + '\'s fixes are undone and' : 'the fixes of round ' + (round - 1) + ' are kept and') + ' the editing stops here (no further fix call is paid for)')
       break
     }
     if (gradeNow != null) { prevGrade = gradeNow; prevText = written.map(w => w.slice()) }       // the text and the grade it earned, kept as the way back
     // at most 4 faults per fix call: with 8 faults and the whole checklist the fix reply ran out of tokens every time (paid run S20)
     // at most 2 faults per fix call (4 still ran out of tokens in every round of paid run S30); more rounds instead
-    const faults = (review && Array.isArray(review.faults) ? review.faults : []).filter(x => x && Number(x.from) > 0).slice(0, 3)
+    // 18 Nov (second round) C — the contradictions the fact check named (and the lines the naturalness judge scored 2 or less) come first: they are verified faults, so the editor fixes the real fault
+    const preF = round === 1 ? preFaults : []
+    const faults = preF.concat((review && Array.isArray(review.faults) ? review.faults : []).filter(x => x && Number(x.from) > 0)).slice(0, preF.length ? 4 : 3)
+    if (LN_SPEED.on && !faults.length && review && gradeNow != null && gradeNow >= 7) {
+      editorGrade = gradeNow
+      log && log('  📝 LISTENING_STORY edit round ' + round + ' · editor grade ' + gradeNow + '/10 and no fault named — nothing to fix, no fix call is paid for')
+      break
+    }
     try {
       r = await call('O_listening_story_edit', 'STORY PLAN: "' + plan.title + '" — ' + plan.story + '\n' + plan.scenes.map((x, i) => 'Scene ' + (i + 1) + ': ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ' — ' + x.happens).join('\n') + factsLine() + mentionAll() +
         '\n\n' + (faults.length ? 'THE SCENES WITH FAULTS (numbered as in the whole conversation):\n' : 'THE CONVERSATION (numbered; scene titles in brackets):\n') + flat.map((f, i) => ({ f, i })).filter(({ f }) => !faults.length || faults.some(x => { const g = flat[Number(x.from) - 1]; return g && g.si === f.si })).map(({ f, i }) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '') + ((f.tn.intendedTargetIds || []).length ? '   (lesson words: ' + f.tn.intendedTargetIds.map(id => byId.get(id).surface).join(', ') + ')' : '')).join('\n') +
@@ -44236,77 +44709,42 @@ async function _lnComposeThaiStory(env, avoid) {
     const grade = review && review.score != null && isFinite(Number(review.score)) ? Number(review.score) : r && r.score != null ? Number(r.score) : null
     if (grade != null && isFinite(grade)) editorGrade = grade
     log && log('  📝 LISTENING_STORY edit round ' + round + (grade != null ? ' · editor grade ' + grade + '/10' : '') + ' · ' + fixes.length + ' fault(s) named · ' + kept + ' fix(es) kept' + (rejected.length ? ' · ' + rejected.length + ' could not be used' : '') + (fixes.length ? ' · e.g. ' + fixes.slice(0, 3).map(x => 'L' + (x.from || x.line) + ': ' + String(x.problem || '').slice(0, 60)).join(' | ') : ''))
+    keptLast = kept > 0 || rejected.length > 0       // a round whose fixes were all refused still gives the next round something to answer (the reasons are shown to the editor)
     if ((!fixes.length && !faults.length) || (!kept && !rejected.length && !faults.length) || (grade != null && grade >= 8.5 && fixes.length <= 2)) break
   }
-  // v713 — LESSON-WORD USAGE CHECK: one short call per scene, all scenes in parallel, that looks ONLY at how each lesson word is used
-  // (S32 / S33 blind reviews: ทุกท่าน to one man, ทานกันเลย by a man eating alone, ไม่ทราบว่า + a statement, ให้อภัย with nothing to
-  // forgive — the whole-story editor names 3 faults a round and never reached them). A fix replaces that one line and is kept only if
-  // it passes every line gate and keeps the line's lesson words. (v715: replaced by the scene check made as each scene is written)
-  const _protoRaw = !!(pre && LN_MODULE_STORY.noRepair)      // v722 prototype: the story is scored as built, with no edit rounds
-  if (!LN_SCENE_CHECK.on && !_protoRaw) {
-    // S35: every fix the check proposed was refused (11 words for a 7-word belt; an untaught word) — the call is told the line length and
-    // the words this learner does not know, and a refused fix gets ONE more try that names the reason
-    const lenR = lnStoryLen(ctx)
-    const limits = 'Each new line: at most ' + lenR.max + ' Thai words (the particle not counted), only simple everyday words a beginner knows' + (never.length ? ' — NOT these untaught words: ' + never.join(' ') : '') + '.\n'
-    const ask = (s, si, extra) => call('O_listening_word_check', 'You are a native Thai teacher checking ONE scene of a Thai listening lesson. A is a man (ผม / ครับ), B a woman (ฉัน / ค่ะ).\n' +
-      'SCENE: "' + s.title + '"' + (s.present ? ' [' + s.present + ']' : '') + '\n' + lnStorySceneText(sceneOf(si), la) +
-      '\nLESSON WORDS in this scene: ' + sceneTargets(si).map(t => t.surface + ' (' + t.gloss + ')').join(', ') + mentionNote(si) + extra, 1200, 'LISTENING_REPAIR_CALLS', true)
-    const tryFix = (si, fx, refused) => {
-      const sc = sceneOf(si), k = Number(fx && fx.line) - 1, tn = sc.turns[k], cur = written[si][k]
-      if (!tn || !cur || !fx || !fx.thai) return false
-      const cand = { speaker: cur.speaker, thai: String(fx.thai).trim(), english: String(fx.english || '').trim() }
-      const g = lineGateWhy(si, cand), lost = (tn.intendedTargetIds || []).filter(id => !g.ids.includes(id))
-      if (g.why || lost.length) { refused.push({ si, line: k + 1, thai: cand.thai, why: g.why || 'lesson word lost' }); return false }
-      written[si][k] = cand; return true
-    }
-    const res = await Promise.all(plan.scenes.map(async (s, si) => {
-      const st = sceneTargets(si)
-      if (!st.length || !written[si] || !written[si].length) return { si, fixes: [] }
-      const notes = env._lnUsageNotes ? env._lnUsageNotes.split('\n').filter(l => st.some(t => l.startsWith(t.surface + ' — '))).join('\n') : ''
-      try {
-        const r = await ask(s, si, (notes ? '\nHOW THAI SPEAKERS USE THEM:\n' + notes : '') +
-          '\n\nCheck ONLY how each lesson word is used: said by the right person, to the right listener (a word for a group needs a group; "let\'s …" / กัน needs two people doing it together), ' +
-          'in a situation where a Thai speaker would really say it, with the grammar it needs (e.g. ไม่ทราบว่า opens a polite question). ' +
-          'For each WRONG use, rewrite that ONE line so the word is used correctly: keep the word, the same speaker, and make it fit between the lines around it. ' + limits +
-          'Reply {"fixes":[]} if every use is right.\nReply ONLY with JSON: {"fixes":[{"line":3,"thai":"…","english":"…","why":"…"}]}')
-        return { si, fixes: (r && Array.isArray(r.fixes) ? r.fixes : []).slice(0, 4) }
-      } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; return { si, fixes: [] } }
-    }))
-    let named = 0, kept = 0, retried = 0; const refused = []
-    res.forEach(({ si, fixes }) => { named += fixes.length; fixes.forEach(fx => { if (tryFix(si, fx, refused)) kept++ }) })
-    // one more try for the refused fixes, per scene, with the reason each was refused
-    const bySc = new Map(); refused.forEach(x => { if (!bySc.has(x.si)) bySc.set(x.si, []); bySc.get(x.si).push(x) })
-    const still = []
-    await Promise.all([...bySc.entries()].map(async ([si, xs]) => {
-      try {
-        const r = await ask(plan.scenes[si], si, '\n\nYOUR FIXES FOR THESE LINES WERE REFUSED — rewrite each again so it passes (same lesson word, same speaker, fits between the lines around it). ' + limits +
-          xs.map(x => 'L' + x.line + ' "' + x.thai + '" — refused: ' + String(x.why).slice(0, 120)).join('\n') + '\nReply ONLY with JSON: {"fixes":[{"line":3,"thai":"…","english":"…"}]}')
-        ;(r && Array.isArray(r.fixes) ? r.fixes : []).slice(0, 4).forEach(fx => { retried++; if (tryFix(si, fx, still)) kept++ })
-      } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
-    }))
-    const fmt = xs => xs.slice(0, 3).map(x => 'S' + (x.si + 1) + ' L' + x.line + ': ' + x.why).join(' | ').slice(0, 200)
-    log && log('  🔎 LISTENING_STORY lesson-word check · ' + named + ' wrong use(s) named across ' + plan.scenes.length + ' scene(s) · ' + kept + ' line(s) fixed' +
-      (refused.length ? ' · refused at first: ' + fmt(refused) + ' · ' + retried + ' retried' : '') + (still.length ? ' · still refused: ' + fmt(still) : ''))
-  }
   // the edits must leave every scene's gates and lesson words as they were (a scene the edits broke goes back to its written text)
-  // ── QC: paid naturalness verdicts (in context) + the whole-conversation coherence judge → rewrite the flagged scenes (≤ 2 rounds) ──
-  const cohOf = async scs => { tel.LISTENING_QC_CALLS = (tel.LISTENING_QC_CALLS || 0) + 1; return listeningWholeCoherenceAudit(scs.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair, ...(tn.meaning ? { meaning: tn.meaning } : {}) })) })), la, { ...o, oneConversation: true, storyScenes: true }, log) }
+  // the lesson-word check, when it was not read in the wave: after the editor, as before
+  if (wordCheck && !wave) await wordCheck.apply(await wordCheck.find())
+  // ── QC: paid naturalness verdicts (in context) + the whole-conversation coherence judge → rewrite the flagged scenes (≤ 3 rounds) ──
   // 18 Nov — the naturalness judge and the coherence judge read the same text and do not depend on each other: they run at the same time
+  // (D: what the wave already judged is not judged again — only the lines and scenes the fixes changed)
   let scenes = build(), natIssues, coh
   ;[natIssues, coh] = await Promise.all([env.naturalness(scenes), cohOf(scenes)])
   // the version kept is the best one seen (a rewrite that makes the whole worse is undone): gate issues weigh most, then failed
   // scenes, then unnatural lines
   const hardOf = scs => listeningConversationAudit(scs, targets, la, ctx).issues.concat(conversationContinuityAudit(scs, la, targets)).filter(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN|EXACT_DUPLICATE|NEAR_DUPLICATE|CONTINUITY)$/.test(x.code)).length
   const score = (scs, ni, ch) => hardOf(scs) * 10 + (ch.verdicts || []).filter(v => !v.pass).length * 4 + (ch.overall != null ? (5 - ch.overall) * 2 : 4) + ni.length
-  let best = { written: written.map(w => w.slice()), natIssues, coh, score: score(scenes, natIssues, coh) }
+  // D — the same count for ONE scene: its own gate problems, its coherence verdict, its unnatural lines. A rewrite is kept or undone scene by scene (before: one score for the whole story,
+  // so a rewrite that helped scene 3 was thrown away together with one that hurt scene 5).
+  const offsetsOf = scs => { const offs = []; let n0 = 0; scs.forEach(sc => { offs.push(n0); n0 += sc.turns.length }); return offs }
+  const lineScene = (offs, line) => offs.findIndex((o0, i) => line > o0 && (i === offs.length - 1 || line <= offs[i + 1]))
+  const sceneScore = (scs, ni, ch, si) => {
+    const offs = offsetsOf(scs), v = (ch.verdicts || [])[si]
+    return probsOf(scs[si], si, sceneTargets(si)).filter(p => p.code !== 'SCENE_TOO_SHORT').length * 10 + (v && !v.pass ? 4 : 0) + ni.filter(x => x.code === 'UNNATURAL' && x.line > 0 && lineScene(offs, x.line) === si).length
+  }
+  const sameText = (a, b) => a.length === b.length && a.every((x, k) => x.thai === b[k].thai)
+  let best = { written: written.map(w => w.slice()), score: score(scenes, natIssues, coh) }
   for (let round = 1; round <= (_protoRaw ? 0 : 3); round++) {
-    const offs = []; let n0 = 0
-    scenes.forEach(sc => { offs.push(n0); n0 += sc.turns.length })
+    const offs = offsetsOf(scenes)
     const flagged = new Map()
-    natIssues.filter(x => x.code === 'UNNATURAL' && x.line > 0).forEach(x => { const si = offs.findIndex((o0, i) => x.line > o0 && (i === offs.length - 1 || x.line <= offs[i + 1])); if (si >= 0) flagged.set(si, (flagged.get(si) || []).concat([{ line: x.line - offs[si], code: 'UNNATURAL', detail: x.detail }])) })
-    ;(coh.verdicts || []).filter(v => !v.pass).forEach(v => { const si = v.scene - 1; if (si >= 0 && si < nS) flagged.set(si, (flagged.get(si) || []).concat([{ line: v.breakAfterLine ? Math.max(1, Number(v.breakAfterLine) - offs[si]) : 0, code: 'STORY', detail: v.reason }])) })
+    natIssues.filter(x => x.code === 'UNNATURAL' && x.line > 0).forEach(x => { const si = lineScene(offs, x.line); if (si >= 0) flagged.set(si, (flagged.get(si) || []).concat([{ line: x.line - offs[si], code: 'UNNATURAL', detail: x.detail }])) })
+    // the line a scene breaks after is numbered inside the scene (the judge reads the scenes numbered from 1 each)
+    ;(coh.verdicts || []).filter(v => !v.pass).forEach(v => { const si = v.scene - 1; if (si >= 0 && si < nS) { const rel = Number(v.breakAfterLine); flagged.set(si, (flagged.get(si) || []).concat([{ line: rel > 0 && rel <= scenes[si].turns.length ? rel : 0, code: 'STORY', detail: v.reason }])) } })
     log && log('🧪 LISTENING_STORY QC round ' + round + ' · naturalness ' + (natIssues.length ? natIssues.length + ' issue(s)' : 'PASS') + ' · coherence ' + (coh.verdicts || []).filter(v => v.pass).length + '/' + (coh.verdicts || []).length + ' scene(s) pass' + (coh.overall != null ? ' · overall ' + coh.overall + '/5' : ''))
     if (!flagged.size) break
+    const before = written.map(w => w.slice()), startScenes = scenes, startNat = natIssues, startCoh = coh
+    const startScores = startScenes.map((_, si) => sceneScore(startScenes, startNat, startCoh, si))
+    const fixedLines = new Map()        // scene index → the lines (numbered inside the scene) a line fix replaced in this round
     // 1) lines the naturalness judge rejected: only those lines are rewritten (a fix is kept only if it passes every line gate and
     //    keeps the line's lesson words)
     // the line rewrites also take lines the judge scored 3/5 (cached verdicts — no extra call); blind reviews flag far more lines than
@@ -44326,7 +44764,7 @@ async function _lnComposeThaiStory(env, avoid) {
           const one = lnStoryScenes(la, { scenes: [plan.scenes[f.si]] }, [[cand]], targets, ctx)[0]
           const bad = listeningConversationAudit([one], targets, la, ctx).issues.some(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN)$/.test(x.code))
           const lost = (f.tn.intendedTargetIds || []).some(id => !(one.turns[0].intendedTargetIds || []).includes(id))
-          if (bad || lost) written[f.si][f.k] = old; else kept++
+          if (bad || lost) written[f.si][f.k] = old; else { kept++; if (!fixedLines.has(f.si)) fixedLines.set(f.si, new Set()); fixedLines.get(f.si).add(f.k + 1) }
         })
         log && log('  🔧 LISTENING_STORY line fixes: ' + kept + ' of ' + unn.length + ' flagged line(s) rewritten and kept')
       } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY line fixes unusable: ' + String(e && e.message || e).slice(0, 100)) }
@@ -44335,47 +44773,69 @@ async function _lnComposeThaiStory(env, avoid) {
     for (const [si, probs0] of flagged) {
       const probs = probs0.filter(p => p.code === 'STORY')
       if (!probs.length) continue
-      const st = sceneTargets(si), before = written[si].slice(), sc = scenes[si]
+      // F — the line this scene breaks at was just rewritten by the line fix: the rewrite of the whole scene would repeat that repair before the scene is judged again (a later round rewrites it if it still fails)
+      const fl = fixedLines.get(si)
+      if (LN_SPEED.on && fl && probs.every(p => p.line > 0 && (fl.has(p.line) || fl.has(p.line + 1)))) { log && log('  ↷ LISTENING_STORY scene ' + (si + 1) + ': the line it broke at was just rewritten — the scene is judged again before it is rewritten'); continue }
+      const st = sceneTargets(si), sceneBefore = written[si].slice(), sc = scenes[si]
       try {
         const r = take(await call('O_listening_story_qc_repair', 'STORY: "' + plan.title + '" — ' + plan.story + '\nTHE WHOLE CONVERSATION:\n' + soFar(nS) + factsLine() +
           '\n\nA native teacher flagged scene ' + (si + 1) + ' ("' + plan.scenes[si].title + '"):\n' + probs.map(p => '- ' + (p.line ? 'line ' + p.line + ' ' : '') + p.code + ': ' + p.detail).join('\n') +
-          '\n\nSCENE ' + (si + 1) + ' AS WRITTEN:\n' + lnStorySceneText(sc, la) + '\n\nRewrite the flagged lines (and a neighbouring line if the fix needs it) so the scene is natural spoken Thai and follows on. Keep every lesson word of this scene:\n' + lnStoryTargetRows(st) +
+          (LN_BEATS.on && lnBeatOf(plan.scenes[si]) ? '\nThe scene is ONE beat — set-up: ' + (lnBeatOf(plan.scenes[si]).setup || '—') + ' · middle: ' + (lnBeatOf(plan.scenes[si]).middle || '—') + ' · ending: ' + (lnBeatOf(plan.scenes[si]).ending || '—') + '. Every lesson word\'s line must advance it.' : '') +
+          (LN_LINKED.on && si && plan.scenes[si].transition ? '\nIt opens with a spoken move: ' + plan.scenes[si].transition + '.' : '') +
+          '\n\nSCENE ' + (si + 1) + ' AS WRITTEN:\n' + lnStorySceneText(sc, la) + '\n\nRewrite the flagged lines (and a neighbouring line if the fix needs it) so the scene is natural spoken Thai and follows on. Keep every lesson word of this scene:\n' + rowsFor(si, st) +
           '\nReply ONLY with JSON: the WHOLE corrected scene {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1900, 'LISTENING_REPAIR_CALLS'))
         if (r.length >= 2) {
           written[si] = r
           // the rewrite must not break a deterministic gate or lose a lesson word the scene had
-          const pb = lnStorySceneProblems(la, sceneOf(si), si, nS, st, ctx), pa = lnStorySceneProblems(la, lnStoryScenes(la, { scenes: [plan.scenes[si]] }, [before], targets, ctx)[0], si, nS, st, ctx)
-          if (pb.length > pa.length) { written[si] = before; log && log('  ↩ LISTENING_STORY scene ' + (si + 1) + ' QC rewrite broke ' + pb.length + ' check(s) — kept the earlier text') }
+          const pb = probsOf(sceneOf(si), si, st), pa = probsOf(lnStoryScenes(la, { scenes: [plan.scenes[si]] }, [sceneBefore], targets, ctx)[0], si, st)
+          if (pb.length > pa.length) { written[si] = sceneBefore; log && log('  ↩ LISTENING_STORY scene ' + (si + 1) + ' QC rewrite broke ' + pb.length + ' check(s) — kept the earlier text') }
         }
       } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' QC rewrite unusable: ' + String(e && e.message || e).slice(0, 100)) }
     }
     scenes = build(); [natIssues, coh] = await Promise.all([env.naturalness(scenes), cohOf(scenes)])
     const sc2 = score(scenes, natIssues, coh)
-    // 18 Nov — a round that does not improve the whole ENDS the QC. The better version is put back first, so the next round would start from the very text this round
+    // 18 Nov — a round that does not improve ENDS the QC. What the round changed is put back first, so the next round would start from the very text this round
     // started from and send the very same requests: it can only repeat this round (17 Nov run: rounds 2 and 3 both ended "score 13 vs 8")
-    const improved = sc2 < best.score
-    if (improved) best = { written: written.map(w => w.slice()), natIssues, coh, score: sc2 }
-    else log && log('  ↩ LISTENING_STORY QC round ' + round + ' did not improve the whole (score ' + sc2 + ' vs ' + best.score + ') — the better version is kept and the QC stops here (another round would start from the same text)')
-    written.splice(0, written.length, ...best.written.map(w => w.slice())); natIssues = best.natIssues; coh = best.coh; scenes = build()
-    if (!improved) break
+    let improved
+    if (LN_STABLE_JUDGE.on) {
+      // D — scene by scene: a scene the round changed stays changed only if ITS score fell; the others go back to their earlier text (their earlier verdicts are still remembered, so putting them back costs no judging)
+      const kept = [], undone = []
+      scenes.forEach((_, si) => { if (sameText(written[si], before[si])) return
+        if (sceneScore(scenes, natIssues, coh, si) < startScores[si]) kept.push(si + 1); else undone.push(si) })
+      undone.forEach(si => { written[si] = before[si].slice() })
+      improved = kept.length > 0
+      if (undone.length) { scenes = build(); [natIssues, coh] = await Promise.all([env.naturalness(scenes), cohOf(scenes)]) }
+      if (improved) { best = { written: written.map(w => w.slice()), score: score(scenes, natIssues, coh) }
+        if (undone.length) log && log('  ↩ LISTENING_STORY QC round ' + round + ' kept the rewrite of scene ' + kept.join(', ') + ' and put scene ' + undone.map(i => i + 1).join(', ') + ' back (it did not improve)') }
+    } else {
+      improved = sc2 < best.score
+      if (improved) best = { written: written.map(w => w.slice()), natIssues, coh, score: sc2 }
+      else { written.splice(0, written.length, ...best.written.map(w => w.slice())); natIssues = startNat; coh = startCoh; scenes = build() }
+    }
+    if (!improved) {
+      log && log('  ↩ LISTENING_STORY QC round ' + round + ' did not improve the whole (score ' + sc2 + ' vs ' + best.score + ') — the better version is kept and the QC stops here (another round would start from the same text)')
+      break
+    }
   }
   // a gate issue still left in a scene gets one more targeted rewrite (kept only if the scene's checks improve and the judges agree)
   for (let si = 0; si < nS; si++) {
     if (_protoRaw) break
-    const st = sceneTargets(si), pr = lnStorySceneProblems(la, sceneOf(si), si, nS, st, ctx).filter(p => p.code !== 'SCENE_TOO_SHORT')
+    const st = sceneTargets(si), pr = probsOf(sceneOf(si), si, st).filter(p => p.code !== 'SCENE_TOO_SHORT')
     if (!pr.length) continue
-    const before = written[si].slice()
+    const before = written[si].slice(), was = sceneScore(scenes, natIssues, coh, si)
     try {
       const r = take(await call('O_listening_story_repair', 'STORY: "' + plan.title + '" — ' + plan.story + '\nTHE WHOLE CONVERSATION:\n' + soFar(nS) + '\n\nSCENE ' + (si + 1) + ' AS WRITTEN:\n' + lnStorySceneText(sceneOf(si), la) +
         '\n\nPROBLEMS (fix every one; change as little as possible; keep the story and every lesson word):\n' + pr.map(p => '- ' + (p.line ? 'line ' + p.line + ' ' : '') + p.code + ': ' + p.detail).join('\n') +
-        '\nLesson words of this scene:\n' + lnStoryTargetRows(st) + '\nReply ONLY with JSON: the WHOLE corrected scene {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1900, 'LISTENING_REPAIR_CALLS'))
-      if (r.length >= 2) { written[si] = r; if (lnStorySceneProblems(la, sceneOf(si), si, nS, st, ctx).filter(p => p.code !== 'SCENE_TOO_SHORT').length >= pr.length) written[si] = before }
+        '\nLesson words of this scene:\n' + rowsFor(si, st) + '\nReply ONLY with JSON: the WHOLE corrected scene {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1900, 'LISTENING_REPAIR_CALLS'))
+      if (r.length >= 2) { written[si] = r; if (probsOf(sceneOf(si), si, st).filter(p => p.code !== 'SCENE_TOO_SHORT').length >= pr.length) written[si] = before }
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = before }
-    if (written[si] !== before) {
+    if (!sameText(written[si], before)) {
       scenes = build(); const [ni, ch] = await Promise.all([env.naturalness(scenes), cohOf(scenes)]), sc3 = score(scenes, ni, ch)
-      if (sc3 <= best.score) { best = { written: written.map(w => w.slice()), natIssues: ni, coh: ch, score: sc3 }; natIssues = ni; coh = ch }
+      // D — the scene's own score decides (the judge is asked about this scene alone: the others keep their verdicts)
+      const keep = LN_STABLE_JUDGE.on ? sceneScore(scenes, ni, ch, si) <= was : sc3 <= best.score
+      if (keep) { best = { written: written.map(w => w.slice()), natIssues: ni, coh: ch, score: sc3 }; natIssues = ni; coh = ch }
       else { written[si] = before; scenes = build() }
-      log && log('  🧹 LISTENING_STORY scene ' + (si + 1) + ' final clean-up ' + (written[si] === before ? 'not kept' : 'kept'))
+      log && log('  🧹 LISTENING_STORY scene ' + (si + 1) + ' final clean-up ' + (keep ? 'kept' : 'not kept'))
     }
   }
   // ── ENGLISH: each scene's English is translated again from its final Thai, so it says exactly what the Thai says (the edits and line
@@ -44407,7 +44867,7 @@ async function _lnComposeThaiStory(env, avoid) {
     scenes: scenes.map((sc, si) => ({ sceneId: sc.sceneId, phase: 'STORY', purpose: plan.scenes[si].happens, requiredTargetIds: plan.scenes[si].targets.filter(id => audit.covered.includes(id)), expectedTurns: sc.turns.length, maxTurns: sc.turns.length })) }
   return { ok: true, composer: 'story', scenes, audit, natIssues, plan: plan2, coh, editorGrade, hardLeft: hard.length, storyTitle: plan.title + ' — ' + plan.story,
     report: scenes.map(sc => ({ sceneId: sc.sceneId, required: 0, heard: 0, turns: sc.turns.length })),
-    gates: { SCENE_REQUIRED_COVERAGE: 'PASS', TURN_COUNT: total + '/' + LN_STORY_TURNS.max, TURN_BUDGET: total >= floor.turns && total <= LN_STORY_TURNS.max + 20, SCENES_VALIDATED: !hard.length, ONE_CONVERSATION: 'PASS' },
+    gates: { SCENE_REQUIRED_COVERAGE: 'PASS', TURN_COUNT: total + '/' + lnStoryTurnMax(scenes.length), TURN_BUDGET: total >= floor.turns && total <= lnStoryTurnMax(scenes.length) + 20, SCENES_VALIDATED: !hard.length, ONE_CONVERSATION: 'PASS' },
     salvage: deferred.length ? { from: 'story', passes: 0, removedTurns: 0, droppedScenes: [], cuts: [], floor, deferred: deferred.map(t => ({ targetId: t.id, target: t.surface, reason: (plan.deferred || []).includes(t.id) ? 'the story planner found no natural place for it in this story' : capN && !planTargets.includes(t) ? 'over the ' + capN + '-word cap for one Listening track (comes back in the next lesson)' : 'not heard after the bounded rewrites' })) } : null,
     uncommitted: [], contract: null, story: scenes.map(sc => sc.setting), phaseHealth: scenes.map(sc => ({ sceneId: sc.sceneId, committed: true, phaseRegenerations: 0, atomicRepairCalls: 0, exchangeRepairCalls: 0 })) }
 }
@@ -44627,6 +45087,8 @@ async function _buildStandaloneListeningTrackCore(o) {
     // v665: every failed gate blocks READY (§47); the level contract, length audit and unknown words travel with the track
     failedChecks: Object.entries(lt.gates || {}).filter(([k, v]) => v === false || v === 'FAIL' || v === 'UNVERIFIED').map(([k, v]) => k + '=' + (v === false ? 'FAIL' : v)),
     qualityNotes: [], level: lt.level || null, lengthAudit: lt.lengthAudit || null, unknownWords: (lt.unknownWords || []).slice(), playable: ready, telemetry: tel }
+  // 18 Nov (second round) G — a NOT_READY track says which scene and which line failed, in plain words (on the Listening screen, in History and in the export)
+  track.whyNotReady = ready || !LN_EXPLAIN.on ? [] : listeningWhyNotReady(lt)
   // §9 invariant: what the track carries IS the frozen snapshot
   const inv = JSON.stringify(track.selectedTargetIds) === JSON.stringify(frozenIds) && JSON.stringify(lt.coverage.selectedTargetIds) === JSON.stringify(frozenIds)
   log && log('🎧 LISTENING_SNAPSHOT_INVARIANT ' + (inv ? 'PASS' : 'FAIL') + ' — track / coverage target ids === the frozen snapshot (' + frozenIds.length + ')')
@@ -44638,7 +45100,7 @@ function listeningTrackSummary(t) {
   if (!isListeningTrack(t)) return ''
   const n = (t.listening && t.listening.lines || []).length
   const dn = (t.coverage && t.coverage.deferred || []).length
-  return n + ' lines · TARGET COVERAGE ' + ((t.coverage && t.coverage.covered) || 0) + '/' + ((t.coverage && t.coverage.required) || LISTENING_TRACK_TARGETS) + (dn ? ' · ' + dn + ' word' + (dn > 1 ? 's' : '') + ' stay due for Revision' : '') + ' · NEW 0 · REVIEW ' + ((t.keywords || []).length)
+  return (!t.ready && t.playable && LN_EXPLAIN.on ? '⚠ NOT READY — has issues · ' : '') + n + ' lines · TARGET COVERAGE ' + ((t.coverage && t.coverage.covered) || 0) + '/' + ((t.coverage && t.coverage.required) || LISTENING_TRACK_TARGETS) + (dn ? ' · ' + dn + ' word' + (dn > 1 ? 's' : '') + ' stay due for Revision' : '') + ' · NEW 0 · REVIEW ' + ((t.keywords || []).length)
 }
 function listeningTrackExportLines(t) {
   const lt = t.listening
@@ -44848,8 +45310,19 @@ function ListenTrackRowButton({ onClick, compact }) {
 function listeningRepairCandidate(attempts, tracks) {
   const latest = [...(tracks || [])].reverse().find(t => isListeningTrack(t) && (t.ready || t.playable) && t.listening) || null
   const attempt = (attempts || [])[0] || null
-  const failed = attempt && attempt.state !== 'READY' && (!latest || String(attempt.createdAt || '') > String(latest.createdAt || '')) ? attempt : null
+  let failed = attempt && attempt.state !== 'READY' && (!latest || String(attempt.createdAt || '') > String(latest.createdAt || '')) ? attempt : null
+  // 18 Nov (second round) H — a NOT_READY conversation is saved the moment it is finished (playable, marked, never disguised as READY): the newest playable track is then itself the one that needs repair
+  if (!failed && latest && !latest.ready && LN_SAVE_EARLY.on) failed = (attempts || []).find(a => a && a.attemptId === latest.attemptId) || listeningAttemptOfTrack(latest)
   return { latest, failed }
+}
+// the attempt-shaped view of a saved NOT_READY track (the same facts the History row keeps)
+function listeningAttemptOfTrack(t) {
+  return { attemptId: t.attemptId || t.id, createdAt: t.createdAt, language: t.language, trackType: 'listening', selectedTargetIds: (t.selectedTargetIds || []).slice(), state: 'NOT_READY', coverage: t.coverage || null,
+    failedChecks: t.failedChecks || [], failureReason: t.failureReason || null, whyNotReady: t.whyNotReady || [], trackId: t.id, lines: t.listening && t.listening.lines ? t.listening.lines : null, qualityNotes: t.qualityNotes || [], coverageLabel: t.listening ? listeningCoverageLabel(t.listening, t) : '' }
+}
+// the tracks list with a new Listening Track in it; a NOT_READY track saved earlier from the attempt this one rebuilds is replaced by it
+function listeningTracksWith(tracks, t) {
+  return [...(tracks || []).filter(x => !(t && t.rebuildOf && isListeningTrack(x) && !x.ready && (x.attemptId === t.rebuildOf || x.id === t.rebuildOf)))].concat([t])
 }
 function ListeningLatestBar({ lang, tracks, onListen, onRebuild }) {
   const [attempt, setAttempt] = useState(null)
@@ -44867,8 +45340,10 @@ function ListeningLatestBar({ lang, tracks, onListen, onRebuild }) {
         <div style={{ fontSize: 20 }}>🎧</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>Your last Listening Track needs repair</div>
-          <div style={{ fontSize: 11, color: 'var(--muted)' }}>TARGET COVERAGE {cov.covered || 0}/{cov.required || (failed.selectedTargetIds || []).length} · not playable yet{latest ? ' · an older one is in Recent Tracks' : ''}</div>
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>TARGET COVERAGE {cov.covered || 0}/{cov.required || (failed.selectedTargetIds || []).length} · {(failed.lines || []).length ? 'NOT READY — it can still be played, marked as having issues' : 'not playable yet'}{latest && latest.ready ? ' · an older one is in Recent Tracks' : ''}</div>
+          {LN_EXPLAIN.on && (failed.whyNotReady || []).length > 0 && <div data-listening-why-not-ready="1" style={{ fontSize: 11, color: '#b45309', marginTop: 2 }}>{failed.whyNotReady[0].text}</div>}
         </div>
+        {latest && !latest.ready && latest.attemptId === failed.attemptId && <button data-listening-latest-play="1" onClick={() => onListen && onListen(latest)} style={{ ...btn, background: '#10b981', color: '#fff' }}>▶ Play</button>}
         <button data-listening-latest-rebuild="1" onClick={() => onRebuild && onRebuild(failed.selectedTargetIds || [], failed.attemptId)} style={{ ...btn, background: '#f97316', color: '#0b1120' }}>🔁 Rebuild</button>
       </div>
     )
@@ -44931,6 +45406,8 @@ function listeningAttemptRecord(o) {
     failedChecks: t.failedChecks || [], failureReason: t.failureReason || null, telemetry: t.telemetry || null, usage: o.usage || t.usage || null,
     model: o.model || null, rebuildOf: o.rebuildOf || null, trackId: t.ready || t.playable ? t.id : null, log: (o.log || []).slice(-600),
     speechStyle: t.speechStyle || o.speechStyle || null,
+    // 18 Nov (second round) G — what went wrong, one plain sentence each (which scene, which line), so the offer to rebuild or play can say it
+    whyNotReady: Array.isArray(t.whyNotReady) ? t.whyNotReady.slice(0, 12) : [],
     // v664: the conversation itself, so any attempt that produced lines can be listened to from History
     qualityNotes: t.qualityNotes || [], lines: t.listening && Array.isArray(t.listening.lines) && t.listening.lines.length ? t.listening.lines : null,
     // v665 §50 — the learner level and what failed against it (belt, preferred range, hardMax, length failures, unknown words, atomic fixes)
@@ -45044,11 +45521,19 @@ function ListeningStatusPanel({ track, wordOf, building, onRebuild, onBack, onSt
       {missing.length > 0 && <div style={{ fontSize:12, color:'var(--text)' }}>Missing: {missing.join(', ')}</div>}
       {(track.failedChecks || []).length > 0 && <div style={{ fontSize:12, color:'#b45309' }}>Failed: {track.failedChecks.map(x => x.replace(/=FAIL$/, '')).join(' · ')}</div>}
       {track.failureReason && <div style={{ fontSize:12, color:'#b45309' }}>{track.failureReason}</div>}
+      {LN_EXPLAIN.on && (track.whyNotReady || []).length > 0 && (
+        <div data-listening-why-not-ready="1" style={{ display:'flex', flexDirection:'column', gap:3, background:'rgba(249,115,22,0.06)', borderRadius:8, padding:'6px 8px' }}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#b45309', letterSpacing:'0.04em' }}>WHAT WENT WRONG</div>
+          {track.whyNotReady.slice(0, 8).map((w, i) => <div key={i} data-listening-why-line={w.line || ''} data-listening-why-scene={w.scene || ''} style={{ fontSize:12, color:'var(--text)' }}>• {w.text}</div>)}
+          {track.whyNotReady.length > 8 && <div style={{ fontSize:11, color:'var(--muted)' }}>… and {track.whyNotReady.length - 8} more (they are in the export)</div>}
+        </div>
+      )}
       {track.lengthAudit && track.lengthAudit.overHardMax > 0 && <div style={{ fontSize:12, color:'#b45309' }}>Too long for {track.lengthAudit.belt} (target {track.lengthAudit.preferredMin}–{track.lengthAudit.preferredMax} · hard max {track.lengthAudit.hardMax} {track.lengthAudit.unit}): {track.lengthAudit.over.slice(0, 6).map(x => 'L' + x.line + ' (' + x.units + ')').join(' · ')}</div>}
       {(track.unknownWords || []).length > 0 && <div style={{ fontSize:12, color:'#b45309' }}>Words not taught yet: {track.unknownWords.slice(0, 12).join(', ')}</div>}
       <div style={{ fontSize:11, color:'var(--muted)' }}>Rebuild writes a completely new conversation from the same {(track.selectedTargetIds || []).length} words.{onPlayAnyway && track.listening && (track.listening.lines || []).length ? ' Or play this one as it is — it is saved and marked as having issues.' : ''}</div>
       {onPlayAnyway && track.listening && (track.listening.lines || []).length > 0 && (
-        <div data-listening-play-anyway="1"><Btn onClick={onPlayAnyway} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'12px' }}>▶ Play anyway ({track.listening.lines.length} lines)</Btn></div>
+        <div data-listening-play-anyway="1"><Btn onClick={onPlayAnyway} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'12px' }}>▶ Play anyway ({track.listening.lines.length} lines)</Btn>
+          {LN_EXPLAIN.on && <div style={{ fontSize:11, color:'var(--muted)', textAlign:'center', marginTop:4 }}>It plays with a NOT READY label.</div>}</div>
       )}
       <div style={{ display:'flex', gap:8 }}>
         <Btn onClick={onRebuild} variant="primary" disabled={!(track.selectedTargetIds || []).length} style={{ flex:1, justifyContent:'center' }}>🔁 Rebuild</Btn>
@@ -45125,9 +45610,14 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
     try { sum = aiUsageSummary(runId); if (t.ready || sum.total) { t.aiUsage = sum; recordLastTrackAiUsage(sum, t.id || attemptId, lang) } } catch (e) {}
     const u = listeningUsageSince(led0)
     t.usage = t.usage || u
+    // 18 Nov (second round) H — the finished track is saved FIRST, before anything the learner could navigate away during: a READY track as before, and a NOT_READY one that has lines too — playable, marked and
+    // never disguised as READY — so it is in Recent Tracks even if the page is left at once; its History row follows. (Rebuilding it replaces it: listeningTracksWith.) Switch: lnSaveEarlySetEnabled(false).
+    const early = LN_SAVE_EARLY.on && !t.ready && t.listening && (t.listening.lines || []).length > 0
+    if (early) { t.playable = true; t.needsRepair = true }
+    if (early || (LN_SAVE_EARLY.on && t.ready)) { try { onSave && await onSave(t) } catch (e) {} }
     const rec = listeningAttemptRecord({ ...base, finishedAt: new Date().toISOString(), state: t.ready ? 'READY' : 'NOT_READY', track: t, usage: t.usage, log: logRef.current })
     try { const a = await saveListeningAttempt(lang, rec); if (liveRef.current) setAttempts(a) } catch (e) {}
-    if (t.ready) { try { onSave && await onSave(t) } catch (e) {} }
+    if (t.ready && !LN_SAVE_EARLY.on) { try { onSave && await onSave(t) } catch (e) {} }
     runRef.current = null
     if (!liveRef.current) return
     setUsage(t.usage); setResult(t); setStage('final'); setPhase('done')
@@ -45155,7 +45645,7 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
   const playAttempt = a => {
     if (!a || !(a.lines || []).length) return
     setResult({ trackType: 'listening', language: lang, attemptId: a.attemptId, selectedTargetIds: a.selectedTargetIds || [], coverage: a.coverage, failedChecks: a.failedChecks || [],
-      qualityNotes: a.qualityNotes || [], ready: a.state === 'READY', playable: true, listening: { lines: a.lines, readiness: a.state === 'READY' ? 'READY' : 'NOT_READY', coverage: null }, _coverageLabel: a.coverageLabel || '' })
+      qualityNotes: a.qualityNotes || [], whyNotReady: a.whyNotReady || [], ready: a.state === 'READY', playable: true, listening: { lines: a.lines, readiness: a.state === 'READY' ? 'READY' : 'NOT_READY', coverage: null }, _coverageLabel: a.coverageLabel || '' })
     setPhase('done'); setPlaying(true)
   }
   if (phase === 'repair-offer' && repairOffer) {
@@ -45167,9 +45657,18 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
           <div style={{ fontSize: 22 }}>🎧</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#f97316' }}>Your last Listening Track needs repair</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>TARGET COVERAGE {cov.covered || 0}/{cov.required || (f.selectedTargetIds || []).length} · not playable yet{repairOffer.latest ? ' · an older one is in Recent Tracks' : ''}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>TARGET COVERAGE {cov.covered || 0}/{cov.required || (f.selectedTargetIds || []).length} · {(f.lines || []).length ? 'NOT READY — it can still be played, marked as having issues' : 'not playable yet'}{repairOffer.latest && repairOffer.latest.ready ? ' · an older one is in Recent Tracks' : ''}</div>
+            {LN_EXPLAIN.on && (f.whyNotReady || []).length > 0 && (
+              <div data-listening-why-not-ready="1" style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {f.whyNotReady.slice(0, 4).map((w, i) => <div key={i} style={{ fontSize: 11, color: '#b45309' }}>• {w.text}</div>)}
+              </div>
+            )}
           </div>
         </div>
+        {LN_EXPLAIN.on && (f.lines || []).length > 0 && (
+          <button data-listening-latest-play="1" onClick={() => playAttempt(f)}
+            style={{ ...btn, border: 'none', background: '#10b981', color: '#fff' }}>▶ Play it as it is (NOT READY, {(f.lines || []).length} lines)</button>
+        )}
         <button data-listening-latest-rebuild="1" onClick={() => { const ids0 = (f.selectedTargetIds || []).slice(); setRepairOffer(null); run(ids0, f.attemptId || null) }}
           style={{ ...btn, border: 'none', background: '#f97316', color: '#0b1120' }}>🔁 Rebuild with the same {(f.selectedTargetIds || []).length} words</button>
         <button data-listening-repair-new="1" onClick={() => { setRepairOffer(null); run(null, null) }}
@@ -45181,6 +45680,12 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
   const lt = result && result.listening
   if (playing && lt) return (
     <div style={{ maxWidth:720, margin:'0 auto', padding:'12px 10px' }}>
+      {LN_EXPLAIN.on && !(result && result.ready) && (
+        <div data-listening-notready-banner="1" style={{ marginBottom:8, padding:'8px 12px', borderRadius:10, border:'1px solid #f97316', background:'rgba(249,115,22,0.08)', fontSize:12, color:'var(--text)' }}>
+          <div style={{ fontWeight:800, color:'#f97316', letterSpacing:'0.04em' }}>NOT READY — this conversation has issues</div>
+          {((result && result.whyNotReady) || []).slice(0, 3).map((w, i) => <div key={i} style={{ marginTop:2 }}>• {w.text}</div>)}
+        </div>
+      )}
       <ConvoPlayer lines={lt.lines.map(l => ({ ...l, _scene: l.scene, _episodeTitle: lt.episodes ? (l.sceneTitle || 'Scene ' + l.scene) : null }))} speed={speed} onSpeedChange={v => { setSpeed(v); saveListeningPlaybackSpeed(v) }} speedPresets={LISTENING_SPEED_PRESETS}
         gcpTtsKey={gcpTtsKey} lang={lang} coverageLabel={result._coverageLabel || listeningCoverageLabel(lt, result)} title="Listening Track" onSkip={() => setPlaying(false)} onDone={() => { setPlaying(false); onBack && onBack() }} />
     </div>
@@ -53466,7 +53971,7 @@ function ThaiTeacher({ lang, onSetLang }) {
         /></ErrorBoundary>}
         {view === 'listening-track' && (
           <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} tracks={tracks} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="th" vocab={vocab} apiKey={apiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={gcpTtsKey}
-            track={listeningOpen} onSave={async t => { await saveTracks([...tracks, t]) }} onBack={() => { setListeningOpen(null); navigate('dashboard') }} /></ErrorBoundary>
+            track={listeningOpen} onSave={async t => { await saveTracks(listeningTracksWith(tracks, t)) }} onBack={() => { setListeningOpen(null); navigate('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
           <ErrorBoundary><ListenFirstGate track={activeTrack} lang="th" vocab={vocab}
@@ -59169,7 +59674,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
         )}
         {view === 'listening-track' && (
           <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} tracks={tracks} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="ja" speechStyle={register} vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
-            track={listeningOpen} onSave={async t => { await saveTracksJa([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
+            track={listeningOpen} onSave={async t => { await saveTracksJa(listeningTracksWith(tracks, t)) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
           <ErrorBoundary><ListenFirstGate track={activeTrack} lang="ja" vocab={vocab}
@@ -63011,7 +63516,7 @@ function MandarinTeacher({ lang, onSetLang }) {
         )}
         {view === 'listening-track' && (
           <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} tracks={tracks} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="zh" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
-            track={listeningOpen} onSave={async t => { await saveTracksZh([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
+            track={listeningOpen} onSave={async t => { await saveTracksZh(listeningTracksWith(tracks, t)) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
           <ErrorBoundary><ListenFirstGate track={activeTrack} lang="zh" vocab={vocab}

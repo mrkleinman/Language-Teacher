@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v768"/>
+<meta name="app-version" content="v769"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v768';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v768').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v769';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v769').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -11736,6 +11736,16 @@ let _kaHolds = 0, _kaCtx = null, _kaNode = null, _kaLockRelease = null, _kaStopA
 // keepAliveMediaSetEnabled(false). Everything is optional: a browser without it simply does without.
 const KA_MEDIA = { on: true }
 function keepAliveMediaSetEnabled(on) { KA_MEDIA.on = !!on; if (!on) _kaMediaStop() }
+// 18 Nov (the owner: "allow the generation to play the barely audible sound while other apps e.g. YouTube is playing"): a page that plays an audio ELEMENT takes the phone's audio focus, and
+// Android then pauses the other app's sound — a web page cannot ask the phone to mix instead. So the learner CHOOSES (Settings → Keep running in the background): 'media' keeps the tab running
+// but may pause other apps' sound; 'mix' plays only a quiet web-audio tone (it takes no audio focus, other apps keep playing) and the phone may slow the page when it is left.
+const KA_MODE_KEY = 'tt-keep-awake-mode'
+function keepAliveModeApply() {
+  try { const raw = typeof localStorage !== 'undefined' && localStorage.getItem(KA_MODE_KEY); const m = raw ? JSON.parse(raw) : 'media'; keepAliveMediaSetEnabled(m !== 'mix') } catch (e) {}
+  return KA_MEDIA.on ? 'media' : 'mix'
+}
+keepAliveModeApply()
+async function keepAliveModeSave(mode) { const m = mode === 'mix' ? 'mix' : 'media'; keepAliveMediaSetEnabled(m === 'media'); await stSet(KA_MODE_KEY, m); return m }
 function _kaWavUrl() {
   const rate = 8000, n = rate * 2, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf)
   const w = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)) }
@@ -11778,7 +11788,7 @@ function _kaStart() {
   try {
     keepAliveUnlock()
     if (_kaCtx && !_kaNode && _kaCtx.state === 'running') {
-      const o = _kaCtx.createOscillator(), g = _kaCtx.createGain(); o.frequency.value = 20; g.gain.value = 0.0002
+      const o = _kaCtx.createOscillator(), g = _kaCtx.createGain(); o.frequency.value = 20; g.gain.value = KA_MEDIA.on ? 0.0002 : 0.003      // mix mode: 15x louder (about -50 dB, still not heard) so the browser is more likely to count it as audio
       o.connect(g); g.connect(_kaCtx.destination); o.start(); _kaNode = { o, g }
     }
   } catch (e) { _kaNode = null }
@@ -19605,11 +19615,14 @@ async function anthropicRequest({ model, messages, maxTokens, signal, stage, jso
   for (let attempt = 1; attempt <= ANTHROPIC_CONFIG.maxAttempts; attempt++) {
     if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) throw _cancelledError('run superseded')
     const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens, attempt, retryReason: why })
-    const controller = aiNewController(), tid = setTimeout(() => controller.abort(), ANTHROPIC_CONFIG.timeoutMs)
+    // 18 Nov (the owner's 18 Nov Thai export: calls that ran 154 s, 243 s and 515 s although this timeout is 180 s — a background tab delays an ordinary timer): the timer waits through appSleep,
+    // which counts in a worker while the page is hidden, so a call that hangs is abandoned and retried on time
+    const controller = aiNewController(); let _timedOut = false
+    appSleep(ANTHROPIC_CONFIG.timeoutMs).then(() => { if (!_timedOut) { _timedOut = true; controller.abort() } })
     const onAbort = () => controller.abort()
     if (signal && signal.addEventListener) signal.addEventListener('abort', onAbort)
     if (runCtl && runCtl.signal.addEventListener) runCtl.signal.addEventListener('abort', onAbort)
-    const detach = () => { clearTimeout(tid); if (signal && signal.removeEventListener) signal.removeEventListener('abort', onAbort); if (runCtl && runCtl.signal.removeEventListener) runCtl.signal.removeEventListener('abort', onAbort) }
+    const detach = () => { _timedOut = true; if (signal && signal.removeEventListener) signal.removeEventListener('abort', onAbort); if (runCtl && runCtl.signal.removeEventListener) runCtl.signal.removeEventListener('abort', onAbort) }
     let res = null
     const _t0 = Date.now()
     try { res = await fetch(anthropicServerUrl(), { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json', 'x-lt-access': AI_ANTHROPIC_ACCESS }, body }) }
@@ -19661,7 +19674,9 @@ async function anthropicRequest({ model, messages, maxTokens, signal, stage, jso
     aiRecordEnd(row, { http: status, ok: out.ok, text: out.ok ? out.text : '', usage, error: out.ok ? null : out.problem })
     // 18 Nov: a reply cut off at max_tokens (thinking + answer did not fit) is repeated with MORE ROOM instead of identically (the same request can only be cut off again): double the cap up to the
     // ceiling, and once at the ceiling one effort level lower (high -> medium -> low), so the thinking leaves room for the answer. It uses one of the request's attempts.
-    if (!out.ok && /^MAX_TOKENS/.test(String(out.problem || '')) && attempt < ANTHROPIC_CONFIG.maxAttempts) {
+    // 18 Nov (the owner's 18 Nov Thai export: 3 of 4 bridge batches were cut off at 4500 tokens with NO text, again at 9000, and only then answered: 20 + 40 + 65 s each): the Thai bridge
+    // writer has its own, faster fallback (the same request with thinking OFF, about 8 s), so it is not given the slower doubling here
+    if (!out.ok && /^MAX_TOKENS/.test(String(out.problem || '')) && attempt < ANTHROPIC_CONFIG.maxAttempts && stageNow !== 'Y_bridge') {
       const cur = req.body.max_tokens, nextMax = Math.min(ANTHROPIC_CONFIG.maxTokensCeiling, cur * 2), lower = { high: 'medium', medium: 'low' }
       const effNext = nextMax === cur && lower[_effNow] ? lower[_effNow] : _effNow
       if (nextMax !== cur || effNext !== _effNow) {
@@ -43507,11 +43522,15 @@ async function thaiYesAndBridges(pairs, vocab, o, log) {
     const t = String(raw || '').replace(/```json|```/g, ''); return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).bridges || []
   }
   // v724 — with thinking on, the reply can be cut off at the token cap (live D-run: 3 of 3 gaps left without a bridge); one retry with thinking off
+  // 18 Nov: once ONE batch of this run has been cut off with thinking on, the other batches start with thinking off (they would be cut off the same way, 20 s each)
+  let _cutOnce = false
   const ask = async (list, reasons) => {
-    try { return await ask0(list, reasons) }
-    catch (e) { if (!/MAX_TOKENS/.test(String(e && e.message || e))) throw e
-      THAI_YESAND._bridgeNoThink = true; out.noThinkRetry = (out.noThinkRetry || 0) + 1
+    const noThinkFirst = _cutOnce
+    try { if (noThinkFirst) THAI_YESAND._bridgeNoThink = true; return await ask0(list, reasons) }
+    catch (e) { if (!/MAX_TOKENS/.test(String(e && e.message || e)) || noThinkFirst) throw e
+      _cutOnce = true; THAI_YESAND._bridgeNoThink = true; out.noThinkRetry = (out.noThinkRetry || 0) + 1
       try { return await ask0(list, reasons) } finally { THAI_YESAND._bridgeNoThink = false } }
+    finally { if (noThinkFirst) THAI_YESAND._bridgeNoThink = false }
   }
   const made = [], refused = new Map()
   const judge = (arr, list) => { arr.forEach(b => { const s = spots[Number(b && b.gap) - 1]; if (!s || !list.includes(s) || !b.thai) return
@@ -48128,6 +48147,24 @@ function GcpTtsSection({ gcpTtsKey, onSaveGcpTtsKey, lang }) {
 // Settings → AI Generation Model. Gemini stays the default; Claude Haiku 5.5 is an experimental alternative for the sentences
 // of new Daily / Revision / Weak-words tracks. Stored: the choice and two limits (a preference), and the SITE access code for
 // this app's own server function. The Anthropic API key is never entered here — it lives in the site's server settings.
+function KeepRunningCard() {
+  const [mode, setMode] = useState(keepAliveModeApply())
+  const pick = async m => { setMode(await keepAliveModeSave(m)) }
+  const opt = (id, title, note) => (
+    <label key={id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 6, cursor: 'pointer',
+      border: '1px solid ' + (mode === id ? '#d4a94a' : 'var(--border)'), background: mode === id ? 'rgba(212,169,74,0.08)' : 'var(--surface2)' }}>
+      <input type="radio" name="tt-keep-awake-mode" value={id} checked={mode === id} onChange={() => pick(id)} style={{ marginTop: 3 }} />
+      <span style={{ fontSize: 13 }}>{title}<span style={{ display: 'block', color: 'var(--muted)', fontSize: 11, marginTop: 2 }}>{note}</span></span>
+    </label>)
+  return (
+    <Card style={{ padding: 16, marginBottom: 12 }}>
+      <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Keep running in the background</p>
+      <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 10 }}>While a track is being written, how should the app stay awake when you switch to another app or minimise the browser?</p>
+      {opt('media', 'Keep it running (recommended)', 'Plays a near-silent sound and shows "Writing your track…" in your phone\'s media controls. Your phone may pause YouTube or music while it writes.')}
+      {opt('mix', 'Do not pause my other apps', 'Only a very quiet tone is used, so YouTube and music keep playing. The phone may slow the page down when you leave it.')}
+    </Card>
+  )
+}
 function GenerationModelCard() {
   const [pref, setPref] = useState(aiGenerationPreference())
   const [code, setCode] = useState('')
@@ -48945,6 +48982,7 @@ function Settings({ onBack, geminiKey, onSaveGeminiKey, geminiSpend, onResetGemi
         </button>
       </Card>
       <GenerationModelCard />
+      <KeepRunningCard />
     </div>
   )
 }

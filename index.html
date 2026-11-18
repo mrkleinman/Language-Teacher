@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v764"/>
+<meta name="app-version" content="v765"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v764';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v764').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v765';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v765').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -61215,8 +61215,13 @@ const YUE_SCENE_WORDS = { home: 'at home', street: 'on the street', office: 'at 
   restaurant: 'at a restaurant', party: 'at a party', '\u8336\u9910\u5EF3': 'in a cha chaan teng', clinic: 'at the clinic', airport: 'at the airport', market: 'at the market', park: 'in the park',
   bus: 'on the bus', building: 'in a building', cinema: 'at the cinema', bank: 'at the bank', hill: 'on a hill', 'dim sum restaurant': 'at a dim sum restaurant', beach: 'at the beach',
   hiking: 'on a hike', sports: 'at the sports ground', salon: 'at the salon', mall: 'in a mall', hotel: 'at a hotel', minibus: 'on a minibus', gym: 'at the gym', 'food stall': 'at a food stall', 'food court': 'in a food court' }
-// "New chat · at a café — " (the words that open the first cue of a lesson block); a place with no name here is left out, the "New chat" stays
-function yueSceneStart(scene) { const w = YUE_SCENE_WORDS[String(scene || '').toLowerCase()]; return 'New chat' + (w ? ' \u00B7 ' + w : '') + ' \u2014 ' }
+// the cue of a line: first line of a block "At a café, say: “…”" (a place with no name here: "New chat, say: “…”"); the others "Say: “…”"
+function yueCueLine(scene, english) {
+  const q = ' \u201C' + english + '\u201D'
+  if (scene == null) return 'Say:' + q
+  const w = YUE_SCENE_WORDS[String(scene || '').toLowerCase()]
+  return (w ? w.charAt(0).toUpperCase() + w.slice(1) : 'New chat') + ', say:' + q
+}
 // one fixed chunk: its words (surface + Yale; a punctuation mark has no Yale) and its text
 function yueModuleChunk(i) {
   const d = YUE_MODULES.data; if (!d) return null
@@ -61255,11 +61260,10 @@ function yueModuleRender(c, target) {
     }
     const chinese = segs.map(s => s.surface).join(''), pinyin = yueYaleOfPieces(pieces), english = jaModuleFillEn(en, tag.slot, tag.plural), prompt = jaModuleFillEn(pr, tag.slot, tag.plural)
     if (/[{}]/.test(chinese + english + prompt) || !pinyin) return null
-    // 17 Nov (the owner: "the prompts are still very confusing"): a cue only said WHAT KIND of thing to say ("Say hello to her and give your name"), and every lesson block is its own
-    // little chat in a place the learner never saw, so Leon and Carrie seemed to meet again and again for no reason. The cue now (1) says the English to put into Cantonese and
-    // (2) on the first line of each block says that a new chat starts, and where.
-    const cue = (k === 0 ? yueSceneStart(m.scene) : '') + String(prompt) + ' Say: \u201C' + english + '\u201D'
-    out.push({ speaker: sp[k], chinese, pinyin, spokenPinyin: pinyin, english, prompt: cue, segments: segs, _moduleId: m.id, _module: true, ...(k === 0 ? { newChat: true } : {}) })
+    // 17 Nov (the owner: "the prompts are still very confusing"), then 18 Nov ("why so many extra instructions? just say 'on a phone call, say ...'"): the cue is ONE short line — the place
+    // on the first line of a lesson block ("On the phone, say: “Hello, this is Leon.”"), and "Say: “…”" on the others. The module's own longer description is kept as _basePrompt only.
+    const cue = yueCueLine(k === 0 ? m.scene : null, english)
+    out.push({ speaker: sp[k], chinese, pinyin, spokenPinyin: pinyin, english, prompt: cue, _basePrompt: prompt, segments: segs, _moduleId: m.id, _module: true, ...(k === 0 ? { newChat: true } : {}) })
   }
   return out
 }
@@ -61526,7 +61530,7 @@ function yueReviewPrompt(track, vocab) {
     'Every line is spoken by A (a man) or B (a woman) in an ordinary, friendly everyday conversation. The learner sees the Cantonese in traditional characters, its Yale romanisation and an English translation, and practises one target word per line.\n' +
     'Judge EVERY line on these points. Flag a line only for a real problem, never for taste or for a simple style choice.\n' +
     '1. NATURAL HONG KONG CANTONESE (kind "mandarin"): colloquial spoken Cantonese as people say it in Hong Kong. Flag Mandarin (是 不 没有 了 的 在 他 什么 and Mandarin word order or phrasing where Cantonese says 係 唔 冇 咗 嘅 喺 佢 乜嘢) and flag stiff written Chinese that nobody says aloud.\n' +
-    '2. ENGLISH (kind "meaning"): the English says what the Cantonese says: nothing added, nothing missing, nothing changed.\n' +
+    '2. ENGLISH (kind "meaning"): the English says what the Cantonese says: nothing added, nothing missing, nothing changed. An idiomatic English that fits the situation and means the same ("this is Leon" on the phone for 我係利安, "it is me" for 係我) is NOT a mismatch.\n' +
     '3. YALE (kind "yale"): the Yale matches the characters syllable by syllable: the same number of syllables and the right word for each character. Judge tone marks only where a tone is clearly wrong for the word. Flag a wrong, missing or extra syllable; do not write the correct Yale.\n' +
     '4. TARGET WORD (kind "sense"): the line uses the target word in the sense the word list gives for it (see TARGET WORDS), not in a different sense.\n' +
     '5. REGISTER (kind "register"): the wording suits the speaker and a friendly everyday conversation: not rude, not formal, not old-fashioned, nothing that clashes with a man speaking as A or a woman speaking as B.\n' +

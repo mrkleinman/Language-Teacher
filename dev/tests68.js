@@ -192,7 +192,9 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
       /do NOT copy them/.test(blk) && blk.includes(t.thai + ':') && (c.ev('LN_MODULE_EXAMPLES').on = false, c.ev('thaiModuleExamplesBlock')([tg], V) === '') , blk.slice(0, 120))
     c.ev('LN_MODULE_EXAMPLES').on = true  // the shipped default is off (see the note at its definition); the test switches it on
     T('M10', 'wired into the story: each scene brief carries the examples after its lesson-word list, and a standalone Thai Listening run loads the modules first',
-      /thaiModuleExamplesBlock\(st, ctx\.vocab\)/.test(src) && /LN_MODULE_EXAMPLES\.on\) \{ await thaiLoadRecentLines\(log\); await thaiModulesLoad\(log\)/.test(src))
+      // 18 Nov (second round, item E) — the pinned source text changed on purpose: the modules are also loaded for the reviewed-uses switch (LN_USAGE_EXAMPLES), so the condition reads
+      // `(LN_MODULE_EXAMPLES.on || LN_USAGE_EXAMPLES.on)`; what this checks (a standalone Thai Listening run loads the modules first) is unchanged
+      /thaiModuleExamplesBlock\(st, ctx\.vocab\)/.test(src) && /LN_MODULE_EXAMPLES\.on(?: \|\| LN_USAGE_EXAMPLES\.on)?\)\) \{ await thaiLoadRecentLines\(log\); await thaiModulesLoad\(log\)/.test(src))
   }
   out.forEach(l => console.log(l))
   console.log('\nv717 Thai gap-fill modules: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))

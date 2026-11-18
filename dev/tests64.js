@@ -102,7 +102,9 @@ function scriptedModel(c, vocab, opt = {}) {
       if (opt.fix) turns.forEach(t => { const f = opt.fix(t); if (f) Object.assign(t, f) })
       return JSON.stringify({ turns })
     }
-    if (stage === 'O_listening_story_review') return JSON.stringify({ score: 7, faults: [] })
+    // 18 Nov (second round, item F) — CHANGED on purpose: the editor's fix call is no longer paid for when its own read names no fault and grades 7 or more (it used to send a second request
+    // that went looking for faults the read had just said were not there). S11 needs the editor to have a fault to fix, so for addReply the read names the missing reply.
+    if (stage === 'O_listening_story_review') return JSON.stringify(opt.addReply ? { score: 6, faults: [{ from: 2, to: 2, problem: 'reply missing', fix: 'add a reply' }] } : { score: 7, faults: [] })
     if (stage === 'O_listening_story_english') { st.english = (st.english || 0) + 1; return JSON.stringify({ english: [...p.matchAll(/^\d+\. [AB]: (.+)$/gm)].map(m => 'EN of ' + m[1]) }) }
     if (stage === 'O_word_usage') {
       // v712: the shared per-word usage profiles (one batched call for the words not yet described; cached per word)
@@ -183,7 +185,8 @@ async function run(c, vocab, opt = {}) {
     const tel = A.tr.telemetry || {}
     T('S3', 'end to end: READY with all 30 frozen words heard, composer = story, written by the model (plan + one call per scene), the whole-conversation edit and the paid QC ran (naturalness + coherence), real call counts on the track',
       A.tr.status === 'READY' && A.tr.coverage.covered === 30 && A.tr.listening.composer === 'story' && gen === 4 && wrote === 4 && beats === 4 &&
-      A.st.calls.includes('O_listening_story_edit') && A.st.calls.includes('O_listening_story_review') /* v712: find-then-fix editor */ &&
+      // 18 Nov (second round, item F) — CHANGED on purpose: a read that names no fault and grades 7 costs no fix call, so "the editor ran" is the read plus either the fix call or the log line that says it was not needed
+      (A.st.calls.includes('O_listening_story_edit') || A.logs.some(x => /no fault named — nothing to fix, no fix call is paid for/.test(x))) && A.st.calls.includes('O_listening_story_review') /* v712: find-then-fix editor */ &&
       A.st.calls.filter(x => x === 'O_listening_story_english').length === 4 && L.every(l => /^EN of /.test(l.english || '')) /* English re-translated from the final Thai, per scene */ && A.st.calls.includes('verdicts') && A.st.calls.includes('O_listening_coherence') && tel.LISTENING_GENERATION_CALLS >= 2 && tel.LISTENING_QC_CALLS >= 1 && L.length >= 30,
       { status: A.tr.status, cov: A.tr.coverage, composer: A.tr.listening && A.tr.listening.composer, beats, wrote, calls: A.st.calls, tel, failed: A.tr.failedChecks })
   }

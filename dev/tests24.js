@@ -309,7 +309,9 @@ async function openListening(S, lang, props = {}) {
       const txt = u2.text()
       const w = S2.vocab.find(v => v.id === missId)
       T(lang, 'C3', '§24 one target absent → 29/30 · that tile stays "repair" (others verified) · its chip is the warning colour · NOT_READY · not saved',
-        /TARGET COVERAGE 29\/30/.test(txt) && tileState(missId) === 'repair' && others.every(s => s === 'verified') && chipEl && /f97316/.test(JSON.stringify(chipEl.props.style)) && u2.saved.length === 0,
+        /TARGET COVERAGE 29\/30/.test(txt) && tileState(missId) === 'repair' && others.every(s => s === 'verified') && chipEl && /f97316/.test(JSON.stringify(chipEl.props.style)) &&
+        // 18 Nov (second round, item H) — CHANGED on purpose: this used to say "not saved". A NOT_READY conversation with lines is now saved the moment the build finishes (playable, marked NOT_READY, never READY)
+        u2.saved.length === 1 && u2.saved[0].playable === true && u2.saved[0].ready === false,
         { miss: tileState(missId), others: [...new Set(others)], saved: u2.saved.length })
       const shellStill = attrIds(u2.r, 'data-listening-chip').length === 30 && attrIds(u2.r, 'data-listening-tile').length === 30 &&
         u2.r.root.findAll(x => x.props && (x.props['data-generation-log'] || x.props['data-listening-usage'] || x.props['data-listening-history']) && typeof x.type === 'string').length >= 2
@@ -334,8 +336,10 @@ async function openListening(S, lang, props = {}) {
       c2.generateCohesiveListeningTrack = realB2; c2.selectRevisionTargets = realSel
       const att2 = JSON.parse(c2.localStorage.getItem('tt-listening-attempts-' + lang) || '[]')
       T(lang, 'R1', '§18 Rebuild → the exact same 30 ids, selector NOT re-run, coverage reset to pending then re-verified, READY, saved once',
-        selCalls === 0 && evR[0] === 'composing:30' && same(u2.saved[0] && u2.saved[0].selectedTargetIds, can2.targetIds) && same(attrIds(u2.r, 'data-listening-tile'), can2.targetIds) &&
-        u2.saved.length === 1 && u2.saved[0].ready && u2.saved[0].rebuildOf, { selCalls, evR: evR.slice(0, 3), saved: u2.saved.length })
+        selCalls === 0 && evR[0] === 'composing:30' && same(u2.saved[1] && u2.saved[1].selectedTargetIds, can2.targetIds) && same(attrIds(u2.r, 'data-listening-tile'), can2.targetIds) &&
+        // 18 Nov (second round, item H) — CHANGED on purpose: the NOT_READY track was saved when its first build finished, so the rebuild is the second save and names the attempt it rebuilds (rebuildOf)
+        // — which is how the app replaces the NOT_READY copy in the list (listeningTracksWith). Before: "saved once".
+        u2.saved.length === 2 && u2.saved[1].ready && u2.saved[1].rebuildOf === u2.saved[0].attemptId, { selCalls, evR: evR.slice(0, 3), saved: u2.saved.length })
       T(lang, 'R2', '§18 History keeps the failed attempt AND adds the rebuild as a new attempt (both with the same 30 ids)',
         att2.length === 2 && att2[0].state === 'READY' && att2[1].state === 'NOT_READY' && att2[0].attemptId !== att2[1].attemptId && att2[0].rebuildOf &&
         same(att2[0].selectedTargetIds, can2.targetIds) && same(att2[1].selectedTargetIds, can2.targetIds), att2.map(a => [a.state, a.rebuildOf ? 'rebuild' : ''].join(' ')))

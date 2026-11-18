@@ -111,7 +111,10 @@ const atomicCalls = r => r.st.prompts.filter(q => /ATOMIC REPAIR/.test(q)).lengt
       for (let i = 0; i < 20 && R.root.findAll(x => x.props && x.props['data-listening-track-building']).length; i++) await TR.act(async () => { await flush() })
       const pa = R.root.findAll(x => x.props && x.props['data-listening-play-anyway'])
       const btn = pa.length ? pa[0].findAll(x => x.type === 'button')[0] : null
-      T(lang, 'Q2', 'NOT_READY screen offers ▶ Play anyway (with the line count) and saves nothing yet', !!btn && /Play anyway \( ?\d+ ?lines\)/.test(textOf(btn.children).replace(/\s+/g, ' ')) && saved.length === 0, { found: pa.length, saved: saved.length })
+      // 18 Nov (second round, item H) — CHANGED on purpose: this check used to say "saves nothing yet". A NOT_READY conversation that has lines is now saved the moment the build finishes (playable,
+      // marked NOT_READY, never disguised as READY), so a track that is finished but not yet played is not lost if the page is left. The save is therefore already there (once), and Play anyway
+      // does not save it again (Q3 still sees exactly one save). Switch to compare: lnSaveEarlySetEnabled(false) gives back the old "nothing saved yet".
+      T(lang, 'Q2', 'NOT_READY screen offers ▶ Play anyway (with the line count); the finished track is already saved ONCE, playable and still NOT_READY (H: saved the moment it is finished)', !!btn && /Play anyway \( ?\d+ ?lines\)/.test(textOf(btn.children).replace(/\s+/g, ' ')) && saved.length === 1 && saved[0].playable === true && saved[0].ready === false && saved[0].status === 'NOT_READY', { found: pa.length, saved: saved.length })
       if (btn) await TR.act(async () => { btn.props.onClick(); await flush() })
       const players = R.root.findAll(x => x.type === cr.ConvoPlayer)
       T(lang, 'Q3', '▶ Play anyway → saved ONCE with playable:true, status still NOT_READY (never disguised as READY), failedChecks kept · the player opens with the conversation',

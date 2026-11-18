@@ -214,15 +214,18 @@ const maxPerLine = lt => Math.max(0, ...(lt ? lt.lines : []).map(l => (l.coversT
     const t1 = u1.text(), b1 = u1.buttons()
     T(lang, 'U1', 'NOT_READY screen: "Listening track needs repair" · TARGET COVERAGE 29/30 · Missing … · failed checks · Rebuild + Continue + (v664) ▶ Play anyway · no Start Listening · not saved until played',
       /LISTENING TRACK NEEDS REPAIR/i.test(t1) && /TARGET COVERAGE 29 ?\/ ?30/.test(t1) && /Missing: /.test(t1) && /COVERAGE/.test(t1) &&
-      b1.some(b => /Rebuild/.test(b)) && b1.some(b => /Continue/.test(b)) && !b1.some(b => /Start Listening/.test(b)) && b1.some(b => /Play anyway/.test(b)) && u1.saved.length === 0, { t1: t1.slice(0, 300), b1, saved: u1.saved.length })
+      b1.some(b => /Rebuild/.test(b)) && b1.some(b => /Continue/.test(b)) && !b1.some(b => /Start Listening/.test(b)) && b1.some(b => /Play anyway/.test(b)) &&
+      // 18 Nov (second round, item H) — CHANGED on purpose: this used to say "not saved until played". A NOT_READY conversation that has lines is now saved the moment the build finishes (playable, marked NOT_READY, never READY), so it is not lost if the page is left; ▶ Play anyway then does not save it again
+      u1.saved.length === 1 && u1.saved[0].playable === true && u1.saved[0].ready === false && u1.saved[0].status === 'NOT_READY', { t1: t1.slice(0, 300), b1, saved: u1.saved.length })
     // Rebuild on that screen: same ids, healthy model → READY, saved once
     mock(SR, lang, { ln: {} })
     const rb = u1.r.root.findAll(x => x.type === 'button').find(b => /Rebuild/.test(textOf(b.children)))
     await TR.act(async () => { rb.props.onClick(); await flush() })
     for (let i = 0; i < 20 && u1.r.root.findAll(x => x.props && x.props['data-listening-track-building']).length; i++) await TR.act(async () => { await flush() })
     T(lang, 'U2', 'Rebuild button → READY "Listening Track" with ▶ Start Listening; saved exactly once with the same 30 ids',
-      /▶ Start Listening/.test(u1.text()) && u1.saved.length === 1 && JSON.stringify(u1.saved[0].selectedTargetIds) === JSON.stringify(ids0.length ? u1.saved[0].selectedTargetIds : []) &&
-      u1.saved[0].selectedTargetIds.length === 30 && u1.saved[0].status === 'READY', { t: u1.text().slice(0, 200), saved: u1.saved.map(s => s.status) })
+      // 18 Nov (second round, item H) — CHANGED on purpose: the NOT_READY track was saved when its build finished (U1), so the rebuild is the SECOND save; it names the attempt it rebuilds (rebuildOf), which
+      // is how the app replaces the NOT_READY copy in the list (listeningTracksWith). Before: "saved exactly once".
+      /▶ Start Listening/.test(u1.text()) && u1.saved.length === 2 && u1.saved[1].selectedTargetIds.length === 30 && u1.saved[1].status === 'READY' && JSON.stringify(u1.saved[1].selectedTargetIds) === JSON.stringify(u1.saved[0].selectedTargetIds) && u1.saved[1].rebuildOf === u1.saved[0].attemptId, { t: u1.text().slice(0, 200), saved: u1.saved.map(s => s.status) })
     const u3 = await ui({}, { track: tk })
     T(lang, 'U3', 'a saved READY listening track opens straight to its Start screen with 0 model calls', /▶ Start Listening/.test(u3.text()) && /TARGET COVERAGE|30\/30/.test(u3.text()), u3.text().slice(0, 200))
 

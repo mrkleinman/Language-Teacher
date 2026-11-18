@@ -27543,6 +27543,10 @@ function thaiExchangeVarietyProblems(g, targetThai) {
     if (n / (a.size + b.size - n) >= 0.5) out.push('Line 3 asks line 2\'s question back instead of answering it — line 3 answers (and may add something new)') }
   return out
 }
+const THAI_RETRY_GUARD = { on: true, maxChecks: 7 }
+function thaiRetryGuardSetEnabled(on) { THAI_RETRY_GUARD.on = !!on }
+// the refusal reason without the sentence it quotes: the same rule refusing a different sentence is the SAME refusal
+function thaiRejectionKey(reason) { return String(reason || '').replace(/ in: .*$/, '').replace(/["\u201C][^"\u201C\u201D]*["\u201D]/g, '"…"').replace(/\bLine \d+/g, 'Line').replace(/\s+/g, ' ').trim().slice(0, 80) }
 async function generateWordLines(target, scene, charA, charB, prevLines, vocab, apiKey, model, pairIndex, onProgress, runningTopic, usedSubjects) {
   const _nameA = (charA.split(',')[0] || 'A').replace(/\s*\([^)]*\)/g,'').trim()
   const _nameB = (charB.split(',')[0] || 'B').replace(/\s*\([^)]*\)/g,'').trim()
@@ -27899,7 +27903,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   const _genState = createRecoveryState({ wordId: target.id, thai: target.thai, english: target.english }, { surface: target.thai, sense: thaiTargetSense({ wordId: target.id, english: target.english }, vocab) })
   let _lastFailText = null, _sameFailStreak = 0, _lastRawSig = null, _lastReasonKey = null, _reasonStreak = 0
   // v657 §4 — a selective slot regeneration is bounded (target._maxChecks), never another full 11-check ladder
-  const _maxChecks = Math.max(1, Math.min(CHECK_SRCS.length, (target && target._maxChecks) || CHECK_SRCS.length))
+  // 18 Nov (the owner's 17 Nov export: 24 retry calls = 41% of a Daily's model time; ไม่เชิง took 11 checks, นั่นอะไร 8): a word that is still rejected after THAI_RETRY_GUARD.maxChecks paid checks
+  // goes to targeted quota recovery (a small, cheap request per missing line) instead of the rest of the 11-check ladder. Switch: thaiRetryGuardSetEnabled(false).
+  const _maxChecks = Math.max(1, Math.min(CHECK_SRCS.length, (target && target._maxChecks) || (THAI_RETRY_GUARD.on ? THAI_RETRY_GUARD.maxChecks : CHECK_SRCS.length)))
   for (let attempt = 0; attempt < _maxChecks; attempt++) {
     // the previous attempt's still-open checks are settled with its failure (validation never opens a check)
     if (_open.size) _settleOpen(failureReasons[0] || 'rejected')
@@ -27932,12 +27938,14 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       }
       // v706 (owner review of v705: ดิฉันเอง — "Do not use ดิฉัน — use ฉัน instead" on 10 of 11 paid checks) — the SAME rejection reason
       // three checks in a row is not fixed by asking again: stop paying; quota recovery / substitution takes the target
-      { const rk = String(failureReasons[0] || '').replace(/ in: .*$/, '').replace(/\s+/g, ' ').trim().slice(0, 80)
+      { const rk = String(failureReasons[0] || '').replace(/ in: .*$/, '').replace(/\s+/g, ' ').trim().slice(0, 80), rkKey = THAI_RETRY_GUARD.on ? thaiRejectionKey(failureReasons[0]) : rk
         // only a refusal triggered by the TARGET ITSELF counts (the reason names part of the target, as "use ฉัน instead" names ดิฉัน
         // in ดิฉันเอง): a missing target, a lazy cue or an untaught word is fixable by asking again (live โกรธ: accepted at check 4)
         const tgtNoSp = String(target.thai || '').replace(/\s+/g, '')
         const byTarget = !/^(no target|TARGET_MISSING|too short|lazy prompt|untaught)/i.test(rk) && (rk.match(/[\u0e00-\u0e7f]{2,}/g) || []).some(w => tgtNoSp.includes(w))
-        _reasonStreak = rk && byTarget && rk === _lastReasonKey ? _reasonStreak + 1 : 1; _lastReasonKey = rk
+        // 18 Nov: the key no longer includes the rejected sentence quoted in the reason ('Line 1: "ไม่เชิงครับ ผมชอบน้ำ" — after ไม่เชิง the speaker …' differs on every check, so the same
+        // refusal never counted as repeated and ไม่เชิง took 11 paid checks)
+        _reasonStreak = rk && byTarget && rkKey === _lastReasonKey ? _reasonStreak + 1 : 1; _lastReasonKey = rkKey
         if (_reasonStreak >= 3 && dailyV693On()) {
           onProgress && onProgress(-1, -1, { apiError: '⛔ SAME_REJECTION_REPEATED ' + target.thai + ': "' + rk + '" 3 checks in a row — no further paid attempt; left to QUOTA RECOVERY / substitution (' + attempt + ' checks used)' }, null, null)
           break } }

@@ -19232,7 +19232,7 @@ async function _geminiSend({ key, modelId, messages, maxTokens, temperature, sig
     const useKey = attempt > 1 && isGeminiApiKey(backup) && backup.trim() !== key ? backup.trim() : key
     const row = aiRecordStart({ provider: 'gemini', stage, model: modelId, chain: _chain, prompt: _promptText, maxTokens, attempt, retryReason: why })
     const controller = aiNewController()
-    // 18 Nov: the timeout waits through appSleep (counts in a worker while the page is hidden), as the Haiku request's does, so a hung call is abandoned on time in a background tab
+    // 18 Nov: the timeout waits through appSleep (counts in a worker while the page is hidden), as the other request path does, so a hung call is abandoned on time in a background tab
     let _gTimedOut = false
     appSleep(GEMINI_TIMEOUT_MS).then(() => { if (!_gTimedOut) { _gTimedOut = true; controller.abort() } })
     const onAbort = () => controller.abort()

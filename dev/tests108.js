@@ -31,8 +31,9 @@ const L = (speaker, thai, english) => ({ speaker, thai, english, prompt: (speake
   {
     const SRC = require('fs').readFileSync('tt.jsx', 'utf8')
     T('R5', 'the Haiku request timeout waits through appSleep (counts in a worker while the page is hidden) instead of an ordinary timer: a call that hangs is abandoned on time (live: 154 / 243 / 515 s calls under a 180 s limit)',
-      /appSleep\(ANTHROPIC_CONFIG\.timeoutMs\)\.then\(\(\) => \{ if \(!_timedOut\)/.test(SRC) && !/setTimeout\(\(\) => controller\.abort\(\), ANTHROPIC_CONFIG\.timeoutMs\)/.test(SRC))
+      /appSleep\(anthropicTimeoutFor\(stageNow\)\)\.then\(\(\) => \{ if \(!_timedOut\)/.test(SRC) && !/setTimeout\(\(\) => controller\.abort\(\), ANTHROPIC_CONFIG\.timeoutMs\)/.test(SRC))
     T('R5b', 'the Gemini request timeout waits through appSleep too', /appSleep\(GEMINI_TIMEOUT_MS\)\.then\(\(\) => \{ if \(!_gTimedOut\)/.test(SRC) && !/setTimeout\(\(\) => controller\.abort\(\), GEMINI_TIMEOUT_MS\)/.test(SRC))
+    T('R5c', 'a writing / checking / bridge stage is given 90 s (answers take 3-65 s), a planning stage keeps 180 s', (() => { const c2 = load(FILE); const f = c2.ev('anthropicTimeoutFor'); return f('B_generation_retry') === 90000 && f('Y_bridge') === 90000 && f('F_naturalness_final') === 90000 && f('O_listening_plan') === 180000 && f('') === 180000 })())
     T('R6', 'after one bridge batch is cut off with thinking on, the later batches of the run start with thinking off', /let _cutOnce = false/.test(SRC) && /const noThinkFirst = _cutOnce/.test(SRC))
   }
   console.log('\n' + (n - fails) + '/' + n + ' passed'); process.exit(fails ? 1 : 0)

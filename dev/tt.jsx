@@ -19478,6 +19478,9 @@ function anthropicStageEffort(stage) {
   if (/^(A0_|A_|B_|C_|F_|G_|H_recovery|V684_|NATURALNESS_CHECK)/.test(s)) return 'medium'
   return undefined
 }
+// 18 Nov (the owner's 18 Nov Thai exports: a call that hung for the whole 180 s, one per track): the writing, checking and bridge stages answer in 3-65 s, so one that has not answered after 90 s
+// is stuck and is repeated (the Listening plan / planning stages, which think longer, keep the 180 s)
+function anthropicTimeoutFor(stage) { return /^(A|B|C|E|F|G|H|I|J|K|L|P|R|Y)_/.test(String(stage || '')) ? Math.min(ANTHROPIC_CONFIG.timeoutMs, 90000) : ANTHROPIC_CONFIG.timeoutMs }
 function anthropicRequestBody({ model, messages, maxTokens, json, effort, noThinking, exactMax }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
@@ -19584,7 +19587,7 @@ async function anthropicRequest({ model, messages, maxTokens, signal, stage, jso
     // 18 Nov (the owner's 18 Nov Thai export: calls that ran 154 s, 243 s and 515 s although this timeout is 180 s — a background tab delays an ordinary timer): the timer waits through appSleep,
     // which counts in a worker while the page is hidden, so a call that hangs is abandoned and retried on time
     const controller = aiNewController(); let _timedOut = false
-    appSleep(ANTHROPIC_CONFIG.timeoutMs).then(() => { if (!_timedOut) { _timedOut = true; controller.abort() } })
+    appSleep(anthropicTimeoutFor(stageNow)).then(() => { if (!_timedOut) { _timedOut = true; controller.abort() } })
     const onAbort = () => controller.abort()
     if (signal && signal.addEventListener) signal.addEventListener('abort', onAbort)
     if (runCtl && runCtl.signal.addEventListener) runCtl.signal.addEventListener('abort', onAbort)
@@ -19595,7 +19598,7 @@ async function anthropicRequest({ model, messages, maxTokens, signal, stage, jso
     catch (fe) {
       detach()
       if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) { row.cancelled = true; aiRecordEnd(row, { ok: false, error: 'cancelled (run superseded)' }); throw _cancelledError('run superseded') }
-      const msg = fe && fe.name === 'AbortError' ? 'timeout after ' + (ANTHROPIC_CONFIG.timeoutMs / 1000) + 's' : String((fe && fe.message) || fe)
+      const msg = fe && fe.name === 'AbortError' ? 'timeout after ' + (anthropicTimeoutFor(stageNow) / 1000) + 's' : String((fe && fe.message) || fe)
       if (_pauses < 60 && aiPageStateFailure(_t0)) { _pauses++; aiRecordEnd(row, { ok: false, error: 'page hidden or offline (' + msg + ') — paused, not counted as an attempt' }); await aiWaitForPage(signal, runCtl); attempt--; continue }
       aiRecordEnd(row, { ok: false, error: msg })
       lastErr = anthropicError(0, 'unreachable', msg)
@@ -34838,7 +34841,7 @@ function trackVersionExportLines(track) {
   const req = listeningRequiredTargetIds(t)
   const legacy = !t.pipelineVersion && !tc
   const lb = t.listeningBuild || {}
-  const out = ['APP_BUILD_VERSION: ' + APP_BUILD_VERSION + ' · PIPELINE_VERSION: ' + (t.pipelineVersion || 'legacy (pre-v651 — created before this build)') +
+  const out = ['APP_RELEASE: ' + APP_VERSION + ' · APP_BUILD_VERSION: ' + APP_BUILD_VERSION + ' · PIPELINE_VERSION: ' + (t.pipelineVersion || 'legacy (pre-v651 — created before this build)') +
       ' · GENERATOR_VERSION: ' + (t.generatorVersion || (lang && GENERATOR_VERSIONS[lang]) || '-') + ' · QC_VERSION: ' + QC_VERSION +
       ' · FINALIZER_VERSION: ' + ((t.integrity && t.integrity.version) ? t.integrity.version + ' / ' + FINALIZER_VERSION : FINALIZER_VERSION) + ' · LISTENING_VERSION: ' + (lb.buildVersion || LISTENING_BUILD_VERSION) +
       (t.generationModel ? ' · GENERATION_MODEL: ' + t.generationModel + (t.generationModel !== GEMINI_DEFAULT_MODEL ? ' (all AI work: writing, quality checks, pronunciation)' : '') : ''),
@@ -46134,7 +46137,7 @@ function Generator({ vocab, mode, onGenerated, onAutoSave, onBack, apiKey, onPho
       setPhase('streaming')
           // one environment line at the top of the exported log, so a failure that only happens in one browser can be told apart
           // from a network / provider failure (booleans and counts only — never a key, code or address)
-          try { logAll('\u{1F9EA} ENV · ' + (typeof navigator !== 'undefined' ? navigator.userAgent : 'no navigator') + ' · targets ' + (activeTargets || []).length + ' · learned words ' + (vocab || []).filter(w => w && (w.status === 'known' || w.status === 'learning')).length + '/' + (vocab || []).length + ' · gemini key ' + (isGeminiApiKey(apiKey) ? 'set' : 'none') + ' · model ' + (function () { try { return aiModelForRequest(aiRunRef.current, 'generate') } catch (e) { return '?' } })() + ' · build ' + APP_BUILD_VERSION) } catch (e) {}
+          try { logAll('\u{1F9EA} ENV · ' + (typeof navigator !== 'undefined' ? navigator.userAgent : 'no navigator') + ' · targets ' + (activeTargets || []).length + ' · learned words ' + (vocab || []).filter(w => w && (w.status === 'known' || w.status === 'learning')).length + '/' + (vocab || []).length + ' · gemini key ' + (isGeminiApiKey(apiKey) ? 'set' : 'none') + ' · model ' + (function () { try { return aiModelForRequest(aiRunRef.current, 'generate') } catch (e) { return '?' } })() + ' · release ' + APP_VERSION + ' · build ' + APP_BUILD_VERSION) } catch (e) {}
           // Quick API sanity check on first run
           console.log('[Generator] generationSource=gemini model=' + genModel + ' key=' + (apiKey ? 'set' : 'NONE'))
           // Seed phoneticsRef from vocab words that already have phonetics stored

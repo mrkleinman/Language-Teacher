@@ -52,9 +52,9 @@ const SRC = fs.readFileSync('tt.jsx', 'utf8')
       nf++; fills++
       const w = bank.get(id), lines = c.ev('yueModuleRender')({ m, tag }, w)
       if (!lines) { nullFills++; continue }
-      // 17 Nov: the app now WRAPS each module cue — "New chat · place — " before the first one and ': “the English”' after every one — so the learner knows what to say and when a new
-      // chat starts. The Python reference still hashes the module's own cue, so the wrapper is taken off here before hashing (the wrapper itself is checked by tests104).
-      lines.forEach(l => parts.push(l.chinese + '|' + l.pinyin + '|' + l.english + '|' + String(l.prompt).replace(/^New chat( \u00B7 [^\u2014]*)? \u2014 /, '').replace(/ Say: \u201C[\s\S]*\u201D$/, '') + '\n'))
+      // 17-18 Nov: the app now SHOWS a short cue ("On the phone, say: “…”") and keeps the module's own cue as _basePrompt; the Python reference still hashes the module's own cue, so
+      // _basePrompt is hashed here (the shown cue is checked by tests104).
+      lines.forEach(l => parts.push(l.chinese + '|' + l.pinyin + '|' + l.english + '|' + l._basePrompt + '\n'))
     }
     const hh = crypto.createHash('sha1'); parts.forEach(p => hh.update(p))
     const py = fx.mods[m.id]

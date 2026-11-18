@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v765"/>
+<meta name="app-version" content="v766"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v765';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v765').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v766';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v766').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -19451,7 +19451,7 @@ const ANTHROPIC_STAGE_EFFORT = Object.freeze({
   O_listening_story_plan: 'high', O_listening_story_beats: 'high', O_listening_story_review: 'high', O_listening_coherence: 'high', O_listening_module_spine: 'high',
   O_listening_meaning_plan: 'high', O_listening_semantic_audit: 'high',          // the Japanese / Mandarin listening path: its plan and its final audit
   // listening — writing, fixing, repair and the per-scene checks
-  O_listening_story_write: 'medium', O_listening_story_edit: 'medium', O_listening_story_line_fix: 'medium', O_listening_story_repair: 'medium', O_listening_story_qc_repair: 'medium', O_listening_story_usage: 'medium',
+  O_listening_story_write: 'medium', O_listening_story_edit: 'medium', O_listening_story_line_fix: 'medium', O_listening_story_repair: 'medium', O_listening_story_qc_repair: 'medium', O_listening_story_usage: 'medium', O_listening_story_groups: 'medium',
   O_listening_plan_repair: 'medium', O_listening_scene: 'medium', O_listening_scene_check: 'medium', O_listening_repair: 'medium', O_listening_qc: 'medium', O_listening_word_check: 'medium', O_listening_module_scene: 'medium', O_word_usage: 'medium',
   // listening — translation stays low
   O_listening_story_english: 'low' })
@@ -31983,8 +31983,10 @@ async function listeningQualityVerdicts(pairs, apiKey, model, log) {
   const uniq = [...new Map((pairs || []).filter(p => p && p.thai).map(p => [p.thai, p])).values()]
   if (!apiKey) { uniq.forEach(p => out.set(p.thai, { state: QUALITY.UNVERIFIED, error: 'no model credentials' })); return out }
   const BATCH = 12
-  for (let b = 0; b < uniq.length; b += BATCH) {
-    const chunk = uniq.slice(b, b + BATCH)
+  // 18 Nov — the 12-line chunks are judged independently (each sets only its own lines' verdicts), so up to three run at the same time; 71 lines used to wait for six
+  // judge calls and five adjudications one after the other
+  const chunks = []; for (let b = 0; b < uniq.length; b += BATCH) chunks.push(uniq.slice(b, b + BATCH))
+  const judgeChunk = async chunk => {
     let scored = null, error = null
     try {
       scored = await _qrBatchNaturalnessCheck(chunk, apiKey, model, log)
@@ -31998,6 +32000,7 @@ async function listeningQualityVerdicts(pairs, apiKey, model, log) {
       else out.set(p.thai, { state: QUALITY.UNVERIFIED, error: error || 'no verdict returned for this line' })
     })
   }
+  for (let i = 0; i < chunks.length; i += 3) await Promise.all(chunks.slice(i, i + 3).map(judgeChunk))
   return out
 }
 // Scene coherence with an explicit state (the shared helper returns null on outage).
@@ -43649,6 +43652,112 @@ async function lnModuleStoryBuild(env, call, planTargets) {
   return { plan, written, facts, picks, report, none, spine }
 }
 
+// ══ 18 Nov — THE WORDS ARE GROUPED BY WHAT BELONGS TOGETHER BEFORE ANY SCENE IS PLANNED ═══════════════════════════════════════════════
+// The 25 due words come out of the spaced-repetition order, so they share no theme. The plan used to give every scene "exactly 5" of them and
+// leave none out, so the planner had to invent a place for each handful: a beauty pageant inside a bus, "แบ่งปัน" a restaurant, three month
+// names that became three different dates in one Saturday. Now one short call groups the words first (the places of ONE outing, uneven sizes,
+// all the dates together) and gives a word that fits no place a MENTION use: it is read off a sign, told as something past or quoted, and is
+// never forced into the live action. The plan then only fleshes out those scenes. Nothing is dropped: every word is still placed and heard.
+// A reply that cannot be used leaves the planner to group the words itself, exactly as before.
+const LN_GROUPS = { on: true, minWords: 2, maxWords: 8, minScenes: 2, maxScenes: 7, maxSupport: 20 }
+// months and weekdays: one dated moment per day out, never three different dates
+const LN_CALENDAR_RX = /^(?:มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม|(?:วัน)?(?:จันทร์|อังคาร|พุธ|พฤหัสบดี|พฤหัส|ศุกร์|เสาร์|อาทิตย์))$/
+const LN_MENTION_DEFAULT_FRAME = 'one friend reads it off a sign, ticket, poster, menu or message, or tells what someone said or what happened elsewhere'
+function lnStoryMentionCap(n) { return Math.max(3, Math.floor(n / 3)) }
+// how many places to ask for: about one per five words; never so few that a place needs more than maxWords words, never more than the turn budget holds
+function lnStoryGroupRange(n) {
+  const lo = Math.max(LN_GROUPS.minScenes, Math.ceil(n / LN_GROUPS.maxWords))
+  return { lo, hi: Math.min(LN_GROUPS.maxScenes, Math.max(lo, Math.ceil(n / 3.5))) }
+}
+// the model's grouping reply → groups the plan can rely on, or null. Pure (no model, no storage). Ids the model invented or repeated are dropped; a word it left
+// out goes to the smallest group; a group over the size cap gives its last words to the smallest group; a group of one joins another; months and weekdays are kept
+// together in ONE group; "mention" words are capped (a track of mostly quotations would not be a conversation) and every one has a frame.
+// targets: [{ id, surface }]; opts.allowed(word) → true when a support word may be given to the writer (the closed-vocabulary gate decides).
+function lnStoryNormaliseGroups(raw, targets, opts) {
+  const o = opts || {}, byId = new Map((targets || []).map(t => [t.id, t])), rows = raw && Array.isArray(raw.scenes) ? raw.scenes : null
+  if (!rows || !byId.size) return null
+  const seen = new Set(), groups = []
+  rows.forEach(r => {
+    if (!r || typeof r !== 'object') return
+    const words = (Array.isArray(r.words) ? r.words : Array.isArray(r.ids) ? r.ids : []).map(w => (w && typeof w === 'object' ? w : { id: w }))
+    const ids = [], mention = {}
+    words.forEach(w => {
+      const id = Number(String(w.id != null ? w.id : '').replace(/\D/g, ''))
+      if (!byId.has(id) || seen.has(id)) return
+      seen.add(id); ids.push(id)
+      if (String(w.use || '').toLowerCase() === 'mention') mention[id] = String(w.frame || '').replace(/\s+/g, ' ').trim().slice(0, 140)
+    })
+    if (!ids.length) return
+    const support = []
+    ;(Array.isArray(r.support) ? r.support : []).slice(0, 40).forEach(w => {
+      const s = String(w == null ? '' : w).trim()
+      if (s && s.length <= 24 && !/\s/.test(s) && !support.includes(s) && (!o.allowed || o.allowed(s))) support.push(s)
+    })
+    groups.push({ place: String(r.place || r.title || '').replace(/\s+/g, ' ').trim().slice(0, 80), ids, mention, support: support.slice(0, LN_GROUPS.maxSupport) })
+  })
+  if (groups.length < LN_GROUPS.minScenes || groups.length > LN_GROUPS.maxScenes) return null
+  const smallest = skip => groups.filter(g => g !== skip).sort((a, b) => a.ids.length - b.ids.length)[0]
+  const move = (id, from, to) => { from.ids.splice(from.ids.indexOf(id), 1); to.ids.push(id); if (id in from.mention) { to.mention[id] = from.mention[id]; delete from.mention[id] } }
+  // 1) a word the model left out
+  byId.forEach((t, id) => { if (!seen.has(id)) { smallest().ids.push(id); seen.add(id) } })
+  // 2) every month / weekday in the group that already holds the most of them
+  const cal = [...byId.values()].filter(t => LN_CALENDAR_RX.test(String(t.surface || '').trim())).map(t => t.id)
+  if (cal.length > 1) {
+    const home = groups.map(g => ({ g, n: g.ids.filter(id => cal.includes(id)).length })).sort((a, b) => b.n - a.n)[0].g
+    cal.forEach(id => { const from = groups.find(g => g.ids.includes(id)); if (from && from !== home) move(id, from, home) })
+  }
+  // 3) over the size cap: the last words (never the dates) go to the smallest group
+  for (let guard = 0; guard < 50; guard++) {
+    const big = groups.slice().sort((a, b) => b.ids.length - a.ids.length)[0], small = smallest(big)
+    if (!big || big.ids.length <= LN_GROUPS.maxWords || !small || small.ids.length >= big.ids.length - 1) break
+    const id = big.ids.slice().reverse().find(x => !cal.includes(x))
+    if (id == null) break
+    move(id, big, small)
+  }
+  // 4) a group below the minimum joins the smallest other group (never below minScenes groups)
+  for (let guard = 0; guard < 20 && groups.length > LN_GROUPS.minScenes; guard++) {
+    const tiny = groups.find(g => g.ids.length < LN_GROUPS.minWords)
+    if (!tiny) break
+    const to = smallest(tiny)
+    tiny.ids.slice().forEach(id => move(id, tiny, to))
+    groups.splice(groups.indexOf(tiny), 1)
+  }
+  // 5) mention cap, and a frame for every mention
+  let m = 0
+  groups.forEach(g => g.ids.forEach(id => { if (!(id in g.mention)) return; if (++m > lnStoryMentionCap(byId.size)) delete g.mention[id]; else if (!g.mention[id]) g.mention[id] = LN_MENTION_DEFAULT_FRAME }))
+  return groups
+}
+// the places and words as one short log line
+function lnStoryGroupLine(groups, byId) {
+  return groups.map((g, i) => 'S' + (i + 1) + ' ' + (g.place || '?') + ' [' + g.ids.map(id => (byId.get(id) || {}).surface + (id in g.mention ? '*' : '')).join(', ') + ']').join(' · ')
+}
+// the unknown words a closed-vocabulary problem names ("VOCABULARY_FAILED: unknown words: a b c"), de-duplicated
+function lnStoryUnknownWords(probs) {
+  const out = []
+  ;(probs || []).filter(p => p && p.code === 'CLOSED_VOCAB').forEach(p => {
+    const m = String(p.detail || '').match(/unknown words:\s*(.+)$/)
+    if (m) m[1].split(/\s+/).filter(Boolean).forEach(w => { if (!out.includes(w)) out.push(w) })
+  })
+  return out
+}
+// the model time of one Listening attempt, from the AI ledger rows written while it ran. Overlapping calls (the parallel steps) each count their own time, so the
+// model time can be longer than the wall time; the wall time runs from the first request to the last answer. Requests answered from the app's request cache
+// (an identical request sent twice in one run) are counted apart: they cost nothing and take no time.
+function listeningTimingSummary(rows) {
+  const used = (rows || []).filter(r => r && !r.latched && !r.cancelled)
+  const real = used.filter(r => !r.deduped), cached = used.length - real.length
+  const by = new Map()
+  real.forEach(r => { const k = String(r.stage || '?').replace(/^O_listening_/, ''), e = by.get(k) || { stage: k, calls: 0, ms: 0 }; e.calls++; e.ms += r.durationMs || 0; by.set(k, e) })
+  const starts = real.map(r => Date.parse(r.at)).filter(isFinite), ends = real.map(r => Date.parse(r.at) + (r.durationMs || 0)).filter(isFinite)
+  const wallMs = starts.length ? Math.max(...ends) - Math.min(...starts) : 0
+  return { calls: real.length, cached, wallMs, modelMs: real.reduce((n, r) => n + (r.durationMs || 0), 0), stages: [...by.values()].sort((a, b) => b.ms - a.ms) }
+}
+function listeningTimingLine(rows) {
+  const t = listeningTimingSummary(rows), fmt = ms => { const s = Math.round(ms / 1000); return s >= 60 ? Math.floor(s / 60) + 'm' + String(s % 60).padStart(2, '0') + 's' : s + 's' }
+  return '⏱ LISTENING_TIMING wall ' + fmt(t.wallMs) + ' · model time ' + fmt(t.modelMs) + ' over ' + t.calls + ' request(s)' + (t.cached ? ' (+' + t.cached + ' answered from the request cache, free and instant)' : '') +
+    ' · by stage: ' + (t.stages.slice(0, 12).map(s => s.stage + ' ×' + s.calls + ' ' + fmt(s.ms)).join(' · ') || 'none')
+}
+
 // v715 — each scene can be checked (grammar, naturalness, coherence, lesson words) as soon as it is written (owner's suggestion).
 // OFF: two paid runs each, blind-reviewed — with the check 5.05 / 4.85, without it 5.5 / 5.2 (its line fixes did not repair story
 // faults, and it replaced the three-round whole-story edit). Kept switchable for the tests and for later trials.
@@ -43660,8 +43769,17 @@ async function _lnComposeThaiStory(env, avoid) {
   const capN = Number(LN_STORY_WORD_CAP.maxWords) > 0 ? Number(LN_STORY_WORD_CAP.maxWords) : 0
   const planTargets = capN && targets.length > capN ? targets.slice(0, capN) : targets
   if (planTargets !== targets) log && log('  🎧 LISTENING_STORY word cap ' + capN + ': the story uses ' + planTargets.length + ' of ' + targets.length + ' frozen words; the rest stay due')
-  const never = lnStoryNeverUse(la, ctx)
+  // 18 Nov — the off-limits list GROWS during the run: an untaught word the writer reached for in one scene is added for every later call (the 70-word probe list cannot
+  // know which words THIS writer keeps choosing; the 17 Nov run had an untaught word in about one line of three in scenes 2 to 4)
+  let never = lnStoryNeverUse(la, ctx)
   let prefix = lnStoryPrefix(la, ctx, targets, never)
+  const learnNever = (probs, si) => {
+    // only whole Thai words: the closed-vocabulary check can also name a fragment (a word cut where the particle starts), which would only confuse the writer
+    const fresh = lnStoryUnknownWords(probs).filter(w => /^[\u0E00-\u0E7F]{2,14}$/.test(w) && !/(ครับ|ค่ะ|คะ)$/.test(w) && !never.includes(w) && !targets.some(t => t.surface === w)).slice(0, 12)
+    if (!fresh.length || never.length > 120) return
+    never = never.concat(fresh); prefix = lnStoryPrefix(la, ctx, targets, never)
+    log && log('  🚫 LISTENING_STORY off-limits list grew by ' + fresh.length + ' word(s) the writer reached for in scene ' + (si + 1) + ' (' + fresh.join(' ') + ') — every later call is told not to use them')
+  }
   // a server-side failure (5xx / 429) is retried twice after a pause; anything else (and a fatal provider error) is not retried
   const call = async (stage, prompt, maxTokens, kind, bare) => {
     for (let attempt = 1; ; attempt++) {
@@ -43697,10 +43815,34 @@ async function _lnComposeThaiStory(env, avoid) {
   // v722 — the module-led prototype supplies the plan AND the written scenes (the model only adds bridges); anything it cannot build falls back to the model's own story
   const pre = LN_MODULE_STORY.on ? await lnModuleStoryBuild(env, call, planTargets) : null
   if (pre) { plan = pre.plan; env._lnModuleReport = pre }
+  // ── GROUP: which words belong together, before any scene exists (18 Nov). A reply that cannot be used leaves groups null and the planner groups the words itself ──
+  let groups = null
+  if (!plan && LN_GROUPS.on && planTargets.length >= 4) {
+    const gr = lnStoryGroupRange(planTargets.length), gcap = lnStoryMentionCap(planTargets.length)
+    const allowed = w => !listeningUnexposedWords('th', { thai: w + 'ครับ', speaker: 'A' }, ctx.exposed || [], ctx.eligTargets || [], ctx.vocab).length
+    try {
+      const raw = await call('O_listening_story_groups', 'TASK: group these ' + planTargets.length + ' lesson words into the PLACES of ONE ordinary day out of two close friends (A, a man, and B, a woman), so that the words in a place belong together there.\n' +
+        planTargets.map(t => { const u = thaiUsageOf(t.surface); return 'T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + (t.sense ? ' (sense: ' + t.sense + ')' : '') + (u ? ' | use: ' + String(u.use).slice(0, 160) + (u.situations && u.situations.length ? ' | natural situations: ' + u.situations.join(' / ') : '') : '') }).join('\n') +
+        '\n\nHOW TO GROUP:\n' +
+        '- Each place is somewhere the friends really are, one after the other, on ONE day (e.g. at the bus stop → on the bus → at the market → lunch → walking home). Between ' + gr.lo + ' and ' + gr.hi + ' places, in the order they visit them; ' + LN_GROUPS.minWords + ' to ' + LN_GROUPS.maxWords + ' words each. The sizes may differ: never balance them by forcing a word into a place.\n' +
+        '- Put a word where an ordinary person would really say it, using its natural situations above. A word about money, transport, food, weather, family or health goes with the place where that happens.\n' +
+        '- Months and weekdays are DATES: put every one of them in the SAME place, so the day has one dated moment (a calendar, ticket, poster or timetable read out), never several different dates.\n' +
+        '- A word that belongs to NO place of this day (a beauty queen, a company\'s losses, a speech about trust) is never forced into the live action. Mark it "mention": the friends only MENTION it inside something read, told or quoted — read off a sign, ticket, menu, poster, message or the news, told as something that happened elsewhere or earlier, or quoted from another person. Give its "frame" in one short English phrase (who reads or tells it, and from what). At most ' + gcap + ' words may be "mention"; use "say" whenever the word fits the place.\n' +
+        '- Small function words (it, myself, sometimes, most, both, all) fit almost any place: they fill places that need a word and are never "mention".\n' +
+        '- "support": for each place up to ' + LN_GROUPS.maxSupport + ' everyday words the friends would use THERE for what is around them (what they see, eat, carry, ride), taken ONLY from the KNOWN WORDS list above and spelled exactly as in it. Never a word that is not in the list.\n' +
+        'Every id exactly once.\nReply ONLY with JSON: {"scenes":[{"place":"…","words":[{"id":123,"use":"say"},{"id":456,"use":"mention","frame":"…"}],"support":["…"]}]}', 2400, 'LISTENING_GENERATION_CALLS')
+      groups = lnStoryNormaliseGroups(raw, planTargets, { allowed })
+      if (!groups) log && log('  ℹ LISTENING_STORY word groups unusable (' + (raw && Array.isArray(raw.scenes) ? raw.scenes.length + ' scene(s)' : 'no scenes') + ') — the planner groups the words itself')
+      else log && log('  🗂 LISTENING_STORY word groups: ' + lnStoryGroupLine(groups, byId) + (groups.some(g => Object.keys(g.mention).length) ? ' · * = mentioned (read, told or quoted), not part of the live action' : ''))
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; groups = null; log && log('  ⚠ LISTENING_STORY word grouping unusable: ' + String(e && e.message || e).slice(0, 100) + ' — the planner groups the words itself') }
+  }
+  const fixedScenes = groups ? 'THE SCENES ARE ALREADY CHOSEN — the lesson words were grouped by what belongs together, so every word fits the place it is in. Keep these scenes, in this order, with exactly these words:\n' +
+    groups.map((g, i) => 'SCENE ' + (i + 1) + ' — ' + (g.place || 'the next stop') + ': ' + g.ids.map(id => 'T' + id + ' ' + byId.get(id).surface + (id in g.mention ? ' (MENTION: ' + g.mention[id] + ')' : '')).join(', ')).join('\n') + '\n' +
+    'A MENTION word is never part of the live action: the speaker only mentions it inside something read, told or quoted — read off a sign, ticket, menu, poster, message or the news, or told as something that happened elsewhere or earlier. Use the frame given; the "moment" says who reads or tells it and from what, and the "setup" is the line that leads to it.\n\n' : ''
   for (let attempt = 1; attempt <= 2 && !plan; attempt++) {
     try {
       const p = await call('O_listening_story_plan', 'TASK: plan ONE new conversation. The learner must hear EVERY ONE of these ' + planTargets.length + ' lesson words. They are fixed: never drop, replace or add a lesson word.\n' +
-        lnStoryTargetRows(planTargets) + '\n\n' +
+        lnStoryTargetRows(planTargets) + '\n\n' + fixedScenes +
         // v715 (owner's choice after S39 / S40 stayed at ~5/10) — the planner sees how each word is really used, so it can choose the
         // outing and the moments where the words are natural (the notes used to reach only the scene scripts and the review)
         (env._lnUsageNotes ? 'HOW THESE WORDS ARE REALLY USED (pick moments like these):\n' + env._lnUsageNotes + '\n\n' : '') +
@@ -43709,10 +43851,11 @@ async function _lnComposeThaiStory(env, avoid) {
         // believable outing of the same two friends, in time order, and a lesson word is fitted by choosing where the friends go and what
         // happens to them, never by casting B as someone else.
         'THE STORY: ONE ordinary outing of the same two close friends, A (a man) and B (a woman), told in time order on ONE day — e.g. a Saturday trip to the market and lunch, ' +
-        'a day helping B move house, a visit to B\'s family for a meal, a day trip to the beach, getting ready for a friend\'s party. Choose the outing in which these lesson words come up most naturally. ' +
+        'a day helping B move house, a visit to B\'s family for a meal, a day trip to the beach, getting ready for a friend\'s party. ' + (groups ? 'The places are given above: make them ONE believable day out, in that order, and say in "story" what the day is. ' : 'Choose the outing in which these lesson words come up most naturally. ') +
         (avoid ? 'Choose a DIFFERENT outing from this earlier one: "' + avoid + '". ' : '') +
         // v715 (owner's suggestion): five lesson words per scene — 25 words → 5 scenes of 5
-        'Split it into exactly ' + Math.max(2, Math.ceil(planTargets.length / 5)) + ' SCENES, each the next stop or moment of the same outing (e.g. "at the bus stop" → "on the bus" → "at the market" → "lunch at a noodle shop" → "walking home"); ' +
+        (groups ? 'Return exactly ' + groups.length + ' SCENES, scene k being scene k above (its place as the title), each the next stop or moment of the same outing; '
+          : 'Split it into exactly ' + Math.max(2, Math.ceil(planTargets.length / 5)) + ' SCENES, each the next stop or moment of the same outing (e.g. "at the bus stop" → "on the bus" → "at the market" → "lunch at a noodle shop" → "walking home"); ') +
         'each scene continues from the one before (same day, same plan, nothing contradicts what was said earlier). ' +
         'CAST: only A and B speak, to each other, in every scene, as friends. B NEVER plays anyone else (no waitress, staff, nurse or colleague voice). A word staff or a host would say goes where one of the FRIENDS ' +
         'naturally says it (B is the host at her own home: "please sit"; A reads out a sign or repeats what the shop said). ' +
@@ -43733,11 +43876,15 @@ async function _lnComposeThaiStory(env, avoid) {
         'Give each scene: a title (the place), "present" (where the two are, e.g. "together on the bus"), what happens (1–2 sentences), ' +
         '"facts" (what is true after this scene), and "uses": one entry per lesson word — the id, the SET-UP (what the other friend says or does just before, at most 10 English words) and the MOMENT (who says the word and why, at most 10 words) ' +
         '(e.g. {"id":842,"setup":"B holds up two heavy bags at the till","moment":"A offers to carry one"}). ' +
-        'Keep the whole plan short (no explanations). Every id in exactly one scene, exactly 5 per scene (the last scene may have fewer). Every lesson word must be placed: none may be left out.\n' +
+        (groups ? 'Keep the whole plan short (no explanations). One "uses" entry for each lesson word of the scene, with the ids given above; never move a word to another scene and never leave one out.\n'
+          : 'Keep the whole plan short (no explanations). Every id in exactly one scene, exactly 5 per scene (the last scene may have fewer). Every lesson word must be placed: none may be left out.\n') +
         (attempt > 1 ? 'YOUR PREVIOUS PLAN WAS INVALID: every id must appear exactly once.\n' : '') +
         'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","uses":[{"id":123,"setup":"…","moment":"…"}]}]}', 2400, 'LISTENING_GENERATION_CALLS')
-      const sc = (p && Array.isArray(p.scenes) ? p.scenes : []).filter(x => x && x.title).slice(0, 6)
-      if (sc.length < 2) throw new Error('fewer than 2 scenes')
+      // with word groups the plan must keep the groups' scenes: as many scenes as groups, scene k = group k (the planner only fleshes them out)
+      const rowsIn = (p && Array.isArray(p.scenes) ? p.scenes : []).filter(x => x && typeof x === 'object')
+      const sc = (groups ? rowsIn : rowsIn.filter(x => x.title)).slice(0, groups ? groups.length : 6)
+      if (groups) sc.forEach((x, i) => { if (!x.title) x.title = groups[i].place || 'Scene ' + (i + 1) })
+      if (sc.length < (groups ? groups.length : 2)) throw new Error(groups ? 'fewer scenes than the ' + groups.length + ' word groups' : 'fewer than 2 scenes')
       const used = new Set()
       sc.forEach(x => { x.moments = {}; x.setups = {}; (Array.isArray(x.uses) ? x.uses : []).forEach(u => { const id = Number(String(u && u.id).replace(/\D/g, '')); if (byId.has(id)) { x.moments[id] = String(u.moment || '').slice(0, 200); if (u.setup) x.setups[id] = String(u.setup).slice(0, 200) } })
         x.targets = (Array.isArray(x.uses) && x.uses.length ? x.uses.map(u => u && u.id) : (x.targets || [])).map(v => Number(String(v).replace(/\D/g, ''))).filter(id => byId.has(id) && !used.has(id) && used.add(id)) })
@@ -43748,7 +43895,17 @@ async function _lnComposeThaiStory(env, avoid) {
       const deferIds = new Set((Array.isArray(p.defer) ? p.defer : []).map(v => Number(String(v && v.id != null ? v.id : v).replace(/\D/g, ''))).filter(id => _inPlan.has(id) && !used.has(id)).slice(0, LN_STORY_MAX_DEFER))
       planTargets.filter(t => !used.has(t.id) && !deferIds.has(t.id)).forEach(t => { sc.slice().sort((a, b) => a.targets.length - b.targets.length)[0].targets.push(t.id) })
       if (deferIds.size) log && log('  ↪ LISTENING_STORY planner deferred ' + deferIds.size + ' word(s) with no natural place in this story (they stay due for the next lesson): ' + [...deferIds].map(id => byId.get(id).surface).join(', '))
-      plan = { title: String(p.title || 'Listening'), story: String(p.story || ''), scenes: sc.map(x => ({ title: String(x.title).slice(0, 80), present: String(x.present || ''), happens: String(x.happens || ''), facts: String(x.facts || ''), targets: x.targets, moments: x.moments || {}, setups: x.setups || {} })), deferred: [...deferIds] }
+      // 18 Nov — the groups decide which words are in which scene, whatever the planner did with them; its set-up and moment for a word are kept wherever it put them,
+      // and a mention word without a moment gets the frame the grouping gave it
+      if (groups) {
+        const mo = {}, se = {}
+        sc.forEach(x => { Object.assign(mo, x.moments || {}); Object.assign(se, x.setups || {}) })
+        sc.forEach((x, i) => {
+          const g = groups[i]; x.targets = g.ids.slice(); x.moments = {}; x.setups = {}; x.mentions = {}; x.support = g.support.slice()
+          g.ids.forEach(id => { if (mo[id]) x.moments[id] = mo[id]; if (se[id]) x.setups[id] = se[id]; if (id in g.mention) { x.mentions[id] = g.mention[id]; if (!x.moments[id]) x.moments[id] = g.mention[id] } })
+        })
+      }
+      plan = { title: String(p.title || 'Listening'), story: String(p.story || ''), scenes: sc.map(x => ({ title: String(x.title).slice(0, 80), present: String(x.present || ''), happens: String(x.happens || ''), facts: String(x.facts || ''), targets: x.targets, moments: x.moments || {}, setups: x.setups || {}, mentions: x.mentions || {}, support: x.support || [] })), deferred: [...deferIds], grouped: !!groups }
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY plan attempt ' + attempt + ' unusable: ' + String(e && e.message || e).slice(0, 100)) }
   }
   if (!plan) return { ok: false, scenes: [], reason: 'LISTENING_STORY_PLAN_FAILED: the story plan could not be made', composer: 'story', uncommitted: [] }
@@ -43775,12 +43932,21 @@ async function _lnComposeThaiStory(env, avoid) {
   // at home moved to a restaurant; the same question asked twice) — no extra call
   const factsLedger = []
   const factsLine = () => { const f = factsLedger.flat(); return f.length ? '\nFACTS ESTABLISHED SO FAR (keep every one true; never contradict or repeat them):\n' + f.map(x => '- ' + x).join('\n') + '\n' : '' }
-  const factsAsk = '\nAlso give "facts": up to 5 short English facts this scene made TRUE that later scenes must respect (who has, bought or lost what; where they are going next; what was decided; what was already asked and answered), e.g. {"turns":[…],"facts":["B paid for both bus tickets"]}.'
+  // 18 Nov — what the word groups give the writer of ONE scene: the known words for this place (checked against the closed-vocabulary gate when the groups were made) and
+  // the words that are only MENTIONED here (read, told or quoted), each with its frame. Placed before the TASK line, so the repair and rewrite prompts built from the brief carry them too.
+  const mentionsOf = si => { const m = (plan.scenes[si] || {}).mentions || {}; return Object.keys(m).map(id => ({ id: Number(id), frame: m[id] })).filter(x => byId.has(x.id)) }
+  const placeWords = si => { const sc0 = plan.scenes[si] || {}; return sc0.support && sc0.support.length ? '\nWORDS FOR THIS PLACE (the learner knows every one; use them for what is around the friends before you reach for any other word): ' + sc0.support.join(' ') + '\n' : '' }
+  const mentionNote = si => { const ms = mentionsOf(si); return ms.length ? '\nMENTION WORDS (the friends only MENTION these here, inside something read, told or quoted — never as something they are doing or seeing right now):\n' + ms.map(x => '- ' + byId.get(x.id).surface + ' — ' + x.frame).join('\n') + '\n' : '' }
+  const sceneNotes = si => placeWords(si) + mentionNote(si)
+  const mentionAll = () => { const all = plan.scenes.flatMap((x, i) => mentionsOf(i).map(m => '- ' + byId.get(m.id).surface + ' (scene ' + (i + 1) + '): ' + m.frame)); return all.length ? '\nThese lesson words are MEANT as mentions (read off a sign, told as past or quoted) — judge them as that, not as forced live action:\n' + all.join('\n') + '\n' : '' }
+  // 18 Nov — only facts about what the friends actually SAID with known words: a fact such as "A also ordered a big crab" that the learner has no word for could never be
+  // referred to again except as "the big one" (17 Nov run, scene 4: the crab was never named, and three editor rounds could not repair it)
+  const factsAsk = '\nAlso give "facts": up to 5 short English facts this scene made TRUE that later scenes must respect (who has, bought or lost what; where they are going next; what was decided; what was already asked and answered), e.g. {"turns":[…],"facts":["B paid for both bus tickets"]}. Only facts about things the friends actually NAMED in the scene with known words; never a thing they had no known word for.'
   for (let si = 0; si < nS; si++) {
     if (pre) { written[si] = pre.written[si].map(x => ({ ...x })); factsLedger.push(pre.facts[si] || []); continue }
     const s = plan.scenes[si], st = sceneTargets(si), n = remainingTurns(si)
     const brief = 'STORY: "' + plan.title + '" — ' + plan.story + '\nALL SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ': ' + x.happens + (x.facts ? ' (true after it: ' + x.facts + ')' : '')).join(' | ') + '\n' +
-      (si ? '\nTHE CONVERSATION SO FAR:\n' + soFar(si) + '\n' : '') + factsLine() +
+      (si ? '\nTHE CONVERSATION SO FAR:\n' + soFar(si) + '\n' : '') + factsLine() + sceneNotes(si) +
       '\nTASK: write scene ' + (si + 1) + ' of ' + nS + ' — "' + s.title + '"' + (s.present ? ' — ' + s.present : '') + ': ' + s.happens + '\nOnly A and B speak, to each other, as the same two friends; respect everything the earlier scenes established. About ' + n + ' lines (' + LN_STORY_TURNS.sceneMin + '–' + LN_STORY_TURNS.sceneMax + '), continuing directly from the conversation so far. ' +
       (si === 0 ? 'It opens the conversation (a greeting is fine). ' : 'Do NOT greet again. ') + (si === nS - 1 ? 'It ends the conversation with a natural goodbye. ' : 'Do NOT say goodbye yet. ') +
       '\nUse EVERY ONE of these lesson words at least once, spelled exactly, in its common sense (not more than 3 lesson words in one line), at its planned moment:\n' +
@@ -43826,6 +43992,7 @@ async function _lnComposeThaiStory(env, avoid) {
         log && log('  🧩 LISTENING_STORY scene ' + (si + 1) + ' written as ' + eps.size + ' episode(s) · ' + ok + ' of ' + st.length + ' lesson word(s) come after a set-up line') } } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = []; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' reply unusable: ' + String(e && e.message || e).slice(0, 100)) }
     for (let round = 0; round <= 2; round++) {
       const sc = sceneOf(si), probs = lnStorySceneProblems(la, sc, si, nS, st, ctx)
+      learnNever(probs, si)
       if (!best || probs.length < best.probs.length) best = { turns: written[si].slice(), probs }
       log && log('  ✍ LISTENING_STORY scene ' + (si + 1) + (round ? ' rewrite ' + round : ' written') + ' · ' + sc.turns.length + ' lines · ' + (probs.length ? probs.length + ' problem(s): ' + probs.slice(0, 4).map(p => (p.line ? 'L' + p.line + ' ' : '') + p.code).join(', ') : 'all checks pass'))
       if (!probs.length || round === 2) break
@@ -43921,6 +44088,10 @@ async function _lnComposeThaiStory(env, avoid) {
   // ── EDIT: a strict native-teacher read of the WHOLE conversation (the way the independent grader reads it) lists every faulty line
   //    with a replacement; each replacement is kept only if it passes every line gate and keeps the line's lesson words (≤ 3 rounds) ──
   let rejected = [], editorGrade = null
+  // 18 Nov — A ROUND THAT DID NOT IMPROVE THE GRADE ENDS THE EDITING. The review at the start of round n grades the text round n-1 left, so it is the proof of
+  // whether round n-1 helped. 17 Nov run: grades 6 → 6 → 4; round 2 kept two fixes on a text that had not improved, and the grade fell to 4 (the three fixes of
+  // round 3 were never graded). Now the round that is not better than the one before is not paid for (no fix call), and a round that made the grade WORSE is undone.
+  let prevGrade = null, prevText = null
   // 3 rounds: more rounds made the track WORSE in blind review (S31: 10 rounds ran → 4.7 / 4.3; S29: ~3 rounds → 5.7 / 5.5) — each
   // fix can bring new faults the gates do not see
   for (let round = 1; round <= (pre && LN_MODULE_STORY.noRepair ? 0 : LN_SCENE_CHECK.on ? 1 : 3); round++) {      // v722: the module-led prototype is scored as built
@@ -43935,15 +44106,25 @@ async function _lnComposeThaiStory(env, avoid) {
         '\n\nTHE CONVERSATION (numbered):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '')).join('\n') +
         '\n\nRead it start to finish as the listener will. List the worst faults (at most 6), most damaging first: STORY (a reply that does not follow, a question not answered, a contradiction with an earlier line or scene, ' +
         'time running backwards, a person / thing / event mentioned before it is set up, B speaking as anyone other than A\'s friend, a lesson word forced into a line where nobody would say it, the scene title not matching what is said (together vs on the phone, the place), a day or time that clashes with another scene (on Thursday asking about "this Wednesday"), feelings words piled into one melodramatic exchange without a real cause), THAI (ungrammatical, a missing small word, bookish, wrong collocation, a word in an odd sense), EN (does not match the Thai). ' +
-        (env._lnUsageNotes ? 'How the lesson words are really used (a lesson word in another sense is a fault):\n' + env._lnUsageNotes + '\n' : '') + LN_COHERENCE_CHECKLIST +
+        (env._lnUsageNotes ? 'How the lesson words are really used (a lesson word in another sense is a fault):\n' + env._lnUsageNotes + '\n' : '') + mentionAll() + LN_COHERENCE_CHECKLIST +
         'Give the line span to change (the cause, often an earlier line) and in a few words how to fix it. Also give "score": the grade 0–10 it deserves now.\n' +
         'Reply ONLY with JSON: {"score":5.5,"faults":[{"from":12,"to":13,"problem":"…","fix":"…"}]}', 1800, 'LISTENING_REPAIR_CALLS', true)
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY review round ' + round + ' unusable: ' + String(e && e.message || e).slice(0, 100)) }
+    const gradeNow = review && review.score != null && review.score !== '' && isFinite(Number(review.score)) ? Number(review.score) : null
+    if (round > 1 && gradeNow != null && prevGrade != null && gradeNow <= prevGrade) {
+      const worse = gradeNow < prevGrade
+      if (worse && prevText) written.splice(0, written.length, ...prevText.map(w => w.slice()))
+      editorGrade = worse ? prevGrade : gradeNow
+      log && log('  📝 LISTENING_STORY edit round ' + round + ' · editor grade ' + gradeNow + '/10, not better than the ' + prevGrade + '/10 before round ' + (round - 1) + ' — ' +
+        (worse ? 'round ' + (round - 1) + '\'s fixes are undone and' : 'the fixes of round ' + (round - 1) + ' are kept and') + ' the editing stops here (no further fix call is paid for)')
+      break
+    }
+    if (gradeNow != null) { prevGrade = gradeNow; prevText = written.map(w => w.slice()) }       // the text and the grade it earned, kept as the way back
     // at most 4 faults per fix call: with 8 faults and the whole checklist the fix reply ran out of tokens every time (paid run S20)
     // at most 2 faults per fix call (4 still ran out of tokens in every round of paid run S30); more rounds instead
     const faults = (review && Array.isArray(review.faults) ? review.faults : []).filter(x => x && Number(x.from) > 0).slice(0, 3)
     try {
-      r = await call('O_listening_story_edit', 'STORY PLAN: "' + plan.title + '" — ' + plan.story + '\n' + plan.scenes.map((x, i) => 'Scene ' + (i + 1) + ': ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ' — ' + x.happens).join('\n') + factsLine() +
+      r = await call('O_listening_story_edit', 'STORY PLAN: "' + plan.title + '" — ' + plan.story + '\n' + plan.scenes.map((x, i) => 'Scene ' + (i + 1) + ': ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ' — ' + x.happens).join('\n') + factsLine() + mentionAll() +
         '\n\n' + (faults.length ? 'THE SCENES WITH FAULTS (numbered as in the whole conversation):\n' : 'THE CONVERSATION (numbered; scene titles in brackets):\n') + flat.map((f, i) => ({ f, i })).filter(({ f }) => !faults.length || faults.some(x => { const g = flat[Number(x.from) - 1]; return g && g.si === f.si })).map(({ f, i }) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '') + ((f.tn.intendedTargetIds || []).length ? '   (lesson words: ' + f.tn.intendedTargetIds.map(id => byId.get(id).surface).join(', ') + ')' : '')).join('\n') +
         (faults.length ? '\n\nA NATIVE TEACHER FOUND THESE FAULTS — fix them first:\n' + faults.map(x => '- lines ' + x.from + (Number(x.to) > Number(x.from) ? '–' + x.to : '') + ': ' + String(x.problem || '').slice(0, 140) + (x.fix ? ' → ' + String(x.fix).slice(0, 120) : '')).join('\n') : '') +
         (rejected.length ? '\n\nYOUR LAST REPLACEMENTS THAT COULD NOT BE USED (fix them another way):\n' + rejected.slice(0, 8).map(x => '- lines ' + x.span + ': ' + x.why).join('\n') : '') +
@@ -44000,7 +44181,7 @@ async function _lnComposeThaiStory(env, avoid) {
     const limits = 'Each new line: at most ' + lenR.max + ' Thai words (the particle not counted), only simple everyday words a beginner knows' + (never.length ? ' — NOT these untaught words: ' + never.join(' ') : '') + '.\n'
     const ask = (s, si, extra) => call('O_listening_word_check', 'You are a native Thai teacher checking ONE scene of a Thai listening lesson. A is a man (ผม / ครับ), B a woman (ฉัน / ค่ะ).\n' +
       'SCENE: "' + s.title + '"' + (s.present ? ' [' + s.present + ']' : '') + '\n' + lnStorySceneText(sceneOf(si), la) +
-      '\nLESSON WORDS in this scene: ' + sceneTargets(si).map(t => t.surface + ' (' + t.gloss + ')').join(', ') + extra, 1200, 'LISTENING_REPAIR_CALLS', true)
+      '\nLESSON WORDS in this scene: ' + sceneTargets(si).map(t => t.surface + ' (' + t.gloss + ')').join(', ') + mentionNote(si) + extra, 1200, 'LISTENING_REPAIR_CALLS', true)
     const tryFix = (si, fx, refused) => {
       const sc = sceneOf(si), k = Number(fx && fx.line) - 1, tn = sc.turns[k], cur = written[si][k]
       if (!tn || !cur || !fx || !fx.thai) return false
@@ -44041,7 +44222,9 @@ async function _lnComposeThaiStory(env, avoid) {
   // the edits must leave every scene's gates and lesson words as they were (a scene the edits broke goes back to its written text)
   // ── QC: paid naturalness verdicts (in context) + the whole-conversation coherence judge → rewrite the flagged scenes (≤ 2 rounds) ──
   const cohOf = async scs => { tel.LISTENING_QC_CALLS = (tel.LISTENING_QC_CALLS || 0) + 1; return listeningWholeCoherenceAudit(scs.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair, ...(tn.meaning ? { meaning: tn.meaning } : {}) })) })), la, { ...o, oneConversation: true, storyScenes: true }, log) }
-  let scenes = build(), natIssues = await env.naturalness(scenes), coh = await cohOf(scenes)
+  // 18 Nov — the naturalness judge and the coherence judge read the same text and do not depend on each other: they run at the same time
+  let scenes = build(), natIssues, coh
+  ;[natIssues, coh] = await Promise.all([env.naturalness(scenes), cohOf(scenes)])
   // the version kept is the best one seen (a rewrite that makes the whole worse is undone): gate issues weigh most, then failed
   // scenes, then unnatural lines
   const hardOf = scs => listeningConversationAudit(scs, targets, la, ctx).issues.concat(conversationContinuityAudit(scs, la, targets)).filter(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN|EXACT_DUPLICATE|NEAR_DUPLICATE|CONTINUITY)$/.test(x.code)).length
@@ -44097,11 +44280,15 @@ async function _lnComposeThaiStory(env, avoid) {
         }
       } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' QC rewrite unusable: ' + String(e && e.message || e).slice(0, 100)) }
     }
-    scenes = build(); natIssues = await env.naturalness(scenes); coh = await cohOf(scenes)
+    scenes = build(); [natIssues, coh] = await Promise.all([env.naturalness(scenes), cohOf(scenes)])
     const sc2 = score(scenes, natIssues, coh)
-    if (sc2 < best.score) best = { written: written.map(w => w.slice()), natIssues, coh, score: sc2 }
-    else log && log('  ↩ LISTENING_STORY QC round ' + round + ' did not improve the whole (score ' + sc2 + ' vs ' + best.score + ') — the better version is kept')
+    // 18 Nov — a round that does not improve the whole ENDS the QC. The better version is put back first, so the next round would start from the very text this round
+    // started from and send the very same requests: it can only repeat this round (17 Nov run: rounds 2 and 3 both ended "score 13 vs 8")
+    const improved = sc2 < best.score
+    if (improved) best = { written: written.map(w => w.slice()), natIssues, coh, score: sc2 }
+    else log && log('  ↩ LISTENING_STORY QC round ' + round + ' did not improve the whole (score ' + sc2 + ' vs ' + best.score + ') — the better version is kept and the QC stops here (another round would start from the same text)')
     written.splice(0, written.length, ...best.written.map(w => w.slice())); natIssues = best.natIssues; coh = best.coh; scenes = build()
+    if (!improved) break
   }
   // a gate issue still left in a scene gets one more targeted rewrite (kept only if the scene's checks improve and the judges agree)
   for (let si = 0; si < nS; si++) {
@@ -44116,7 +44303,7 @@ async function _lnComposeThaiStory(env, avoid) {
       if (r.length >= 2) { written[si] = r; if (lnStorySceneProblems(la, sceneOf(si), si, nS, st, ctx).filter(p => p.code !== 'SCENE_TOO_SHORT').length >= pr.length) written[si] = before }
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = before }
     if (written[si] !== before) {
-      scenes = build(); const ni = await env.naturalness(scenes), ch = await cohOf(scenes), sc3 = score(scenes, ni, ch)
+      scenes = build(); const [ni, ch] = await Promise.all([env.naturalness(scenes), cohOf(scenes)]), sc3 = score(scenes, ni, ch)
       if (sc3 <= best.score) { best = { written: written.map(w => w.slice()), natIssues: ni, coh: ch, score: sc3 }; natIssues = ni; coh = ch }
       else { written[si] = before; scenes = build() }
       log && log('  🧹 LISTENING_STORY scene ' + (si + 1) + ' final clean-up ' + (written[si] === before ? 'not kept' : 'kept'))
@@ -44124,9 +44311,10 @@ async function _lnComposeThaiStory(env, avoid) {
   }
   // ── ENGLISH: each scene's English is translated again from its final Thai, so it says exactly what the Thai says (the edits and line
   //    fixes left English with words the Thai does not have — blind reviews: English 6 / 10) ──
-  for (let si = 0; si < nS; si++) {
+  // 18 Nov — each scene is translated on its own text, so the scenes are translated at the same time (five calls in a row used to wait for each other)
+  await Promise.all(Array.from({ length: nS }, async (_, si) => {
     const w = written[si]
-    if (!w || !w.length || pre) continue      // module exchanges keep their reviewed English; the bridges came with theirs
+    if (!w || !w.length || pre) return      // module exchanges keep their reviewed English; the bridges came with theirs
     try {
       const r = await call('O_listening_story_english', 'Translate each Thai line of this scene into natural, idiomatic English that says EXACTLY what the Thai says — nothing added (no "let\'s", "sorry", "please", "again" unless the Thai has it), nothing left out. ' +
         'A is a man, B a woman (' + (plan.scenes[si].present || plan.scenes[si].title) + '); a third person is "they" unless the Thai makes it clear.\n' + w.map((x, k) => (k + 1) + '. ' + x.speaker + ': ' + x.thai).join('\n') +
@@ -44134,7 +44322,7 @@ async function _lnComposeThaiStory(env, avoid) {
       const en = r && Array.isArray(r.english) ? r.english : []
       if (en.length === w.length && en.every(x => typeof x === 'string' && x.trim())) w.forEach((x, k) => { x.english = en[k].trim() })
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' English re-translation unusable: ' + String(e && e.message || e).slice(0, 100)) }
-  }
+  }))
   log && log('  🔤 LISTENING_STORY English re-translated from the final Thai, scene by scene')
   scenes = build()
   // ── final: the whole conversation through every deterministic gate; a frozen word not heard is deferred (it stays due) ──
@@ -44359,6 +44547,8 @@ async function _buildStandaloneListeningTrackCore(o) {
   const lt = res && res.listeningTrack
   if (!lt) return fail((res && res.reason) || 'the conversation could not be composed', res && res.uncommitted, res && res.telemetry)
   const ut = usageTel()
+  // 18 Nov — where the time went: the wall time, the model time and the requests answered from the cache, by stage (the log had token counts but no clock)
+  try { if (typeof AI_LEDGER !== 'undefined') log && log(listeningTimingLine(AI_LEDGER.slice(led0))) } catch (e) {}
   const tel = { LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0, ...(lt.telemetry || {}), LISTENING_TOKEN_USAGE: ut.LISTENING_TOKEN_USAGE, LISTENING_COST: ut.LISTENING_COST }
   // v700: READY = every selected word heard OR honestly deferred by the salvage (it stays due for Revision), all gates passed
   const _def = lt.coverage.deferredTargetIds || []

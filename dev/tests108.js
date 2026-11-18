@@ -28,5 +28,11 @@ const L = (speaker, thai, english) => ({ speaker, thai, english, prompt: (speake
   const on = await run(true), off = await run(false)
   T('R3', 'a word that fails every check for different reasons stops after 7 paid checks with the guard on', on.calls === 7, { calls: on.calls })
   T('R4', 'with the guard switched off the old ladder is back (more than 7 checks), so the switch really compares the two', off.calls > 7, { calls: off.calls })
+  {
+    const SRC = require('fs').readFileSync('tt.jsx', 'utf8')
+    T('R5', 'the Haiku request timeout waits through appSleep (counts in a worker while the page is hidden) instead of an ordinary timer: a call that hangs is abandoned on time (live: 154 / 243 / 515 s calls under a 180 s limit)',
+      /appSleep\(ANTHROPIC_CONFIG\.timeoutMs\)\.then\(\(\) => \{ if \(!_timedOut\)/.test(SRC) && !/setTimeout\(\(\) => controller\.abort\(\), ANTHROPIC_CONFIG\.timeoutMs\)/.test(SRC))
+    T('R6', 'after one bridge batch is cut off with thinking on, the later batches of the run start with thinking off', /let _cutOnce = false/.test(SRC) && /const noThinkFirst = _cutOnce/.test(SRC))
+  }
   console.log('\n' + (n - fails) + '/' + n + ' passed'); process.exit(fails ? 1 : 0)
 })()

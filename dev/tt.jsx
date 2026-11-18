@@ -19579,11 +19579,14 @@ async function anthropicRequest({ model, messages, maxTokens, signal, stage, jso
   for (let attempt = 1; attempt <= ANTHROPIC_CONFIG.maxAttempts; attempt++) {
     if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) throw _cancelledError('run superseded')
     const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens, attempt, retryReason: why })
-    const controller = aiNewController(), tid = setTimeout(() => controller.abort(), ANTHROPIC_CONFIG.timeoutMs)
+    // 18 Nov (the owner's 18 Nov Thai export: calls that ran 154 s, 243 s and 515 s although this timeout is 180 s — a background tab delays an ordinary timer): the timer waits through appSleep,
+    // which counts in a worker while the page is hidden, so a call that hangs is abandoned and retried on time
+    const controller = aiNewController(); let _timedOut = false
+    appSleep(ANTHROPIC_CONFIG.timeoutMs).then(() => { if (!_timedOut) { _timedOut = true; controller.abort() } })
     const onAbort = () => controller.abort()
     if (signal && signal.addEventListener) signal.addEventListener('abort', onAbort)
     if (runCtl && runCtl.signal.addEventListener) runCtl.signal.addEventListener('abort', onAbort)
-    const detach = () => { clearTimeout(tid); if (signal && signal.removeEventListener) signal.removeEventListener('abort', onAbort); if (runCtl && runCtl.signal.removeEventListener) runCtl.signal.removeEventListener('abort', onAbort) }
+    const detach = () => { _timedOut = true; if (signal && signal.removeEventListener) signal.removeEventListener('abort', onAbort); if (runCtl && runCtl.signal.removeEventListener) runCtl.signal.removeEventListener('abort', onAbort) }
     let res = null
     const _t0 = Date.now()
     try { res = await fetch(anthropicServerUrl(), { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json', 'x-lt-access': AI_ANTHROPIC_ACCESS }, body }) }
@@ -19635,7 +19638,9 @@ async function anthropicRequest({ model, messages, maxTokens, signal, stage, jso
     aiRecordEnd(row, { http: status, ok: out.ok, text: out.ok ? out.text : '', usage, error: out.ok ? null : out.problem })
     // 18 Nov: a reply cut off at max_tokens (thinking + answer did not fit) is repeated with MORE ROOM instead of identically (the same request can only be cut off again): double the cap up to the
     // ceiling, and once at the ceiling one effort level lower (high -> medium -> low), so the thinking leaves room for the answer. It uses one of the request's attempts.
-    if (!out.ok && /^MAX_TOKENS/.test(String(out.problem || '')) && attempt < ANTHROPIC_CONFIG.maxAttempts) {
+    // 18 Nov (the owner's 18 Nov Thai export: 3 of 4 bridge batches were cut off at 4500 tokens with NO text, again at 9000, and only then answered: 20 + 40 + 65 s each): the Thai bridge
+    // writer has its own, faster fallback (the same request with thinking OFF, about 8 s), so it is not given the slower doubling here
+    if (!out.ok && /^MAX_TOKENS/.test(String(out.problem || '')) && attempt < ANTHROPIC_CONFIG.maxAttempts && stageNow !== 'Y_bridge') {
       const cur = req.body.max_tokens, nextMax = Math.min(ANTHROPIC_CONFIG.maxTokensCeiling, cur * 2), lower = { high: 'medium', medium: 'low' }
       const effNext = nextMax === cur && lower[_effNow] ? lower[_effNow] : _effNow
       if (nextMax !== cur || effNext !== _effNow) {
@@ -43481,11 +43486,15 @@ async function thaiYesAndBridges(pairs, vocab, o, log) {
     const t = String(raw || '').replace(/```json|```/g, ''); return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).bridges || []
   }
   // v724 — with thinking on, the reply can be cut off at the token cap (live D-run: 3 of 3 gaps left without a bridge); one retry with thinking off
+  // 18 Nov: once ONE batch of this run has been cut off with thinking on, the other batches start with thinking off (they would be cut off the same way, 20 s each)
+  let _cutOnce = false
   const ask = async (list, reasons) => {
-    try { return await ask0(list, reasons) }
-    catch (e) { if (!/MAX_TOKENS/.test(String(e && e.message || e))) throw e
-      THAI_YESAND._bridgeNoThink = true; out.noThinkRetry = (out.noThinkRetry || 0) + 1
+    const noThinkFirst = _cutOnce
+    try { if (noThinkFirst) THAI_YESAND._bridgeNoThink = true; return await ask0(list, reasons) }
+    catch (e) { if (!/MAX_TOKENS/.test(String(e && e.message || e)) || noThinkFirst) throw e
+      _cutOnce = true; THAI_YESAND._bridgeNoThink = true; out.noThinkRetry = (out.noThinkRetry || 0) + 1
       try { return await ask0(list, reasons) } finally { THAI_YESAND._bridgeNoThink = false } }
+    finally { if (noThinkFirst) THAI_YESAND._bridgeNoThink = false }
   }
   const made = [], refused = new Map()
   const judge = (arr, list) => { arr.forEach(b => { const s = spots[Number(b && b.gap) - 1]; if (!s || !list.includes(s) || !b.thai) return

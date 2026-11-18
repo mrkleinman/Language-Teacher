@@ -86,9 +86,10 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     // TEST CHANGED (17 Nov, header buttons in ja / zh / yue): the Japanese and Mandarin Settings used to be a page of their own that held only the AI Generation Model card, and the call was
     // `<NonThaiExtraView ... />` with no other prop. Settings is now the full Settings screen (LangSettingsView -> Settings) of which the AI Generation Model card is the last card, and the call hands
     // over the teacher's own state and save functions (ctx). The check is the same intent: each of the two screens shows the shared model card in its Settings, and what is left Thai-only explains.
+    // TEST CHANGED (18 Nov): the model card is now followed by the new "Keep running in the background" card (<KeepRunningCard />) at the end of Settings; the check is otherwise the same.
     T('S3d', 'v688: Japanese and Mandarin Settings show the shared AI Generation Model card; their Thai-only button (Lessons) explains instead of showing an empty page',
       (SRC.match(/<NonThaiExtraView view=\{view\} lang="(ja|zh)" onBack=\{\(\) => setView\('dashboard'\)\}.*ctx=\{\{.*\}\} \/>/g) || []).length === 2 && /if \(view === 'settings'\) return <LangSettingsView lang=\{lang\}/.test(SRC) &&
-      /<Settings lang=\{lang\} onBack=\{onBack\}/.test(SRC) && /<GenerationModelCard \/>\n    <\/div>\n  \)\n\}\n\n\/\/ ── Main App/.test(SRC))
+      /<Settings lang=\{lang\} onBack=\{onBack\}/.test(SRC) && /<GenerationModelCard \/>\n      <KeepRunningCard \/>\n    <\/div>\n  \)\n\}\n\n\/\/ ── Main App/.test(SRC))
     T('S7', 'Settings shows "AI Generation Model" with exactly the two labelled choices', /AI Generation Model/.test(SRC) && /label: 'Gemini 2\.5 Flash-Lite', tag: 'Default'/.test(SRC) && /label: 'Claude Haiku 5\.5', tag: 'Experimental'/.test(SRC) && /<GenerationModelCard \/>/.test(SRC)
       && Object.keys(c.ev('AI_GEN_MODELS')).length === 2)
     T('S8', 'the model is stamped on the finished track and its export (finaliseMainTrack, the Thai screen, the export header)',
@@ -188,6 +189,11 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     const r3 = await tryAsync(() => ask(m3, { stage: 'A_generation' }))
     const mt = m3.__calls.anthropic.map(x => x.body.max_tokens)
     T('M9', 'a cut-off reply is repeated ONCE with more room (the cap doubled) and the second answer is used', !r3.e && /fine/.test(String(r3.v)) && mt.length === 2 && mt[1] === Math.min(16000, mt[0] * 2) && mt[1] > mt[0], { e: r3.e && r3.e.message, mt })
+    // 18 Nov (the owner's 18 Nov Thai export: Y_bridge cut off at 4500, again at 9000, then answered: 20 + 40 + 65 s, three batches): the Thai bridge writer has its own faster fallback (thinking OFF),
+    // so a cut-off Y_bridge reply is NOT repeated here with a doubled cap: one request, the error goes to the writer, which retries once with thinking off.
+    const m4 = app({ haiku: true, anthropic: [cut(), resp(200, msg('fine'))] }); m4.aiBeginRun('daily-track')
+    const r4 = await tryAsync(() => ask(m4, { stage: 'Y_bridge' }))
+    T('M9b', 'a cut-off Y_bridge reply is not repeated with a doubled cap here (one request; the bridge writer\'s own thinking-off retry follows)', r4.e && /MAX_TOKENS/.test(r4.e.message) && m4.__calls.anthropic.length === 1, { e: r4.e && r4.e.message, n: m4.__calls.anthropic.length })
   }
 
   // ══ E — failures ════════════════════════════════════════════════════════════════════════════════════════════════

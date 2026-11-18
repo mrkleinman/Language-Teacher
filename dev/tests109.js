@@ -40,5 +40,19 @@ function boot() {
     let threw = false; try { c.ev('keepAliveHold')()() } catch (e) { threw = true }
     T('M7', 'a browser that cannot make the sound simply does without (no error)', !threw)
   }
+  {
+    // the owner's choice: "allow the generation to play the sound while YouTube is playing" — the phone pauses other apps for an audio element, so the learner picks
+    const c = boot(), ls = c.ev('localStorage')
+    T('M8', 'the default is "keep it running" (the sound plays)', c.ev('keepAliveModeApply')() === 'media' && c.ev('KA_MEDIA').on === true)
+    await c.ev('keepAliveModeSave')('mix')
+    T('M9', 'choosing "do not pause my other apps" is saved, switches the sound off and keeps only the quiet tone', c.ev('KA_MEDIA').on === false && JSON.parse(ls.getItem('tt-keep-awake-mode')) === 'mix')
+    const rel = c.ev('keepAliveHold')()
+    T('M10', 'in that mode a hold makes no audio element (nothing for the phone to give audio focus to), only the web-audio tone path', c.ev('globalThis.__au').length === 0 && c.ev('keepAliveState')().media === false); rel()
+    const c2 = boot(); c2.ev('localStorage').setItem('tt-keep-awake-mode', JSON.stringify('mix'))
+    T('M11', 'the choice is read again when the app starts (next visit)', c2.ev('keepAliveModeApply')() === 'mix' && c2.ev('KA_MEDIA').on === false)
+    await c.ev('keepAliveModeSave')('media')
+    T('M12', 'switching back to "keep it running" plays the sound again', c.ev('KA_MEDIA').on === true && (c.ev('keepAliveHold')(), c.ev('globalThis.__au').length === 1))
+    T('M13', 'the Settings screen offers both choices (Keep running in the background)', /function KeepRunningCard\(\)/.test(require('fs').readFileSync('tt.jsx', 'utf8')) && /<GenerationModelCard \/>\s*\n\s*<KeepRunningCard \/>/.test(require('fs').readFileSync('tt.jsx', 'utf8')))
+  }
   console.log('\n' + (n - fails) + '/' + n + ' passed'); process.exit(fails ? 1 : 0)
 })()

@@ -11700,6 +11700,16 @@ let _kaHolds = 0, _kaCtx = null, _kaNode = null, _kaLockRelease = null, _kaStopA
 // keepAliveMediaSetEnabled(false). Everything is optional: a browser without it simply does without.
 const KA_MEDIA = { on: true }
 function keepAliveMediaSetEnabled(on) { KA_MEDIA.on = !!on; if (!on) _kaMediaStop() }
+// 18 Nov (the owner: "allow the generation to play the barely audible sound while other apps e.g. YouTube is playing"): a page that plays an audio ELEMENT takes the phone's audio focus, and
+// Android then pauses the other app's sound — a web page cannot ask the phone to mix instead. So the learner CHOOSES (Settings → Keep running in the background): 'media' keeps the tab running
+// but may pause other apps' sound; 'mix' plays only a quiet web-audio tone (it takes no audio focus, other apps keep playing) and the phone may slow the page when it is left.
+const KA_MODE_KEY = 'tt-keep-awake-mode'
+function keepAliveModeApply() {
+  try { const raw = typeof localStorage !== 'undefined' && localStorage.getItem(KA_MODE_KEY); const m = raw ? JSON.parse(raw) : 'media'; keepAliveMediaSetEnabled(m !== 'mix') } catch (e) {}
+  return KA_MEDIA.on ? 'media' : 'mix'
+}
+keepAliveModeApply()
+async function keepAliveModeSave(mode) { const m = mode === 'mix' ? 'mix' : 'media'; keepAliveMediaSetEnabled(m === 'media'); await stSet(KA_MODE_KEY, m); return m }
 function _kaWavUrl() {
   const rate = 8000, n = rate * 2, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf)
   const w = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)) }
@@ -11742,7 +11752,7 @@ function _kaStart() {
   try {
     keepAliveUnlock()
     if (_kaCtx && !_kaNode && _kaCtx.state === 'running') {
-      const o = _kaCtx.createOscillator(), g = _kaCtx.createGain(); o.frequency.value = 20; g.gain.value = 0.0002
+      const o = _kaCtx.createOscillator(), g = _kaCtx.createGain(); o.frequency.value = 20; g.gain.value = KA_MEDIA.on ? 0.0002 : 0.003      // mix mode: 15x louder (about -50 dB, still not heard) so the browser is more likely to count it as audio
       o.connect(g); g.connect(_kaCtx.destination); o.start(); _kaNode = { o, g }
     }
   } catch (e) { _kaNode = null }
@@ -48092,6 +48102,24 @@ function GcpTtsSection({ gcpTtsKey, onSaveGcpTtsKey, lang }) {
 // Settings → AI Generation Model. Gemini stays the default; Claude Haiku 5.5 is an experimental alternative for the sentences
 // of new Daily / Revision / Weak-words tracks. Stored: the choice and two limits (a preference), and the SITE access code for
 // this app's own server function. The Anthropic API key is never entered here — it lives in the site's server settings.
+function KeepRunningCard() {
+  const [mode, setMode] = useState(keepAliveModeApply())
+  const pick = async m => { setMode(await keepAliveModeSave(m)) }
+  const opt = (id, title, note) => (
+    <label key={id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 6, cursor: 'pointer',
+      border: '1px solid ' + (mode === id ? '#d4a94a' : 'var(--border)'), background: mode === id ? 'rgba(212,169,74,0.08)' : 'var(--surface2)' }}>
+      <input type="radio" name="tt-keep-awake-mode" value={id} checked={mode === id} onChange={() => pick(id)} style={{ marginTop: 3 }} />
+      <span style={{ fontSize: 13 }}>{title}<span style={{ display: 'block', color: 'var(--muted)', fontSize: 11, marginTop: 2 }}>{note}</span></span>
+    </label>)
+  return (
+    <Card style={{ padding: 16, marginBottom: 12 }}>
+      <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Keep running in the background</p>
+      <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 10 }}>While a track is being written, how should the app stay awake when you switch to another app or minimise the browser?</p>
+      {opt('media', 'Keep it running (recommended)', 'Plays a near-silent sound and shows "Writing your track…" in your phone\'s media controls. Your phone may pause YouTube or music while it writes.')}
+      {opt('mix', 'Do not pause my other apps', 'Only a very quiet tone is used, so YouTube and music keep playing. The phone may slow the page down when you leave it.')}
+    </Card>
+  )
+}
 function GenerationModelCard() {
   const [pref, setPref] = useState(aiGenerationPreference())
   const [code, setCode] = useState('')
@@ -48909,6 +48937,7 @@ function Settings({ onBack, geminiKey, onSaveGeminiKey, geminiSpend, onResetGemi
         </button>
       </Card>
       <GenerationModelCard />
+      <KeepRunningCard />
     </div>
   )
 }

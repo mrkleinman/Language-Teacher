@@ -22,4 +22,5 @@ T('Q2', 'the three อ่าน lines now count for a selected target (no "lines
 })())
 const plain = c.ev('qcSavedTrack')(track, null, [{ a: 1 }])
 T('Q3', 'without a finalised result (a QC that changed only pairs) the track keeps its own word list and takes the updated pairs', plain.keywords === track.keywords && plain.pairs.length === 1)
+T('Q4', 'the Listening English translation is told never to turn ครับ / ค่ะ / คะ into "sir" / "ma\'am" (the owner\'s 18 Nov Listening: "I see, ma\'am.", "Good, sir." in lines that carry only the polite ending)', /NEVER translate them as "sir" or "ma\\?'am"/.test(require('fs').readFileSync('tt.jsx', 'utf8')))
 console.log('\n' + (n - fails) + '/' + n + ' passed'); process.exit(fails ? 1 : 0)

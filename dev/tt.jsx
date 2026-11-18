@@ -44349,7 +44349,7 @@ async function _lnComposeThaiStory(env, avoid) {
     const w = written[si]
     if (!w || !w.length || pre) return      // module exchanges keep their reviewed English; the bridges came with theirs
     try {
-      const r = await call('O_listening_story_english', 'Translate each Thai line of this scene into natural, idiomatic English that says EXACTLY what the Thai says — nothing added (no "let\'s", "sorry", "please", "again" unless the Thai has it), nothing left out. ' +
+      const r = await call('O_listening_story_english', 'Translate each Thai line of this scene into natural, idiomatic English that says EXACTLY what the Thai says — nothing added (no "let\'s", "sorry", "please", "again" unless the Thai has it), nothing left out. The polite endings ครับ / ค่ะ / คะ are only politeness: NEVER translate them as "sir" or "ma\'am" (no "yes, sir", "okay, ma\'am") unless the Thai itself calls the person คุณ / ท่าน / คุณผู้หญิง / คุณผู้ชาย. ' +
         'A is a man, B a woman (' + (plan.scenes[si].present || plan.scenes[si].title) + '); a third person is "they" unless the Thai makes it clear.\n' + w.map((x, k) => (k + 1) + '. ' + x.speaker + ': ' + x.thai).join('\n') +
         '\nReply ONLY with JSON: {"english":["…"]} — one entry per line, in order.', 900, 'LISTENING_REPAIR_CALLS', true)
       const en = r && Array.isArray(r.english) ? r.english : []

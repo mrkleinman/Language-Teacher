@@ -49856,6 +49856,7 @@ function WordListView({ vocab, lang, initialFilter, onBack, onVocabUpdate, noteF
   return (
     <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
       <Btn onClick={onBack} variant="ghost" style={{ alignSelf:'flex-start' }}>{'\u2190'} Back</Btn>
+      {lang === 'ja' && jaGrammarReviewAreaOn() && <ErrorBoundary><JaGrammarReviewArea open={initialFilter === 'due'} /></ErrorBoundary>}
       {lang === 'ja' && <ErrorBoundary><JaKnownGrammar /></ErrorBoundary>}
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search words..."
         style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 12px', color:'var(--text)', fontSize:14 }} />
@@ -60851,6 +60852,8 @@ function jaGrammarNotShownSetEnabled(on) { JA_GRAMMAR_NEWRATED.notShown = !!on }
 function jaGrammarNotShownOn() { return !!JA_GRAMMAR_NEWRATED.notShown }
 function jaGrammarRomajiSetEnabled(on) { JA_GRAMMAR_NEWRATED.romaji = !!on }
 function jaGrammarRomajiOn() { return !!JA_GRAMMAR_NEWRATED.romaji }
+function jaGrammarReviewAreaSetEnabled(on) { JA_GRAMMAR_NEWRATED.reviewArea = !!on }
+function jaGrammarReviewAreaOn() { return !!JA_GRAMMAR_NEWRATED.reviewArea }
 // a rating always leaves interval > 0 behind (the engine never gives less than 1 day); a point that was only introduced and practised keeps interval 0. ratedAt is written by ratings from v775 on.
 function jaGrammarIsRatedRec(r) { return !!(r && (r.ratedAt || (r.interval || 0) > 0)) }
 // NEW = introduced, and not yet rated, and not known (a "not shown" note does not change that)
@@ -60889,6 +60892,81 @@ function jaGrammarRomajiShown(x) { return jaGrammarRomajiOn() ? jaGrammarRomajiT
 function jaGrammarRomajiSpan(x, style) {
   const r = jaGrammarRomajiShown(x)
   return r ? <span className="phon" data-grammar-romaji={x.id} style={{ color: 'var(--gold)', fontSize: 11, ...(style || {}) }}>{r}</span> : null
+}
+// the grammar a learner can review without generating a track: what is due (most overdue first) and, as a separate group, the points still NEW that were never rated
+function jaGrammarReviewAreaList(store, today) {
+  const t = today || new Date().toISOString().slice(0, 10), st = store || {}, due = [], newUnrated = []
+  const row = (e, r) => ({ id: e.id, type: 'buildingBlock', label: e.label, romaji: e.romaji || '', meaning: e.meaning, explain: e.explain, order: e.order, dueDate: r.dueDate || null, notShownAt: r.notShownAt || null })
+  JA_GRAMMAR_CURRICULUM.forEach(e => {
+    const r = st[jaProgressKeyOf('buildingBlock', e.id)]
+    if (!r || !r.introducedAt || jaGrammarIsKnownRec(r)) return
+    if (jaGrammarIsNewRec(r)) newUnrated.push(row(e, r))
+    else if (r.dueDate && r.dueDate <= t) due.push(row(e, r))
+  })
+  due.sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)) || (a.order - b.order))
+  return { due, newUnrated }
+}
+function JaGrammarReviewArea({ open: openFirst }) {
+  const [store, setStore] = useState(null)
+  const [shown, setShown] = useState(null)                  // the lists as they were when the area opened: a point just rated stays on screen, with its mark, until the area is opened again
+  const [rated, setRated] = useState({})
+  const [open, setOpen] = useState(!!openFirst)
+  useEffect(() => { let go = true
+    ;(async () => { try { const s = await jaGrammarLoad(); if (go) { setStore(s); setShown(jaGrammarReviewAreaList(s)) } } catch (e) { if (go) { setStore({}); setShown({ due: [], newUnrated: [] }) } } })()
+    return () => { go = false } }, [])
+  if (!jaGrammarReviewAreaOn() || store == null || !shown) return null
+  const total = shown.due.length + shown.newUnrated.length
+  const rate = async (id, rating) => {
+    const r = await jaGrammarRateAndSave(store, 'buildingBlock', id, rating)
+    setStore(r.local); setRated(m => ({ ...m, [id]: rating }))
+  }
+  const btnOf = (id, rating, label, bg) => (
+    <button key={rating} onClick={() => rate(id, rating)}
+      style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+        background: rated[id] === rating ? bg : 'var(--surface2)', color: rated[id] === rating ? '#fff' : 'var(--muted)' }}>{label}</button>
+  )
+  const card = (x, kind) => {
+    const rec = (store || {})[jaProgressKeyOf('buildingBlock', x.id)] || {}
+    return (
+      <div key={kind + x.id} {...{ ['data-review-area-' + kind]: x.id }} style={{ background: 'var(--surface2)', borderRadius: 8, padding: '7px 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+          <span className="jp" style={{ fontSize: 15, fontWeight: 700 }}>{x.label}</span>
+          {jaGrammarRomajiSpan(x)}
+          <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>
+          {kind === 'due' && x.dueDate && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>due {x.dueDate}</span>}
+          {kind === 'new' && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: '#10b981' }}>NEW</span>}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 3, lineHeight: 1.45 }}>{x.explain}</div>
+        {kind === 'new' && (rec.notShownAt || x.notShownAt) && <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>marked not shown on {rec.notShownAt || x.notShownAt}</div>}
+        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+          {btnOf(x.id, 'hard', 'HARD', '#ef4444')}
+          {btnOf(x.id, 'ok', 'OK', 'var(--accent)')}
+          {btnOf(x.id, 'easy', 'EASY', '#10b981')}
+          {jaGrammarNotShownOn() && btnOf(x.id, 'notshown', 'Not shown', 'var(--muted)')}
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div data-ja-grammar-review-area="1" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 12px' }}>
+      <button onClick={() => setOpen(o => !o)} aria-expanded={open} data-review-area-toggle="1"
+        style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 8, background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', color: 'var(--text)', fontSize: 13, fontWeight: 700, textAlign: 'left' }}>
+        <span>Grammar review</span>
+        <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)' }}>{total === 0 ? 'nothing to review' : shown.due.length + ' due · ' + shown.newUnrated.length + ' new, not rated'}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--muted)' }}>{open ? 'hide' : 'show'}</span>
+      </button>
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '6px 0 4px' }}>
+          {total === 0 && <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>Nothing to review in grammar right now. Grammar comes back here when it is due, and a point taught in a track stays here, as NEW, until you rate it.</p>}
+          {shown.due.length > 0 && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: '#60a5fa', marginTop: 2 }}>GRAMMAR DUE ({shown.due.length})</div>}
+          {shown.due.map(x => card(x, 'due'))}
+          {shown.newUnrated.length > 0 && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: '#10b981', marginTop: 4 }}>STILL NEW — NOT RATED YET ({shown.newUnrated.length})</div>}
+          {shown.newUnrated.length > 0 && <div style={{ fontSize: 10, color: 'var(--muted)', lineHeight: 1.5 }}>At most {JA_GRAMMAR_NEWRATED.newSlots} grammar points are NEW at once. A new track brings new points only as these are rated.</div>}
+          {shown.newUnrated.map(x => card(x, 'new'))}
+        </div>
+      )}
+    </div>
+  )
 }
 // THE ONE SELECTION FUNCTION. Pure: reads the progress and the learner's level and changes nothing. It gives (1) the entries this track would introduce — the NEXT ones in curriculum order, unlocked for this
 // learner, not introduced yet, prerequisites introduced or chosen just before, up to the picker's budget, none while more than 6 reviews are overdue — and (2) the grammar due for review (the most overdue first).

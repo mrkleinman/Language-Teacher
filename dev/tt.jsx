@@ -60778,16 +60778,27 @@ function jaGrammarKnownList(store) {
   JA_GRAMMAR_CURRICULUM.forEach(e => {
     const r = (store || {})[jaProgressKeyOf('buildingBlock', e.id)]
     if (r && r.introducedAt && r.knownAt) out.push({ id: e.id, label: e.label, romaji: e.romaji || '', meaning: e.meaning, explain: e.explain, sightings: r.sightings || 0, tracks: (r.sightingTracks || []).length, knownAt: r.knownAt, order: e.order,
-      ...(r.knownVia === 'easy' ? { via: 'easy' } : {}) })
+      ...(r.knownVia === 'easy' ? { via: 'easy' } : r.markedKnownFrom === JA_GRAMMAR_TICK_FROM && jaGrammarChecklistOn() ? { via: 'checklist' } : {}) })
   })
   return out.sort((a, b) => String(b.knownAt).localeCompare(String(a.knownAt)) || (a.order - b.order))
 }
+// v777: the Japanese Words list mounts this one; the "All grammar" part comes right after Grammar review and before the Known grammar row (nothing else of the screen moves)
 function JaKnownGrammar() {
+  return (
+    <>
+      {jaGrammarChecklistOn() && <ErrorBoundary><JaGrammarChecklist /></ErrorBoundary>}
+      <JaKnownGrammarRow />
+    </>
+  )
+}
+function JaKnownGrammarRow() {
   const [rows, setRows] = useState(null)
   const [open, setOpen] = useState(false)
   useEffect(() => { let go = true
     ;(async () => { try { const st = await jaGrammarLoad(); if (go) setRows(jaGrammarKnownList(st)) } catch (e) { if (go) setRows([]) } })()
-    return () => { go = false } }, [])
+    // v777: the count and the list follow a mark made in All grammar (or a rating in Grammar review) at once
+    const off = jaGrammarBusOn(async () => { try { const st = await jaGrammarLoad(); if (go) setRows(jaGrammarKnownList(st)) } catch (e) {} })
+    return () => { go = false; off() } }, [])
   if (!jaGrammarKnownOn() || rows == null) return null
   return (
     <div data-ja-known-grammar="1" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 12px' }}>
@@ -60798,7 +60809,7 @@ function JaKnownGrammar() {
       </button>
       {open && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '6px 0 4px' }}>
-          {rows.length === 0 && <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>Nothing yet. A grammar point becomes known when it has been used in {JA_GRAMMAR_KNOWN_RULE.minSentences} sentences across {JA_GRAMMAR_KNOWN_RULE.minTracks} different tracks{jaGrammarSlotsOn() ? ', or when you rate it EASY' : ''}. Known points are no longer reviewed.</p>}
+          {rows.length === 0 && <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>Nothing yet. A grammar point becomes known when it has been used in {JA_GRAMMAR_KNOWN_RULE.minSentences} sentences across {JA_GRAMMAR_KNOWN_RULE.minTracks} different tracks{jaGrammarSlotsOn() ? ', or when you rate it EASY' : ''}{jaGrammarChecklistOn() ? ', or when you mark it known in All grammar' : ''}. Known points are no longer reviewed.</p>}
           {rows.map(x => (
             <div key={x.id} data-known-grammar-entry={x.id} style={{ background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -60807,7 +60818,7 @@ function JaKnownGrammar() {
                 <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>
               </div>
               <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 3, lineHeight: 1.45 }}>{x.explain}</div>
-              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>{x.via === 'easy' ? 'rated EASY · ' : ''}{x.sightings} sightings in {x.tracks} tracks · known since {x.knownAt}</div>
+              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>{x.via === 'easy' ? 'rated EASY · ' : x.via === 'checklist' ? 'marked known by you · ' : ''}{x.sightings} sightings in {x.tracks} tracks · known since {x.knownAt}</div>
             </div>
           ))}
         </div>
@@ -61074,6 +61085,74 @@ async function jaGrammarChecklistToggle(id) {
 const JA_GRAMMAR_BUS = new Set()
 function jaGrammarBusOn(fn) { JA_GRAMMAR_BUS.add(fn); return () => { JA_GRAMMAR_BUS.delete(fn) } }
 function jaGrammarBusNotify(source) { if (!jaGrammarChecklistOn()) return; JA_GRAMMAR_BUS.forEach(fn => { try { fn(source) } catch (e) {} }) }
+// THE PART. A collapsible row like Grammar review and Known grammar; opened it holds the filter chips and one row per point, styled like a word row of the same screen. The status label is the control: a
+// button of at least 40 px height, one tap marks or takes back (never a checkbox, never a bulk action). Every tap reads the store again before it writes, so a rating made in Grammar review is never undone.
+function JaGrammarChecklist() {
+  const [store, setStore] = useState(null)
+  const [open, setOpen] = useState(false)
+  const [filter, setFilter] = useState('all')
+  const [note, setNote] = useState(null)                    // { id, text }: why a tap changed nothing, shown under that row
+  const lock = useRef(false)                                // one save at a time: a second tap in the same instant is ignored
+  useEffect(() => { let go = true
+    const read = async () => { try { const s = await jaGrammarLoad(); if (go) setStore(s) } catch (e) { if (go) setStore({}) } }
+    read()
+    const off = jaGrammarBusOn(src => { if (src !== 'checklist') read() })
+    return () => { go = false; off() } }, [])
+  if (!jaGrammarChecklistOn() || store == null) return null
+  const rows = jaGrammarChecklistRows(store), total = rows.length
+  const countOf = st => rows.filter(r => r.status === st).length
+  const want = (JA_GRAMMAR_CHECKLIST_FILTERS.find(f => f[0] === filter) || [])[1]
+  const shown = want ? rows.filter(r => r.status === want) : rows
+  const tap = async x => {
+    if (lock.current) return
+    lock.current = true
+    try {
+      const r = await jaGrammarChecklistToggle(x.id)
+      setNote(r.action === 'blocked' ? { id: x.id, text: r.note } : r.changed ? null : { id: x.id, text: 'Could not save. Try again.' })
+      const s = await jaGrammarLoad(); setStore(s)
+      if (r.changed) jaGrammarBusNotify('checklist')
+    } catch (e) { setNote({ id: x.id, text: 'Could not save. Try again.' }) }
+    lock.current = false
+  }
+  const askOf = x => x.status !== 'known' ? 'Mark as known' : x.canUnmark ? 'Mark as not known' : x.route === 'tracks' ? JA_GRAMMAR_NOTE_TRACKS : JA_GRAMMAR_NOTE_RATING
+  return (
+    <div data-ja-grammar-checklist="1" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 12px' }}>
+      <button onClick={() => setOpen(o => !o)} aria-expanded={open} data-checklist-toggle="1"
+        style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 8, background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', color: 'var(--text)', fontSize: 13, fontWeight: 700, textAlign: 'left' }}>
+        <span>{'All grammar (' + countOf('known') + ' known of ' + total + ')'}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--muted)' }}>{open ? 'hide' : 'show'}</span>
+      </button>
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '6px 0 4px' }}>
+          <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>Tap the label on the right of a point you already know to mark it KNOWN. Tap KNOWN again to undo it (only for a point you marked here).</p>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {JA_GRAMMAR_CHECKLIST_FILTERS.map(f => (
+              <button key={f[0]} data-checklist-filter={f[0]} aria-pressed={filter === f[0]} onClick={() => { setFilter(f[0]); setNote(null) }}
+                style={{ fontSize: 12, padding: '6px 12px', borderRadius: 16, cursor: 'pointer', background: filter === f[0] ? 'var(--gold)' : 'var(--surface2)', color: filter === f[0] ? '#000' : 'var(--text)', border: '1px solid var(--border)' }}>{f[0] + ' (' + (f[1] ? countOf(f[1]) : total) + ')'}</button>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0 }}>{shown.length + (shown.length === 1 ? ' grammar point' : ' grammar points')}</p>
+          {shown.length === 0 && <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>No grammar point in this group.</p>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {shown.map(x => (
+              <div key={x.id} data-checklist-row={x.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', minWidth: 0 }}>
+                <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 8 }}>
+                  <span className="jp" style={{ color: 'var(--text)', fontSize: 15, fontWeight: 700 }}>{x.label}</span>
+                  {jaGrammarRomajiSpan({ id: x.id }, { color: 'var(--muted)' })}
+                  <span style={{ color: 'var(--muted)', fontSize: 11, marginLeft: 'auto', textAlign: 'right' }}>{x.meaning}</span>
+                </div>
+                <button data-checklist-status={x.id} data-status={x.status} onClick={() => tap(x)} title={askOf(x)} aria-label={askOf(x)}
+                  style={{ flexShrink: 0, minWidth: 78, minHeight: 40, padding: '0 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 9, fontWeight: 700, letterSpacing: 0.3,
+                    color: JA_GRAMMAR_CHECKLIST_COLOURS[x.status], opacity: x.status === 'nottaught' ? 0.7 : 1 }}>{JA_GRAMMAR_CHECKLIST_LABELS[x.status]}</button>
+                {note && note.id === x.id && <div data-checklist-note={x.id} role="status" style={{ flexBasis: '100%', fontSize: 10, color: '#f59e0b' }}>{note.text}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 // end of the v777 block
 
 // ROMAJI. The stored romaji of the entry. Four entries whose label has two forms keep the stored reading first and carry the second one too (the stored field itself is untouched). No romaji stored ⇒ none.
@@ -61114,11 +61193,14 @@ function JaGrammarReviewArea({ open: openFirst }) {
   useEffect(() => { let go = true
     ;(async () => { try { const s = await jaGrammarLoad(); const b = jaGrammarResetOn() ? await jaGrammarResetBackupLoad() : null; if (go) { setStore(s); setShown(jaGrammarReviewAreaList(s)); setBackup(b) } } catch (e) { if (go) { setStore({}); setShown({ due: [], newUnrated: [] }) } } })()
     return () => { go = false } }, [])
+  // v777: a mark made in All grammar changes what is NEW and due: the lists are read again (a rating made here is told to the other parts instead, below)
+  useEffect(() => jaGrammarBusOn(async src => { if (src === 'review') return; try { const s = await jaGrammarLoad(); setStore(s); setShown(jaGrammarReviewAreaList(s)); setRated({}) } catch (e) {} }), [])
   if (!jaGrammarReviewAreaOn() || store == null || !shown) return null
   const total = shown.due.length + shown.newUnrated.length
   const rate = async (id, rating) => {
     const r = await jaGrammarRateAndSave(store, 'buildingBlock', id, rating)
     setStore(r.local); setRated(m => ({ ...m, [id]: rating }))
+    jaGrammarBusNotify('review')
   }
   // v776: START GRAMMAR FROM SCRATCH — the confirmation is in the screen (never window.confirm); the reset and the undo are jaGrammarStartFromScratch / jaGrammarUndoReset, and the lists are read again afterwards
   const resetOn = jaGrammarResetOn(), wordingOn = jaGrammarClearWordingOn()
@@ -61129,7 +61211,7 @@ function JaGrammarReviewArea({ open: openFirst }) {
     setBusy(true)
     try {
       const r = await jaGrammarStartFromScratch()
-      await fresh(); setAsk(false); setOpen(true)
+      await fresh(); setAsk(false); setOpen(true); jaGrammarBusNotify('review')
       setNote(r.changed ? 'Done. ' + pts(r.count) + ' went back to \u201Cnot taught yet\u201D.' : r.reason === 'backup-failed' ? 'Nothing was changed: the backup could not be saved, so no grammar point was removed.' : 'Nothing was changed.')
     } catch (e) { setAsk(false); setNote('Nothing was changed.') }
     setBusy(false)
@@ -61139,7 +61221,7 @@ function JaGrammarReviewArea({ open: openFirst }) {
     setBusy(true)
     try {
       const r = await jaGrammarUndoReset()
-      await fresh()
+      await fresh(); jaGrammarBusNotify('review')
       setNote((r.restored ? 'Put back ' + pts(r.restored) + '.' : 'Nothing was put back.') + (r.skipped ? ' Skipped ' + r.skipped + ' that ' + (r.skipped === 1 ? 'has' : 'have') + ' a newer record since the reset (kept as ' + (r.skipped === 1 ? 'it is' : 'they are') + ').' : ''))
     } catch (e) { setNote('Nothing was put back.') }
     setBusy(false)

@@ -41,7 +41,11 @@ const has = (c, name) => typeof c[name] === 'function'
 const learner = (c, known) => c.initJapaneseVocab().map((w, i) => i < known ? { ...w, status: 'known' } : w)
 const SW2 = { reset: 'jaGrammarReset', wording: 'jaGrammarClearWording' }
 const setSw = (c, reset, wording) => { has(c, SW2.reset + 'SetEnabled') && c[SW2.reset + 'SetEnabled'](reset); has(c, SW2.wording + 'SetEnabled') && c[SW2.wording + 'SetEnabled'](wording); return c }
-const OLD = c => setSw(c, false, false)                  // both new switches off: the build must be v775
+// both new switches off: the build must be v775.
+// v777 note (explained here on purpose): the "All grammar" part of the Japanese Words list (jaGrammarChecklistSetEnabled, added after this suite was written, ON by default) is a third, later
+// switch of that same screen. A v775 build has no such part, so reproducing v775 means switching it off as well; without this the only keys that differ are the eight Words-list hashes
+// (wordsOpen_* / wordsClosed_*), exactly the text of the new part. Nothing else of this suite is touched, and the new part's own proof against v776 is tests116.js.
+const OLD = c => { if (typeof c.jaGrammarChecklistSetEnabled === 'function') c.jaGrammarChecklistSetEnabled(false); return setSw(c, false, false) }
 const esc = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const ws = s => String(s).replace(/\s+/g, ' ')
 const CURr = c => c.ev('JA_GRAMMAR_CURRICULUM')

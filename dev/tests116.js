@@ -197,8 +197,8 @@ async function probe(on) {
   await TT('A4', 'a row reads, left to right: Japanese, reading, English meaning (right-aligned), status label (the last thing in the row): "は wa topic marker NOT TAUGHT"; the two entries without romaji read "plain present plain present / future NOT TAUGHT"',
     async () => { const s = await screen({}); if (!CK(s.R)) { await unmount(s.R); return [false, NOPART] }
       const wa = rowEl(s.R, 'wa'), pp = rowEl(s.R, 'plain-present'), jan = rowEl(s.R, 'janai'); const t = [wa, pp, jan].map(r => r ? tx(r) : null)
-      const meaning = wa && wa.findAll(x => x.type === 'span' && tx(x) === 'topic marker')[0]; await unmount(s.R)
-      return [t[0] === 'は wa topic marker NOT TAUGHT' && t[1] === 'plain present plain present / future NOT TAUGHT' && t[2] === 'じゃない / ではない janai / dewa nai is not NOT TAUGHT' && !!meaning && meaning.props.style.marginLeft === 'auto' && meaning.props.style.textAlign === 'right', t] })
+      const meaning = wa && wa.findAll(x => x.type === 'span' && tx(x) === 'topic marker')[0], ms = meaning && meaning.props.style; await unmount(s.R)
+      return [t[0] === 'は wa topic marker NOT TAUGHT' && t[1] === 'plain present plain present / future NOT TAUGHT' && t[2] === 'じゃない / ではない janai / dewa nai is not NOT TAUGHT' && !!ms && ms.marginLeft === 'auto' && ms.textAlign === 'right', t] })
   await TT('A5', 'the rows are styled like the word rows of the same screen: a rounded row (surface2 background, 1px border, radius 8), the Japanese 15px bold in the text colour, the reading 11px muted, the meaning 11px muted, the status label 9px bold; and the colours are the word rows\' own (known green, learning blue, new muted)',
     async () => { const s = await screen({}); if (!CK(s.R)) { await unmount(s.R); return [false, NOPART] }
       const row = rowEl(s.R, 'wa'), st = row.props.style, jp = row.findAll(x => x.type === 'span' && x.props.className === 'jp')[0].props.style, rm = row.findAll(x => x.type === 'span' && x.props['data-grammar-romaji'] === 'wa')[0].props.style
@@ -266,7 +266,7 @@ async function probe(on) {
     async () => { const s = await screen({ 'buildingBlock:ka': V774REC('ka') }); if (!CK(s.R)) { await unmount(s.R); return [false, NOPART] }
       let asked = 0; s.c.confirm = () => { asked++; return true }
       const b0 = statusBtn(s.R, 'wa'), b1 = statusBtn(s.R, 'ka'), p0 = b0.props, p1 = b1.props, px = v => parseFloat(v)
-      await tap(s, 'wa'); const b2 = statusBtn(s.R, 'wa').props, inputs = s.R.root.findAll(x => x.type === 'input').length, row = rowEl(s.R, 'wa'), controls = row.findAll(x => (x.type === 'button' || x.type === 'input') && x.props)
+      await tap(s, 'wa'); const b2 = statusBtn(s.R, 'wa').props, inputs = CK(s.R).findAll(x => x.type === 'input').length, row = rowEl(s.R, 'wa'), controls = row.findAll(x => (x.type === 'button' || x.type === 'input') && x.props)
       await unmount(s.R)
       return [b0.type === 'button' && px(p0.style.minHeight || p0.style.height) >= 36 && p0.title === 'Mark as known' && p0['aria-label'] === 'Mark as known' && p1.title === 'Mark as known' && p1['aria-label'] === 'Mark as known' &&
         b2.title === 'Mark as not known' && b2['aria-label'] === 'Mark as not known' && px(b2.style.minHeight || b2.style.height) >= 36 && inputs === 0 && controls.length === 1 && asked === 0, { p0: { title: p0.title, aria: p0['aria-label'], h: p0.style.minHeight || p0.style.height }, b2: { title: b2.title, aria: b2['aria-label'] }, inputs, controls: controls.length, asked }] })
@@ -397,7 +397,7 @@ async function probe(on) {
     async () => { const s = await screen({}); if (!CK(s.R)) { await unmount(s.R); return [false, NOPART] }
       await click(chip(s.R, 'not taught')); const a = rowsAll(s.R).length; await tap(s, 'wa'); const b = rowsAll(s.R).length, lb = tx(chip(s.R, 'not taught')), lk = tx(chip(s.R, 'known')), t = ckText(s.R); await click(chip(s.R, 'known')); const k = rowsAll(s.R).map(x => x.props['data-checklist-row']); await unmount(s.R)
       return [a === 101 && b === 100 && lb === 'not taught (100)' && lk === 'known (1)' && k.join() === 'wa' && /^All grammar \(1 known of 101\)/.test(t), { a, b, lb, lk, k }] })
-  const KNOWNHEAD = R => { const t = R.root.findAll(KNOWNTOG)[0]; return t ? tx(t) : null }
+  const KNOWNHEAD = R => { const t = R.root.findAll(KNOWNTOG)[0]; return t ? tx(t).replace(/\(\s+/g, '(').replace(/\s+\)/g, ')') : null }       // the row builds its count from two pieces of text: the test text puts a space inside the brackets
   await TT('E3', 'the Known grammar row includes the ticked points and its count matches (ticked, EASY and by sightings together), and it follows a tap at once (up on a tick, down on a take-back); opened it lists a ticked point as marked known by you; the count equals the header of "All grammar"',
     async () => { const st = { 'buildingBlock:ni': V774REC('ni', { knownAt: '2026-11-23', sightings: 3, sightingTracks: ['a', 'b'] }), 'buildingBlock:wo': V774REC('wo') }; fresh().jaGrammarApplyRating(st, 'buildingBlock', 'wo', 'easy')
       const s = await screen(st); if (!CK(s.R)) { await unmount(s.R); return [false, NOPART] }

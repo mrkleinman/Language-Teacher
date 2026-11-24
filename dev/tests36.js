@@ -276,7 +276,8 @@ const poolTargets = (c, S, lang, k) => c.listeningConversationTargets({ keywords
     const r1 = await c.recoverJapaneseMissingRecall(partial, S.targets, S.vocab, 'natural', KEY, MODEL, x => logs.push(x), null, { ledger: L })
     T('D1', 'JAPANESE EXHAUSTED_AT_11 is TERMINAL: a recall at 11/11 is never enqueued again — no "Recovering…" log line, no check, no paid call; a stale `recovered` never survives; noRecoverableRecall ⇒ the run finishes NOT_READY with unresolvedRecalls',
       r1.recovered === null && r1.noRecoverableRecall === true && calls === 0 && !logs.some(l => /Recovering/.test(l)) && r1.missingRecalls.every(m => m.terminal === 'EXHAUSTED_AT_11') &&
-      /function finishJapaneseIncomplete\(part\)/.test(SRC) && /GENERATION_FINISHED_INCOMPLETE/.test(SRC) && /unresolvedRecalls/.test(SRC), { r1: { recovered: r1.recovered, no: r1.noRecoverableRecall, mr: r1.missingRecalls }, calls, logs })
+      // v778: finishJapaneseIncomplete(part) became finishJapaneseIncomplete(part, opts) — the second argument is only used by "Study what's ready" (tests118.js); called with one argument it is the function this check always named
+      /function finishJapaneseIncomplete\(part(, opts)?\)/.test(SRC) && /GENERATION_FINISHED_INCOMPLETE/.test(SRC) && /unresolvedRecalls/.test(SRC), { r1: { recovered: r1.recovered, no: r1.noRecoverableRecall, mr: r1.missingRecalls }, calls, logs })
     const partial2 = { ...partial, missingRecalls: [partial.missingRecalls[0], { targetId: t1.id, targetIdx: 1, recallIndex: 1, lastFailure: 'not yet generated' }] }
     const logs2 = []
     await c.recoverJapaneseMissingRecall(partial2, S.targets, S.vocab, 'natural', KEY, MODEL, x => logs2.push(x), null, { ledger: L })

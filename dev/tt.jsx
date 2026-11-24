@@ -33120,12 +33120,23 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
       }
       const strategyBefore = st.strategyIndex
       // v672 §1 — a recall that has used all 11 checks gets no further attempt: it is UNRESOLVED (the track stays NOT_READY)
-      const _slots = _missingRecallSlots(pairs, r.targetId, r.deficit)
+      const _allSlots = _missingRecallSlots(pairs, r.targetId, r.deficit)
+      // v778 — a recall the learner chose to leave out ("Study what's ready", track.unresolvedRecalls with noRecovery) is never written here, whatever checks it has left; [] for every other track
+      const _left = jaStudyReadySlots(track, r.targetId)
+      const _slots = _allSlots.filter(sl => !_left.includes(sl))
       const _open = _slots.filter(sl => L.remaining(r.targetId, sl) > 0)
       if (!_open.length) {
-        _slots.forEach(sl => L.markUnresolved(r.targetId, sl, 'all ' + RECALL_MAX_CHECKS + ' checks used'))
-        h.attempts.push({ round, need: r.deficit, accepted: 0, reasons: ['CHECKS_EXHAUSTED: recall(s) ' + _slots.join('+') + ' used ' + RECALL_MAX_CHECKS + '/' + RECALL_MAX_CHECKS + ' checks'] }); h.escalated = 'CHECKS_EXHAUSTED'
-        log && log('  ⛔ CHECKS_EXHAUSTED ' + r.target + ' recall ' + _slots.join('+') + ': ' + RECALL_MAX_CHECKS + '/' + RECALL_MAX_CHECKS + ' attempts used — UNRESOLVED')
+        if (_slots.length) {
+          _slots.forEach(sl => L.markUnresolved(r.targetId, sl, 'all ' + RECALL_MAX_CHECKS + ' checks used'))
+          h.attempts.push({ round, need: r.deficit, accepted: 0, reasons: ['CHECKS_EXHAUSTED: recall(s) ' + _slots.join('+') + ' used ' + RECALL_MAX_CHECKS + '/' + RECALL_MAX_CHECKS + ' checks'] }); h.escalated = 'CHECKS_EXHAUSTED'
+          log && log('  ⛔ CHECKS_EXHAUSTED ' + r.target + ' recall ' + _slots.join('+') + ': ' + RECALL_MAX_CHECKS + '/' + RECALL_MAX_CHECKS + ' attempts used — UNRESOLVED')
+        }
+        if (_left.length && _allSlots.some(sl => _left.includes(sl))) {
+          const _ls = _allSlots.filter(sl => _left.includes(sl))
+          _ls.forEach(sl => L.markUnresolved(r.targetId, sl, 'left out by the learner (' + JA_STUDY_READY_STATE + ')'))
+          h.escalated = h.escalated || JA_STUDY_READY_STATE
+          log && log('  ⛔ ' + JA_STUDY_READY_STATE + ' ' + r.target + ' recall ' + _ls.join('+') + ': left out by the learner — no recovery request (the track stays NOT_READY)')
+        }
         continue
       }
       let res = null
@@ -59268,9 +59279,14 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
 
   // v674 — finish an incomplete generation whose remaining recalls are all EXHAUSTED_AT_11: the retained recalls go through
   // the normal final audit (which never re-opens an exhausted recall) and the track ends NOT_READY with unresolvedRecalls
-  function finishJapaneseIncomplete(part) {
-    const unresolvedRecalls = (part.missingRecalls || []).map(m => ({ targetId: m.targetId, target: m.targetJapanese, recallIndex: m.recallIndex, state: RECALL_TERMINAL_STATE, lastFailure: m.lastFailure || null }))
-    push('\u26D4 GENERATION_FINISHED_INCOMPLETE ' + part.recallCount + '/' + part.expectedRecallCount + ' \u2014 every missing recall is ' + RECALL_TERMINAL_STATE + ' (' +
+  // v778 \u2014 opts.studyReady: the learner chose "Study what's ready" (jaStudyReadyOn): the missing recalls may still have checks left, so each is named with noRecovery and the final audit leaves it out
+  function finishJapaneseIncomplete(part, opts) {
+    const stop = !!(opts && opts.studyReady)
+    const _used = m => m.exhausted || m.terminal === RECALL_TERMINAL_STATE || recallLedger('ja').terminal(m.targetId, m.recallIndex)
+    const unresolvedRecalls = (part.missingRecalls || []).map(m => ({ targetId: m.targetId, target: m.targetJapanese, recallIndex: m.recallIndex, state: stop && !_used(m) ? JA_STUDY_READY_STATE : RECALL_TERMINAL_STATE, lastFailure: m.lastFailure || null, ...(stop ? { noRecovery: true } : {}) }))
+    push(stop ? '\u26D4 GENERATION_FINISHED_INCOMPLETE ' + part.recallCount + '/' + part.expectedRecallCount + ' \u2014 the learner chose "Study what\'s ready": ' +
+        unresolvedRecalls.map(u => u.target + ' r' + u.recallIndex + (u.state === RECALL_TERMINAL_STATE ? ' (' + RECALL_TERMINAL_STATE + ')' : '')).join(', ') + ' left out \u2014 no further attempt at them; finishing NOT_READY with unresolvedRecalls named (no request to write them)'
+      : '\u26D4 GENERATION_FINISHED_INCOMPLETE ' + part.recallCount + '/' + part.expectedRecallCount + ' \u2014 every missing recall is ' + RECALL_TERMINAL_STATE + ' (' +
       unresolvedRecalls.map(u => u.target + ' r' + u.recallIndex).join(', ') + ') \u2014 no recovery attempt left; finishing NOT_READY with unresolvedRecalls named (no further paid calls)')
     const recalls = assembleRecallsByScene(part.perTarget || [], targets, part.scenePlan || null, { alternateSpeakers: true })
     const pairs = [...(part.open || []), ...recalls, ...(part.close || [])]
@@ -59279,6 +59295,12 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
     setPhase('done')
     buildAndQc({ ...jaTrackObject(jaTrackContext(), { pairs, scene: part.scene || scene, scenePlan: part.scenePlan || null, buildingBlocks: part.buildingBlocks || [], allowedContent: part.allowedContent || [],
       recallCount: part.recallCount, framingCount: part.framingCount, generationStats: part.generationStats || null }, targets, register, model, trackMode), unresolvedRecalls })
+  }
+
+  // v778 — "Study what's ready (N/M)" on the recover screen: the verified recalls are finished the way a used-up recall is finished; no further attempt at the missing recalls
+  function studyWhatIsReady() {
+    if (!partial || recovering || !jaStudyReadyOn()) return
+    finishJapaneseIncomplete(partial, { studyReady: true })
   }
 
   // §6/§14 — retry ONLY the missing recall against the preserved state.
@@ -59329,6 +59351,9 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
   // §5/§21 — recovery screen names exactly what is missing; Retry is the PRIMARY action.
   if (phase === 'recover' && generationError) {
     const miss = (generationError.missing || [])[0]
+    // v778 — "Study what's ready": offered while something is verified; the sentence about the saved draft only when the draft is there and can still be retried
+    const _sr = jaStudyReadyOn() && !!partial && generationError.produced > 0
+    const _draftKept = isDailyJa && !!cpRefJa.current && genCheckpointMissing(cpRefJa.current).length > 0 && genCheckpointCompatible(cpRefJa.current, 'ja', targets, authorisedJa).ok
     return (
       <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:12 }}>
         <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0, fontSize:17 }}>
@@ -59360,6 +59385,11 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
             </p>
           )}
         </Card>
+        {_sr && (
+          <div data-ja-study-ready-note="1" style={{ display:'flex', flexDirection:'column', gap:4 }}>
+            {jaStudyReadyNote(generationError.produced, generationError.missing, _draftKept).map((t, i) => <p key={i} style={{ fontSize:11, color:'var(--muted)', lineHeight:1.55, margin:0 }}>{t}</p>)}
+          </div>
+        )}
 
         {/* §22 — accepted recall LEDs stay lit; the missing one stays empty */}
         <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
@@ -59378,6 +59408,13 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
           style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>
           {recovering ? 'Recovering\u2026' : '\u21BB Retry missing recall'}
         </Btn>
+        {_sr && (
+          <div data-ja-study-ready="1" style={{ display:'flex' }}>
+            <Btn onClick={studyWhatIsReady} disabled={recovering} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>
+              {'\u25B6'} {'Study what\'s ready (' + generationError.produced + '/' + generationError.expected + ')'}
+            </Btn>
+          </div>
+        )}
         {/* §10 — Start over regenerates the recalls only. The scene is already valid,
             so it is NOT rebuilt just because one recall failed. */}
         <Btn onClick={() => { setPartial(null); setGenerationError(null); runGeneration() }}
@@ -64587,6 +64624,42 @@ function jaPartialFromJSON(obj) {
   const { seenMapEntries, ...rest } = obj
   return { ...rest, seenMap: new Map(seenMapEntries || []) }
 }
+// ══ v778 — STUDY WHAT'S READY (Japanese only) ══════════════════════════════════════════════════════════════════════════════════════
+// A Japanese Daily generation can stop with a recall missing that is NOT used up (it still has checks left): the whole-track limit was reached, or the recall did not come out.
+// The screen "Generation needs N more recall" then offered only Retry / Start over / Back, so the verified recalls (89 of 90) could not be played; the app finished such a track
+// by itself only when every missing recall was used up (EXHAUSTED_AT_11). "Study what's ready (N/M)" finishes it the same way, on the learner's word: finishJapaneseIncomplete(partial,
+// { studyReady: true }) assembles the verified recalls, the track goes through the normal quality check and final audit and ends NOT_READY with the missing recalls named in unresolvedRecalls.
+// The one difference from the used-up case: those recalls still have checks left, so the final audit would write them itself (a paid request). Each of them is therefore named with
+// noRecovery: true, and enforceTrackPairQuota skips exactly those slots (jaStudyReadySlots; it logs STUDY_WHAT_IS_READY instead of CHECKS_EXHAUSTED); every other slot of every word is
+// recovered as before. The saved draft is kept (only "Study anyway" clears it), so "Retry missing recalls" still works on the done screen. Word progress is not touched here: it changes
+// only when the learner rates the words at the end of the lesson (onTrackComplete), which reads no recall count.
+// Switch: jaStudyReadySetEnabled(false) puts the v777 screens and behaviour back exactly (the button, the note, the choice on the saved-draft screen and the skip in the final audit).
+const JA_STUDY_READY = { on: true }
+function jaStudyReadySetEnabled(on) { JA_STUDY_READY.on = !!on }
+function jaStudyReadyOn() { return !!JA_STUDY_READY.on }
+const JA_STUDY_READY_STATE = 'STUDY_WHAT_IS_READY'
+// the recall slots (1..3) of one word that the learner chose to leave out of this track: the final audit never writes them
+function jaStudyReadySlots(track, targetId) {
+  if (!jaStudyReadyOn()) return []
+  return ((track && track.unresolvedRecalls) || []).filter(u => u && u.noRecovery === true && u.targetId === targetId).map(u => u.recallIndex)
+}
+// the words short of a recall, each with how many of its 3 recalls the track keeps: "好き: 2 of 3 recalls" (at most three words are named)
+function jaStudyReadyShort(missing) {
+  const by = new Map()
+  ;(missing || []).forEach(m => { const cur = by.get(m.targetId) || { word: m.targetJapanese || String(m.targetId), n: 0 }; cur.n++; by.set(m.targetId, cur) })
+  const all = [...by.values()]
+  return all.slice(0, 3).map(w => w.word + ': ' + Math.max(0, 3 - w.n) + ' of 3 recalls').join(' · ') + (all.length > 3 ? ' · …' : '')
+}
+// the plain words under the missing-recall card (one paragraph each): what Retry does, what Study what's ready does, and — when a draft is saved that can still be retried — that it stays
+function jaStudyReadyNote(produced, missing, draftKept) {
+  const many = (missing || []).length > 1
+  const p = ['Retry missing recall: one more try at the missing recall (a recall gets ' + RECALL_MAX_CHECKS + ' checks at most).',
+    'Study what\'s ready builds the track from the ' + produced + ' verified recalls and runs the usual quality check, without another try at the missing recall' + (many ? 's' : '') + '. The track is marked not ready, and the missing recall' + (many ? 's are' : ' is') + ' not in it (' + jaStudyReadyShort(missing) + '). ' +
+      'Your word progress changes only when you rate the words at the end, as always.']
+  if (draftKept) p.push('Your draft stays saved, so the next screen still offers Retry missing recalls.')
+  return p
+}
+// ══ end v778 ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId, apiKey, model, onLog, onProgress, recOpts) {
   const _ro = recOpts || {}
   const _tc = _ro.trackContext || partial.trackContext || null

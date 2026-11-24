@@ -185,21 +185,21 @@ async function probe(on) {
       const t = tx(nt), kids = (H.R.toJSON().children || []).map(x => x && x.props ? (x.props['data-ja-study-ready-note'] ? 'NOTE' : x.type) : '-'), card = kids.indexOf('NOTE') - 1
       const word = W.targets[4].japanese; await H.unmount()
       return [/Retry missing recall: one more try at the missing recall \(a recall gets 11 checks at most\)\./.test(t) &&
-        /Study what's ready plays the 89 verified recalls now, without another try at the missing recall\./.test(t) &&
+        /Study what's ready builds the track from the 89 verified recalls and runs the usual quality check, without another try at the missing recall\./.test(t) &&
         new RegExp('The track is marked not ready, and the missing recall is not in it \\(' + word + ': 2 of 3 recalls\\)\\.').test(t) &&
         /Your word progress changes only when you rate the words at the end, as always\./.test(t) &&
         /Your draft stays saved, so the next screen still offers Retry missing recalls\./.test(t) && !/credit|penalt|lost|worse|half/i.test(t) && card === 1, { t, kids: kids.slice(0, 4) }] })
   await TT('B3', 'three missing recalls of two words (87/90): the label says (87/90), the note names each word with its own count of recalls',
     async () => { const W = mkWorld(), H = await openGen(W, { miss: [{ ti: 4, r: 2, checks: 5 }, { ti: 4, r: 3, checks: 0 }, { ti: 9, r: 1, checks: 2 }] }), nt = noteOf(H), t = nt ? tx(nt) : '', b = H.buttons()
       const w4 = W.targets[4].japanese, w9 = W.targets[9].japanese; await H.unmount()
-      return [b.some(x => /Study what's ready \(87\/90\)/.test(x)) && new RegExp(w4 + ': 1 of 3 recalls').test(t) && new RegExp(w9 + ': 2 of 3 recalls').test(t) && /plays the 87 verified recalls/.test(t), { b, t: t.slice(0, 400) }] })
+      return [b.some(x => /Study what's ready \(87\/90\)/.test(x)) && new RegExp(w4 + ': 1 of 3 recalls').test(t) && new RegExp(w9 + ': 2 of 3 recalls').test(t) && /builds the track from the 87 verified recalls/.test(t), { b, t: t.slice(0, 400) }] })
   await TT('B4', 'a Revision track (no saved draft exists for it): the same button and note, without the sentence about the draft',
     async () => { const W = mkWorld(), H = await openGen(W, { trackMode: 'revision' }), nt = noteOf(H), t = nt ? tx(nt) : '', has = !!studyBtn(H); await H.unmount()
-      return [has && /Study what's ready plays the 89 verified recalls/.test(t) && !/draft/i.test(t), { has, t: t.slice(0, 400), why: nt ? '' : OLDREASON }] })
+      return [has && /Study what's ready builds the track from the 89 verified recalls/.test(t) && !/draft/i.test(t), { has, t: t.slice(0, 400), why: nt ? '' : OLDREASON }] })
   await TT('B5', 'a generation with no verified recall at all (0/90) offers no "Study what\'s ready" (there is nothing to study)',
     async () => { const W = mkWorld(), targets = W.targets.map(t => ({ ...t, selectionRole: 'review' })), p = makePartial(W, targets)
       p.perTarget = targets.map(() => []); p.recallCount = 0; p.missingRecalls = targets.flatMap((t, ti) => [1, 2, 3].map(r => ({ targetId: t.id, targetIdx: ti, targetJapanese: t.japanese, recallIndex: r, lastFailure: 'not attempted' })))
-      const H = await openGen(W, { targets, partial: p }), screen = /Generation needs 90 more recalls/.test(H.text()), b = H.buttons(), none = !b.some(t => STUDY.test(t)), hasRetry = b.some(t => /Retry missing recall/.test(t)); await H.unmount()
+      const H = await openGen(W, { targets, partial: p }), screen = /Generation needs 90 more recall ?s/.test(H.text()), b = H.buttons(), none = !b.some(t => STUDY.test(t)), hasRetry = b.some(t => /Retry missing recall/.test(t)); await H.unmount()
       return [screen && none && hasRetry, { b, screen }] })
   await TT('B6', 'the screen does not call the generator again by itself: it ran once, and the two other buttons still do what they did (Start over runs the generation again, Back goes back)',
     async () => { const W = mkWorld(), H = await openGen(W); const g0 = H.gens; await H.press(/^Start over/, 80); const g1 = H.gens; await H.press(/^Back$/, 10); await H.unmount()
@@ -239,6 +239,15 @@ async function probe(on) {
     async () => [!!T89 && T89.integrity.invariants.SELECTED_TARGETS === 30 && T89.integrity.counts.targetPairsRequired === 90 && T89.integrity.invariants.CLOSED_VOCAB_PASS === true && (T89.keywords || []).length === 30 && T89.keywords.some(k => k.japanese === word) && T89.selectedTargetIds.length === 30,
       { inv: T89 && T89.integrity.invariants && { s: T89.integrity.invariants.SELECTED_TARGETS, cv: T89.integrity.invariants.CLOSED_VOCAB_PASS }, kw: T89 && T89.keywords.length }])
   await TT('C7', '"Study anyway" hands the track to the app and clears the draft, exactly as before (the draft is kept only until the learner studies the track)', async () => [sPressed && !!T89 && cpCleared === null, { handed: !!T89, draftLeft: !!cpCleared }])
+  // "Run quality check again" on that finished track runs the same final audit again: the left-out recall is still not written, the verdict is the same
+  const qBefore = genCalls(PH).filter(p => p.target === word).length
+  const qPressed = sPressed ? await PH.press(/Run quality check again/, 60) : false
+  const qDone = qPressed ? await finished(PH) : false
+  if (qDone) await PH.press(/Study anyway/, 20)
+  const T89b = PH.given
+  await TT('C8', 'the quality check run again on the finished track still leaves the recall out (no request writes it) and gives the same verdict, NOT_READY 89/90 with the recall still named',
+    async () => [qPressed && qDone && genCalls(PH).filter(p => p.target === word).length === qBefore && !!T89b && T89b.integrity.status === 'NOT_READY' && PW.c.trackReadiness(T89b).validTargetPairs === 89 && (T89b.unresolvedRecalls || []).length === 1 && T89b.unresolvedRecalls[0].noRecovery === true,
+      { qPressed, qDone, writes: genCalls(PH).filter(p => p.target === word).length - qBefore, st: T89b && T89b.integrity.status }])
   await PH.unmount()
 
   // ═══ D — THE SAME FINAL AUDIT AS THE USED-UP CASE ═════════════════════════════════════════════════════════════════════════════════

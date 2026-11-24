@@ -431,14 +431,17 @@ async function probe() {
 
   // ═══ G — SAFETY AND SWITCHES ═════════════════════════════════════════════════════════════════════════════════════════════════════
   const V775 = JSON.parse(fs.readFileSync(__dirname + '/fixtures/ja-grammar-v775-reference.json', 'utf8'))
+  // v778 (Study what's ready): the Japanese generator's CODE hash (the key jaGen) is left out of the two comparisons below on purpose — that function was changed to add the button and the note on its
+  // "Generation needs a recall" screen and the choice on its saved-draft screen, so its source can no longer equal v775's. Everything else stays pinned (the Words list code, the Thai / Mandarin / Cantonese
+  // generators, every screen and hash); the Japanese generator's own screens with the new switch off are pinned against the unchanged v777 build by tests118.js (fixtures/ja-study-ready-v777-reference.json).
   await TT('G1', 'both new switches off: the Japanese Words list (Grammar review open and closed), the plan screen and its preview, the writer\'s prompt block, the gate context, the plan, the track summary, the export, GRAMMAR IN THIS TRACK and the rating card — for the 32-point learner, for 3 and 5 points waiting and for a blank store — and the Thai / Mandarin / Cantonese Words lists and generator screens are exactly what the unchanged v775 build produced',
-    async () => { const now = await probe(), keys = Object.keys(V775).filter(k => k !== 'about'); return [keys.every(k => now[k] === V775[k]) && Object.keys(now).length === keys.length, keys.filter(k => now[k] !== V775[k]).map(k => k + ': now ' + now[k] + ' v775 ' + V775[k])] })
+    async () => { const now = await probe(), keys = Object.keys(V775).filter(k => k !== 'about' && k !== 'jaGen'); return [keys.every(k => now[k] === V775[k]) && Object.keys(now).filter(k => k !== 'jaGen').length === keys.length, keys.filter(k => now[k] !== V775[k]).map(k => k + ': now ' + now[k] + ' v775 ' + V775[k])] })
   await TT('G2', 'with both switches ON (as shipped): the Thai, Mandarin and Cantonese Words lists, the three generator screens, the Japanese generator and the Words list code are identical to v775 — nothing of this reaches another language',
     async () => { const c = await ctxWith(L32.store), got = {}
       const banks = { th: c.initVocab().slice(0, 12), zh: c.initMandarinVocab().slice(0, 12), yue: c.initCantoneseVocab().slice(0, 12) }
       for (const lang of ['th', 'zh', 'yue']) { const R = await wordsList(c, lang, false, banks[lang]); got['words_' + lang] = sha(textOf(R.toJSON())); await unmount(R) }
       got.gens = ['Generator', 'MandarinGenerator', 'CantoneseGenerator'].map(k => sha(c.ev('(' + k + ')').toString())).join('/'); got.jaGen = sha(c.ev('(JapaneseGenerator)').toString()); got.wordList = sha(c.ev('(WordListView)').toString())
-      return [Object.keys(got).every(k => got[k] === V775[k]), Object.keys(got).filter(k => got[k] !== V775[k]).map(k => k + ': now ' + got[k] + ' v775 ' + V775[k])] })
+      return [Object.keys(got).filter(k => k !== 'jaGen').every(k => got[k] === V775[k]), Object.keys(got).filter(k => k !== 'jaGen' && got[k] !== V775[k]).map(k => k + ': now ' + got[k] + ' v775 ' + V775[k])] })
   await TT('G3', 'each switch is its own: reset OFF + wording ON → the new wording and no button; reset ON + wording OFF → the button and the v775 strings; the data functions follow the reset switch only',
     async () => { const a = await screens(32, { reset: false }), b = await screens(32, { wording: false })
       const Ra = await wordsList(a.c, 'ja', true), ta = areaText(Ra); await unmount(Ra); const Rb = await wordsList(b.c, 'ja', true), tb = areaText(Rb), hasBtn = !!abtn(Rb, START); await unmount(Rb)

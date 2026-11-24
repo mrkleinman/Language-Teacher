@@ -449,7 +449,7 @@ async function probe() {
   await TT('G4b', 'the same after the reset (the next track is a first-steps track): the same words and ids, the same 99 pairs (90 target pairs), the same verdicts on all 99 lines, the same vocabulary',
     async () => { const r = await g4row(true); return [r.ok, r] })
   await TT('G5', 'the new code is marked (v776) and holds no key, no token, no access code and no model name',
-    async () => { const a = SRC.indexOf('v776 — START GRAMMAR FROM SCRATCH'), b = SRC.indexOf('end of the v776 block'), block = a > 0 && b > a ? SRC.slice(a, b) + SRC.split('\n').filter(l => /v776/.test(l)).join('\n') : ''
+    async () => { const a = SRC.indexOf('v776 — START GRAMMAR FROM SCRATCH'), b = SRC.indexOf('end of the v776 block'), block = a > 0 && b > a ? SRC.slice(a, b) + SRC.split('\n').filter(l => l.length < 2000 && /v776/.test(l)).join('\n')       /* a 1.4 MB data line of the file happens to contain the letters v776 inside its encoded text: it is not code of this change */ : ''
       return [a > 0 && b > a && block.length > 500 && !/AIza[0-9A-Za-z_-]{20,}|sk-ant-|access[ _-]?code|claude|gemini|sonnet|opus|haiku/i.test(block), { a, b, len: block.length }] })
   out.forEach(l => console.log(l))
   console.log('\n' + (n - fails) + '/' + n + ' passed' + (fails ? ' · ' + fails + ' FAILED' : ' — ALL PASS'))

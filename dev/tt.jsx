@@ -60880,6 +60880,82 @@ async function jaGrammarRateAndSave(store, type, id, rating) {
   const saved = await jaGrammarSave(s)
   return { local: s, saved }
 }
+// ══ v776 — START GRAMMAR FROM SCRATCH (Japanese only) ═════════════════════════════════════════════════════════════════════════════
+// A learner who was on v773 / v774 has grammar points that were introduced (by the first-run migration jaGrammarMigrateV1 and by the tracks) and never rated. Under v775 every one of them is NEW, so the
+// 5 slots are full, no new grammar can come in, and the screens said "32 of 5 slots". Each part has its own switch (both on; both off = v775 exactly):
+//   RESET   (jaGrammarResetSetEnabled)  the button "Start grammar from scratch" in the Grammar review part of the Japanese Words list, the backup and the undo. A reset sends the grammar points that are
+//                         NEW (the v775 definition: introduced, never rated, not known — jaGrammarSlots) back to "not taught yet": their stored record is REMOVED, so jaGrammarGet gives the blank record and the point
+//                         is not introduced, not due, not NEW, and its sightings go with it. Points the learner has rated (HARD / OK / EASY, known ones), conversation basics, words, tracks and every other store are not
+//                         touched. The first-run migration is marked done, so it cannot seed the points again; they come back only through the normal picker (jaGrammarTrackPlan). BEFORE anything is removed the exact
+//                         records are saved under JA_GRAMMAR_RESET_KEY and read back; if that copy cannot be kept, nothing is removed. The backup stays until the next reset that really changes something (a reset when
+//                         nothing is NEW changes nothing and leaves it alone). Undo puts those exact records back, skips any point that has a record now (rated, introduced or noted since) and counts them.
+//   WORDING (jaGrammarClearWordingSetEnabled)  plain words for how many points wait for a rating: never "N of 5" with N over 5, "practised again" said once above the list instead of on every row, and one
+//                         short sentence in "Next new points" saying why there are none and where to rate.
+const JA_GRAMMAR_RESET_KEY = 'tt-ja-grammar-reset-backup'
+const JA_GRAMMAR_CLEAR = { reset: true, wording: true }
+function jaGrammarResetSetEnabled(on) { JA_GRAMMAR_CLEAR.reset = !!on }
+function jaGrammarResetOn() { return !!JA_GRAMMAR_CLEAR.reset && jaGrammarSlotsOn() }             // "NEW" exists only with the slots rule, so there is nothing to reset without it
+function jaGrammarClearWordingSetEnabled(on) { JA_GRAMMAR_CLEAR.wording = !!on }
+function jaGrammarClearWordingOn() { return !!JA_GRAMMAR_CLEAR.wording && jaGrammarSlotsOn() }
+// pure: the points a reset would send back (curriculum order) and exact copies of their records
+function jaGrammarResetPlan(store) {
+  const st = store || {}, out = { ids: [], keys: [], records: {} }
+  jaGrammarSlots(st).newIds.forEach(id => { const k = jaProgressKeyOf('buildingBlock', id); out.ids.push(id); out.keys.push(k); out.records[k] = JSON.parse(JSON.stringify(st[k])) })
+  return out
+}
+async function jaGrammarResetBackupLoad() {
+  try { const b = await stGet(JA_GRAMMAR_RESET_KEY); return b && typeof b === 'object' && Array.isArray(b.ids) && b.records && typeof b.records === 'object' ? b : null } catch (e) { return null }
+}
+async function jaGrammarStartFromScratch() {
+  const no = reason => ({ changed: false, count: 0, ids: [], reason })
+  if (!jaGrammarResetOn()) return no('switch-off')
+  try {
+    const store = await jaGrammarLoad(), plan = jaGrammarResetPlan(store)
+    if (!plan.ids.length) return no('nothing-new')                                      // nothing is NEW: nothing changes, and the backup of an earlier reset is left alone
+    const at = new Date().toISOString(), backup = { version: 1, at, count: plan.ids.length, ids: plan.ids.slice(), records: plan.records }
+    // 1. the copy first, and read it back: a record is never removed without a saved copy
+    try { await stSet(JA_GRAMMAR_RESET_KEY, backup) } catch (e) { return no('backup-failed') }
+    const kept = await jaGrammarResetBackupLoad()
+    if (!kept || kept.at !== at || kept.count !== backup.count || JSON.stringify(kept.records) !== JSON.stringify(backup.records)) return no('backup-failed')
+    // 2. the first-run migration must never run again over the points about to go (it would seed them again)
+    const mig = (await stGet('tt-migrations')) || {}
+    if (!(mig[JA_GRAMMAR_MIGRATION] && mig[JA_GRAMMAR_MIGRATION].status === 'done')) { mig[JA_GRAMMAR_MIGRATION] = { status: 'done', at, seeded: 0, via: 'start-from-scratch' }; await stSet('tt-migrations', mig) }
+    // 3. the records go. A save merges with what is stored (an item that is missing from this copy is KEPT), so the deletion is asked for by key
+    const next = { ...store }; plan.keys.forEach(k => { delete next[k] })
+    await stSyncSaveObject(JA_GRAMMAR_KEY, next, { ...ST_PROGRESS_OPTS, deleted: plan.keys })
+    const now = (await stGet(JA_GRAMMAR_KEY)) || {}, left = plan.keys.filter(k => now[k]).length
+    if (left === plan.keys.length) return no('not-removed')
+    return { changed: true, count: plan.ids.length - left, ids: plan.ids.slice(), at, ...(left ? { left } : {}) }
+  } catch (e) { console.error('[ja-grammar] start from scratch did not complete', e); return no('error') }
+}
+// puts the backed-up records back — only where no record exists now — and clears the backup
+async function jaGrammarUndoReset() {
+  const no = reason => ({ changed: false, restored: 0, skipped: 0, ids: [], skippedIds: [], reason })
+  if (!jaGrammarResetOn()) return no('switch-off')
+  try {
+    const b = await jaGrammarResetBackupLoad()
+    if (!b) return no('no-backup')
+    const store = await jaGrammarLoad(), next = { ...store }, restored = [], skipped = []
+    b.ids.forEach(id => {
+      const k = jaProgressKeyOf('buildingBlock', id), rec = b.records[k]
+      if (!rec) return
+      if (store[k]) { skipped.push(id); return }                                          // a record for this point exists now (rated, introduced or only noted): the current one stays
+      next[k] = JSON.parse(JSON.stringify(rec)); restored.push(id)
+    })
+    if (restored.length) await jaGrammarSave(next)
+    await stSet(JA_GRAMMAR_RESET_KEY, null)
+    return { changed: restored.length > 0, restored: restored.length, skipped: skipped.length, ids: restored, skippedIds: skipped, at: b.at, count: b.count }
+  } catch (e) { console.error('[ja-grammar] undo did not complete', e); return no('error') }
+}
+// plain words for how many points are waiting for a rating (the screens never say "N of 5" with N over 5)
+function jaGrammarWaitingText(n, limit) {
+  const lim = limit || JA_GRAMMAR_NEWRATED.newSlots
+  return n >= lim ? n + ' points are waiting for a rating. No new grammar comes in until fewer than ' + lim + ' are waiting.' : n + (n === 1 ? ' point' : ' points') + ' waiting for your rating (up to ' + lim + ' at a time)'
+}
+const JA_GRAMMAR_PRACTISED_LINE = 'These are practised again in the next track until you rate them.'
+function jaGrammarNoNewText(n) { return 'No new points this track, because ' + n + ' are waiting for a rating: rate them in Words, Grammar review, or on the card at the end of a track.' }
+// end of the v776 block
+
 // ROMAJI. The stored romaji of the entry. Four entries whose label has two forms keep the stored reading first and carry the second one too (the stored field itself is untouched). No romaji stored ⇒ none.
 const JA_GRAMMAR_ROMAJI_BOTH = Object.freeze({ janai: 'janai / dewa nai', kamo: 'kamo / kamo shirenai', volitional: '-you / -kou', 'nominal-no': '-no wa / -no ga' })
 function jaGrammarRomajiText(x) {

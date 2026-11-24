@@ -86,7 +86,6 @@ async function openGen(W, o) {
   const inner = W._mockFn
   c.mockGeminiGenerate = async (k, m, msgs, max, op) => { const q = msgs[msgs.length - 1].content, g = /JAPANESE TARGET: ★ ([^\s\[]+)|TARGET WORDS \(each needs exactly 3 sentences\):\n★ ([^\s\[=]+)/.exec(q)
     H.prompts.push({ stage: op && op.stage, gen: !!g, target: g ? (g[1] || g[2]) : null }); return inner(k, m, msgs, max, op) }
-  H.mock = () => { c.mockGeminiGenerate = c.mockGeminiGenerate }
   const el = React.createElement(c.JapaneseGenerator, { vocab: W.vocab, targets, selection: null, trackMode: opt.trackMode || 'daily', tracks: [], register: 'natural', cred: { geminiKey: 'k' }, onGenerated(t) { H.given = t }, onBack() { H.back = true } })
   await TR.act(async () => { H.R = TR.create(el); await flush(60) })
   H.btn = re => BTN(H.R, re)
@@ -144,7 +143,7 @@ async function probe(on) {
   // the used-up case (every missing recall at 11/11): the track finishes by itself and the done screen offers Study anyway / Retry missing recalls
   { const W = mkWorld(); setSwitch(W.c, !!on); const H = await openGen(W, { miss: [{ ti: 4, r: 2, checks: 11, terminal: true }] }); await untilDone(H)
     const head = H.R.root.findAll(x => x.type === 'div' && /Track not ready|Track ready/.test(tx(x)))[0]
-    R.doneUsedUp = { actions: H.buttons().filter(t => /Retry|Study|quality|Back/.test(t)), head: head ? tx(head).slice(0, 40) : null, states: (H.given, null) }; await H.unmount() }
+    R.doneUsedUp = { actions: H.buttons().filter(t => /Retry|Study|quality|Back/.test(t)), head: head ? tx(head).slice(0, 40) : null, states: null }; await H.unmount() }
   // a saved draft on disk, the Japanese generator opens on its "Saved Japanese draft" screen
   { const W = mkWorld(); setSwitch(W.c, !!on); const tg = W.targets.map(t => ({ ...t, selectionRole: 'review' })); await putDraft(W, tg)
     const H = await openGen(W, { draftOnly: true, targets: tg, partial: makePartial(W, tg) }); await flush(40); R.draftJa = { text: HT(H.text()), tree: treeHash(H), buttons: H.buttons() }; await H.unmount() }

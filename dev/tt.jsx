@@ -60589,7 +60589,7 @@ function jaGrammarPlan(an, o) {
     cand.forEach(({ e, u }) => {
       const x = row(type, e, u.target)
       if (held) { bucket.passing.push({ ...x, why: 'held back: ' + overdue + ' reviews are overdue' }); return }
-      if (bucket.new.length >= limitNew) { bucket.passing.push({ ...x, why: slots && type === 'buildingBlock' && limitNew < cfg.budget ? 'no free NEW slot: ' + (slots.newCount + bucket.new.length) + ' of ' + slots.limit + ' are NEW (' + slots.newCount + ' not rated yet' + (bucket.new.length ? ' + ' + bucket.new.length + ' taught now' : '') + ')' : 'no room this track' }); return }
+      if (bucket.new.length >= limitNew) { bucket.passing.push({ ...x, why: slots && type === 'buildingBlock' && limitNew < cfg.budget ? (jaGrammarClearWordingOn() && slots.newCount + bucket.new.length > slots.limit ? 'no free NEW slot: ' + (slots.newCount + bucket.new.length) + ' points are waiting for a rating (no new grammar until fewer than ' + slots.limit + ' are waiting)' : 'no free NEW slot: ' + (slots.newCount + bucket.new.length) + ' of ' + slots.limit + ' are NEW (' + slots.newCount + ' not rated yet' + (bucket.new.length ? ' + ' + bucket.new.length + ' taught now' : '') + ')') : 'no room this track' }); return }
       const missing = (e.prereq || []).filter(p => !intro(type, p) && !chosen.has(p))
       if (missing.length) { bucket.passing.push({ ...x, why: 'needs ' + missing.map(p => (jaGrammarEntryById(p) || { label: p }).label).join(', ') + ' first' }); return }
       if (budgeted && plan.budget.spent + x.cost > cfg.budget) { bucket.passing.push({ ...x, why: 'no room this track' }); return }
@@ -60711,11 +60711,12 @@ function JaGrammarPreview({ vocab, store }) {
   if (!jaGrammarPreviewOn() || !store) return null
   const plan = jaGrammarTrackPlan(store, jaGrammarKnownCount(vocab), {})
   const st = jaGrammarStageOn() ? jaGrammarStageFor(plan.introducedCount) : null
+  const wordingOn = jaGrammarClearWordingOn()                                       // v776: plain words for how many points wait for a rating
   const when = d => { try { return new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) } catch (e) { return d } }
   return (
     <div data-ja-grammar-preview="1" style={{ marginTop: 4 }}>
       <p style={{ fontSize: 11, color: 'var(--muted)', margin: '12px 0 4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Grammar for this track <span style={{ color: '#a78bfa', fontWeight: 700 }}>(preview)</span></p>
-      <p style={{ fontSize: 10, color: 'var(--muted)', margin: '0 0 8px', lineHeight: 1.5 }}>Preview only: this is what the writer is given to use. The final list is fixed after the sentences are written, from the grammar they really use.{!jaGrammarGateOn() ? ' The grammar gate is switched off, so the writer is not limited to this list.' : ''}{plan.slots ? ' Points that are still NEW (taught, not rated yet) stay in the list and are practised again; new points come only as there are free slots.' : ''}</p>
+      <p style={{ fontSize: 10, color: 'var(--muted)', margin: '0 0 8px', lineHeight: 1.5 }}>Preview only: this is what the writer is given to use. The final list is fixed after the sentences are written, from the grammar they really use.{!jaGrammarGateOn() ? ' The grammar gate is switched off, so the writer is not limited to this list.' : ''}{plan.slots ? (wordingOn ? ' Points you have not rated yet stay in the list. New points come in only while fewer than ' + plan.slots.limit + ' are waiting for a rating.' : ' Points that are still NEW (taught, not rated yet) stay in the list and are practised again; new points come only as there are free slots.') : ''}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px' }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: '#60a5fa' }}>Due for review</div>
@@ -60728,9 +60729,10 @@ function JaGrammarPreview({ vocab, store }) {
           <div data-preview-still-new-block="1" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
               <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: '#10b981' }}>Still NEW (not rated yet)</span>
-              <span style={{ fontSize: 10, color: 'var(--muted)' }}>{plan.stillNew.length} of {plan.slots.limit} slots</span>
+              {wordingOn ? <span data-preview-waiting="1" style={{ fontSize: 10, color: 'var(--muted)' }}>{jaGrammarWaitingText(plan.stillNew.length, plan.slots.limit)}</span> : <span style={{ fontSize: 10, color: 'var(--muted)' }}>{plan.stillNew.length} of {plan.slots.limit} slots</span>}
             </div>
-            {plan.stillNew.map(x => <div key={x.id} data-preview-still-new={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 3 }}><span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>{jaGrammarRomajiSpan(x)}<span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span><span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>practised again</span></div>)}
+            {wordingOn && <div data-preview-practised-line="1" style={{ fontSize: 10, color: 'var(--muted)', margin: '2px 0 0' }}>{JA_GRAMMAR_PRACTISED_LINE}</div>}
+            {plan.stillNew.map(x => <div key={x.id} data-preview-still-new={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 3 }}><span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>{jaGrammarRomajiSpan(x)}<span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>{!wordingOn && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>practised again</span>}</div>)}
           </div>
         )}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px' }}>
@@ -60739,7 +60741,7 @@ function JaGrammarPreview({ vocab, store }) {
             <span style={{ fontSize: 10, color: 'var(--muted)' }}>{plan.budget.spent} of {plan.budget.limit} points{plan.slots ? ' · ' + plan.slots.free + ' of ' + plan.slots.limit + ' slots free' : ''}</span>
           </div>
           {plan.held && <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>No new points this track: {plan.overdue} reviews are overdue. Review first.</div>}
-          {!plan.held && plan.next.length === 0 && plan.slots && plan.slots.free === 0 && <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>No new points this track: {plan.slots.newCount} grammar points are still NEW (not rated). Rate them to free the slots: the card at the end of a track, or Words, Grammar review.</div>}
+          {!plan.held && plan.next.length === 0 && plan.slots && plan.slots.free === 0 && (wordingOn ? <div data-preview-none-reason="1" style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>{jaGrammarNoNewText(plan.slots.newCount)}</div> : <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>No new points this track: {plan.slots.newCount} grammar points are still NEW (not rated). Rate them to free the slots: the card at the end of a track, or Words, Grammar review.</div>)}
           {!plan.held && plan.next.length === 0 && !(plan.slots && plan.slots.free === 0) && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>nothing new unlocks yet at this level</div>}
           {plan.next.map(x => <div key={x.id} data-preview-next={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 3 }}><span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>{jaGrammarRomajiSpan(x)}<span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span><span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>{x.cost === 2 ? 'heavy' : 'light'}</span></div>)}
         </div>
@@ -61094,7 +61096,9 @@ function JaGrammarReviewArea({ open: openFirst }) {
           {shown.due.length > 0 && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: '#60a5fa', marginTop: 2 }}>GRAMMAR DUE ({shown.due.length})</div>}
           {shown.due.map(x => card(x, 'due'))}
           {shown.newUnrated.length > 0 && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: '#10b981', marginTop: 4 }}>STILL NEW — NOT RATED YET ({shown.newUnrated.length})</div>}
-          {shown.newUnrated.length > 0 && <div style={{ fontSize: 10, color: 'var(--muted)', lineHeight: 1.5 }}>At most {JA_GRAMMAR_NEWRATED.newSlots} grammar points are NEW at once. A new track brings new points only as these are rated.</div>}
+          {shown.newUnrated.length > 0 && !wordingOn && <div style={{ fontSize: 10, color: 'var(--muted)', lineHeight: 1.5 }}>At most {JA_GRAMMAR_NEWRATED.newSlots} grammar points are NEW at once. A new track brings new points only as these are rated.</div>}
+          {shown.newUnrated.length > 0 && wordingOn && <div data-review-area-waiting="1" style={{ fontSize: 10, color: 'var(--muted)', lineHeight: 1.5 }}>{jaGrammarWaitingText(shown.newUnrated.length)}</div>}
+          {shown.newUnrated.length > 0 && wordingOn && <div style={{ fontSize: 10, color: 'var(--muted)', lineHeight: 1.5 }}>{JA_GRAMMAR_PRACTISED_LINE}</div>}
           {shown.newUnrated.map(x => card(x, 'new'))}
         </div>
       )}
@@ -61304,7 +61308,7 @@ function JaGrammarInTrack({ track }) {
   const all = k => g[k].concat((g.basics && g.basics[k]) || [])
   const sections = [
     { key: 'new', title: 'NEW — taught now', color: '#10b981', rows: all('new'), note: (g.budget ? g.budget.spent + ' of ' + g.budget.limit + ' points' : '') + (g.held ? ' · none added: ' + g.overdue + ' reviews are overdue' : '') },
-    ...(g.slots ? [{ key: 'stillNew', title: 'STILL NEW — not rated yet, practised again', color: '#10b981', rows: g.stillNew || [], note: g.slots.before + ' were NEW before this track · ' + g.slots.free + ' of ' + g.slots.limit + ' slots were free · ' + g.slots.after + ' NEW now' }] : []),
+    ...(g.slots ? [{ key: 'stillNew', title: 'STILL NEW — not rated yet, practised again', color: '#10b981', rows: g.stillNew || [], note: jaGrammarClearWordingOn() ? g.slots.before + (g.slots.before === 1 ? ' point was' : ' points were') + ' waiting for a rating before this track · ' + g.slots.free + ' of ' + g.slots.limit + ' slots were free · ' + g.slots.after + ' waiting now' : g.slots.before + ' were NEW before this track · ' + g.slots.free + ' of ' + g.slots.limit + ' slots were free · ' + g.slots.after + ' NEW now' }] : []),
     { key: 'review', title: 'REVIEW — practised again', color: '#60a5fa', rows: all('review') },
     { key: 'passing', title: 'SEEN IN PASSING', color: 'var(--muted)', rows: all('passing') },
     { key: 'locked', title: 'NOT YET UNLOCKED, but used', color: '#f59e0b', rows: all('locked') },

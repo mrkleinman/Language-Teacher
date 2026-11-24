@@ -15479,16 +15479,16 @@ const JA_CONVERSATION_BASICS = [
 // prompt, jaBasicsAvailable) reads the *_LEGACY views, so it sees exactly the 35 blocks and 10 basics it always saw. The new list is read only by the code that runs after the sentences are
 // written (jaGrammarFromSentences…). Switch: jaGrammarFromSentencesSetEnabled(false) puts everything back as it was.
 //
-// THE LIST (entries 101 + 19 conversation basics = 120). cost: 1 light, 2 heavy. minKnown is the number of known or learning words that unlocks it (the measure jaBlocksAvailable always used).
-//   particles (14)    は か を に の で と も が へ まで だけ ぐらい や とか より しか                       (wa ka wo ni no de to mo · ga he made dake gurai ya toka yori shika)
-//   is / is not (5)   だ です じゃない だった/でした じゃなかった
-//   endings (16)      ね よ よね · でしょ さ ので な だろう かも/かもしれない じゃん だっけ 〜そう みたい のに らしい はず · かな
-//   forms (11)        plain present · 〜た 〜ない 〜なかった 〜ます 〜ません 〜て · 〜てる 〜たい · 〜よう/〜こう
-//   constructions (46) 〜ない？ 〜の？ 〜んだ 〜から 〜けど 〜と思う 〜てくれる 〜てもいい 〜なきゃ 〜たことある 〜たら 〜ほうが 〜って noun-modifying clause · 〜ましょう 〜ませんか 〜てください 〜ないで 〜てみる
-//                     〜すぎる 〜と(if) 〜ちゃう 〜ながら 〜のは 〜てもらう 〜なくてもいい 〜ても 〜になる 〜てはいけない 〜つもり 〜くなる 〜なら 〜てあげる 〜たり〜たり 〜ために 〜やすい
-//                     〜ことができる 〜ことがある 〜られる/〜れる 〜にくい 〜ば 〜ようにする
-//   connectors (7)    でも だから それで それに だって まあ しかし
-//   names (3)         さん ちゃん/くん お/ご
+// THE LIST (101 grammar entries + 19 conversation basics = 120). cost: 1 light, 2 heavy. minKnown is the number of known or learning words that unlocks it (the measure jaBlocksAvailable always used).
+//   particles (17)     は か を に の で と も が へ まで だけ ぐらい や とか より しか                         (the first eight were blocks already; ga he made dake gurai ya toka yori shika are added)
+//   is / is not (5)    だ です じゃない/ではない だった/でした じゃなかった
+//   endings (16)       ね よ よね · でしょ さ ので な だろう かも/かもしれない じゃん だっけ 〜そう みたい のに らしい はず
+//   forms (7)          plain present · 〜た 〜ない 〜なかった 〜ます 〜ません 〜て
+//   constructions (46) 〜てる 〜たい 〜ない？ 〜よう/〜こう 〜の？ 〜んだ 〜から 〜けど 〜かな 〜と思う 〜てくれる 〜てもいい 〜なきゃ 〜たことある 〜たら 〜ほうが 〜って noun-modifying clause ·
+//                      〜ましょう 〜ませんか 〜てください 〜ないで 〜てみる 〜すぎる 〜と(if) 〜ちゃう 〜ながら 〜のは 〜てもらう 〜なくてもいい 〜ても 〜になる 〜てはいけない 〜つもり 〜くなる 〜なら
+//                      〜てあげる 〜たり〜たり 〜ために 〜やすい 〜ことができる 〜ことがある 〜られる/〜れる 〜にくい 〜ば 〜ようにする
+//   connectors (7)     でも だから それで それに だって まあ しかし
+//   names (3)          さん ちゃん/くん お/ご
 //   conversation basics (19): こんにちは うん またね じゃあ そうだね いいね ほんと？ そっか なるほど どうしよう · ねえ えっ あの ええと/えっと へえ ほら ああ よかった やった
 // Order = how much everyday conversation each unlocks, and no entry unlocks before its prerequisites (jaGrammarCurriculumCheck proves both).
 const JA_BUILDING_BLOCKS_LEGACY = JA_BUILDING_BLOCKS.filter(b => !b.added)                 // the 35 of before v773, byte for byte
@@ -47491,13 +47491,20 @@ function JaGrammarReview({ track }) {
   useEffect(() => { let go = true
     ;(async () => { try { const s = await jaGrammarLoad(); if (go) setStore(s) } catch (e) {} })()
     return () => { go = false } }, [])
+  // v773: with grammar-from-sentences on, the rated items are the NEW and REVIEW entries the track chose (the same HARD / OK / EASY, the same stored progress)
+  const _gt = jaGrammarFromSentencesOn() && track && track.grammarInTrack
+  const _asItems = (list, defOf) => (list || []).map(x => ({ id: x.id, productive: x.pairs.length, incidental: 0, def: defOf(x.id) })).filter(x => x.def)
   const rows = [
-    { key: 'buildingBlock', title: 'BUILDING BLOCKS PRACTISED', items: agg.blocks.filter(jaRatingEligible)
-        .map(e => ({ ...e, def: jaBlockById(e.id) })).filter(x => x.def)
-        .map(x => ({ ...x, label: x.def.label, meaning: x.def.meaning })) },
-    { key: 'conversationBasic', title: 'CONVERSATION BASICS PRACTISED', items: agg.basics.filter(jaRatingEligible)
-        .map(e => ({ ...e, def: jaBasicById(e.id) })).filter(x => x.def)
-        .map(x => ({ ...x, label: x.def.form, meaning: x.def.english })) },
+    { key: 'buildingBlock', title: _gt ? 'GRAMMAR TAUGHT AND PRACTISED' : 'BUILDING BLOCKS PRACTISED', items: _gt
+        ? _asItems(_gt.new.concat(_gt.review), jaGrammarEntryById).map(x => ({ ...x, label: x.def.label, meaning: x.def.meaning }))
+        : agg.blocks.filter(jaRatingEligible)
+          .map(e => ({ ...e, def: jaBlockById(e.id) })).filter(x => x.def)
+          .map(x => ({ ...x, label: x.def.label, meaning: x.def.meaning })) },
+    { key: 'conversationBasic', title: 'CONVERSATION BASICS PRACTISED', items: _gt
+        ? _asItems(((_gt.basics && _gt.basics.new) || []).concat((_gt.basics && _gt.basics.review) || []), jaGrammarBasicById).map(x => ({ ...x, label: x.def.form, meaning: x.def.english }))
+        : agg.basics.filter(jaRatingEligible)
+          .map(e => ({ ...e, def: jaBasicById(e.id) })).filter(x => x.def)
+          .map(x => ({ ...x, label: x.def.form, meaning: x.def.english })) },
   ].filter(s => s.items.length)
   if (!rows.length || !store) return null
   // Rating persists immediately, so it survives navigation, exit and reload without
@@ -47532,6 +47539,7 @@ function JaGrammarReview({ track }) {
                   {'\u25CF'.repeat(Math.min(3, it.productive)) + '\u25CB'.repeat(Math.min(3, it.incidental))}
                 </span>
               </div>
+              {_gt && it.def && it.def.explain && <div style={{ fontSize:11, color:'var(--muted)', marginTop:4, lineHeight:1.4 }}>{it.def.explain}</div>}
               <div style={{ display:'flex', gap:6, marginTop:6 }}>
                 {btn(sec.key, it, 'hard', 'HARD', '#ef4444')}
                 {btn(sec.key, it, 'ok', 'OK', 'var(--accent)')}
@@ -54500,7 +54508,9 @@ function downloadJapaneseTrack(track) {
     if (track.scene.characterB) L.push('B: ' + track.scene.characterB)
     L.push('')
   }
-  if (track.buildingBlocks && track.buildingBlocks.length) {
+  const _jaGl = jaGrammarFromSentencesOn() ? jaGrammarExportLines(track) : null
+  if (_jaGl) { _jaGl.forEach(x => L.push(x)); L.push('') }
+  else if (track.buildingBlocks && track.buildingBlocks.length) {
     L.push('BUILDING BLOCKS')
     L.push('-'.repeat(30))
     track.buildingBlocks.forEach(b => L.push(b.form + ' [' + b.romaji + '] \u2014 ' + b.meaning))
@@ -58925,7 +58935,7 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
     ;(async () => { try { await jaGrammarMigrateV1(vocab); const s = await jaGrammarLoad(); if (go) setJaProgress(s) } catch (e) {} })()
     return () => { go = false } }, [])
   const sceneRows = useMemo(() => jaSceneRows(vocab, jaProgress, sceneText, register), [vocab, jaProgress, sceneText, register])
-  const shownBlocks = sceneRows.blocks
+  const shownBlocks = jaGrammarFromSentencesOn() ? [] : sceneRows.blocks      // v773: the grammar of a track is chosen after its sentences are written, so there is nothing to list before
   const shownBasics = sceneRows.basics
   // §2/§3 — full history is kept; the visible log is a rolling window so the
   // newest activity is always on screen without scrolling, matching Thai.
@@ -59531,6 +59541,7 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
 
       {/* QC lives here, on the generation screen. Bricks, circles and log persist. */}
       {qcPanel()}
+      {qcPhase === 'done' && finalTrack && finalTrack.grammarInTrack && jaGrammarFromSentencesOn() && <ErrorBoundary><JaGrammarInTrack track={finalTrack} /></ErrorBoundary>}
 
       {qcPhase === 'done' ? (
         <>
@@ -60620,6 +60631,68 @@ async function jaGrammarFinaliseTrack(track, o) {
 
 // a practice objective may name a block introduced by the new path (never changes what an old block resolves to)
 function jaGrammarObjectiveBlock(id) { return jaBlockById(id) || (jaGrammarFromSentencesOn() ? jaGrammarEntryById(id) : null) }
+
+// the export section (plain words). One line per entry, then its explanation.
+function jaGrammarExportLines(track) {
+  const g = track && track.grammarInTrack
+  if (!g) return null
+  const nums = ps => ps.map(n => String(n).padStart(2, '0')).join(', ')
+  const L = ['GRAMMAR IN THIS TRACK', '-'.repeat(30),
+    'Chosen after the sentences were written, from the grammar they already use. Pair numbers are the PAIR numbers below. A point is taught NEW when it is unlocked for this learner, not yet learned and used in at least ' + JA_GRAMMAR_FROM_SENTENCES.minUses + ' target sentences (up to ' + ((g.budget && g.budget.limit) || JA_GRAMMAR_FROM_SENTENCES.budget) + ' points a track: light = 1, heavy = 2).']
+  const line = (x, tag) => '  ' + x.label + (x.romaji ? ' [' + x.romaji + ']' : '') + ' — ' + x.meaning + ' — pairs ' + nums(x.pairs) + (x.cost ? ' — ' + (x.cost === 2 ? 'heavy' : 'light') : '') + (tag ? ' — ' + tag : '') + '\n      ' + x.explain
+  const sect = (title, rows, tag) => { L.push(title + (rows.length ? '' : ': none')); rows.forEach(x => L.push(line(x, tag ? tag(x) : ''))) }
+  const all = k => g[k].concat((g.basics && g.basics[k]) || [])
+  sect('NEW (taught now) — ' + ((g.budget && g.budget.spent) || 0) + ' of ' + ((g.budget && g.budget.limit) || 5) + ' points used' + (g.held ? ' — none added: ' + g.overdue + ' reviews are overdue' : ''), all('new'))
+  sect('REVIEW (practised again)', all('review'), x => x.dueDate ? 'was due ' + x.dueDate : '')
+  if (all('alsoUsed').length) L.push('ALSO USED (already learned): ' + all('alsoUsed').map(x => x.label).join(' '))
+  sect('SEEN IN PASSING (not taught yet)', all('passing'), x => x.why || '')
+  sect('NOT YET UNLOCKED but used (listed only; the sentences are not rewritten)', all('locked'), x => x.minKnown ? 'unlocks at ' + x.minKnown + ' words' : '')
+  return L
+}
+// the same section on screen: each entry opens to its explanation
+function JaGrammarInTrack({ track }) {
+  const g = track && track.grammarInTrack
+  const [open, setOpen] = useState({})
+  if (!g || !jaGrammarFromSentencesOn()) return null
+  const all = k => g[k].concat((g.basics && g.basics[k]) || [])
+  const sections = [
+    { key: 'new', title: 'NEW — taught now', color: '#10b981', rows: all('new'), note: (g.budget ? g.budget.spent + ' of ' + g.budget.limit + ' points' : '') + (g.held ? ' · none added: ' + g.overdue + ' reviews are overdue' : '') },
+    { key: 'review', title: 'REVIEW — practised again', color: '#60a5fa', rows: all('review') },
+    { key: 'passing', title: 'SEEN IN PASSING', color: 'var(--muted)', rows: all('passing') },
+    { key: 'locked', title: 'NOT YET UNLOCKED, but used', color: '#f59e0b', rows: all('locked') },
+  ]
+  const alsoUsed = all('alsoUsed')
+  return (
+    <div data-ja-grammar-in-track="1" style={{ marginTop: 6 }}>
+      <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.8, color: 'var(--muted)', margin: '10px 2px 6px' }}>GRAMMAR IN THIS TRACK</p>
+      <p style={{ fontSize: 10, color: 'var(--muted)', margin: '0 2px 8px', lineHeight: 1.5 }}>Chosen after the sentences were written, from the grammar they already use. Tap a point to read what it means.</p>
+      {sections.map(sec => (
+        <div key={sec.key} style={{ marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '6px 2px 4px' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, color: sec.color }}>{sec.title}</span>
+            <span style={{ fontSize: 10, color: 'var(--muted)' }}>{sec.rows.length ? (sec.note || '') : 'none'}</span>
+          </div>
+          {sec.rows.map(x => {
+            const k = sec.key + ':' + x.type + ':' + x.id
+            return (
+              <div key={k} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '7px 10px', marginBottom: 5 }}>
+                <button onClick={() => setOpen(o => ({ ...o, [k]: !o[k] }))} aria-expanded={!!open[k]} data-grammar-entry={x.id}
+                  style={{ display: 'flex', alignItems: 'baseline', gap: 8, width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', color: 'var(--text)' }}>
+                  <span className="jp" style={{ fontSize: 15, fontWeight: 700 }}>{x.label}</span>
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>pairs {x.pairs.map(n => String(n).padStart(2, '0')).join(' ')}</span>
+                </button>
+                {(x.why || (sec.key === 'locked' && x.minKnown)) && <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>{x.why || ('unlocks at ' + x.minKnown + ' words')}</div>}
+                {open[k] && <div data-grammar-explain={x.id} style={{ fontSize: 12, color: 'var(--text)', marginTop: 5, lineHeight: 1.5 }}>{x.explain}{x.romaji ? <span style={{ color: 'var(--muted)' }}>{'  ·  ' + x.romaji}</span> : null}</div>}
+              </div>
+            )
+          })}
+        </div>
+      ))}
+      {alsoUsed.length > 0 && <p style={{ fontSize: 10, color: 'var(--muted)', margin: '4px 2px' }}>Also used, already learned: <span className="jp">{alsoUsed.map(x => x.label).join(' ')}</span></p>}
+    </div>
+  )
+}
 
 // ── Final Japanese QC: five questions, in order ─────────────────────────────
 // Asked for EVERY pair, and asked in this order. Stylistic English differences are

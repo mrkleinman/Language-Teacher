@@ -5,6 +5,7 @@
 //   A  ONE CURRICULUM   the three lists merged: 101 entries + 19 basics, ordered, no entry before its prerequisites, the old 35 / 10 untouched, migration and progress keys unchanged
 //   B  THE DETECTOR     reads sentences: masks content words first, conjugation-aware, longest match first, one hit per entry per sentence with its position; the 99 lines; the hard cases
 //   C  THE PICKER       NEW (unlocked, not introduced, used at least twice, 5 points) / REVIEW (2) / SEEN IN PASSING / NOT YET UNLOCKED; never touches target words, slots, pairs or the closed-vocabulary check; the switch
+//   D  SHOWN            the track export (GRAMMAR IN THIS TRACK), the track screen (each entry opens to its explanation), the lesson-end rating, other languages untouched
 //   node tests112.js            (current build: tt.compiled.js, or TT_FILE)
 'use strict'
 const fs = require('fs')
@@ -292,6 +293,53 @@ const CASES = [
         a.pairs.length === b.pairs.length && JSON.stringify(a.keywords) === JSON.stringify(b.keywords) && Object.keys(off.store).length === 0, { on: on.S.c.trackReadinessExportLines(a)[0], off: off.S.c.trackReadinessExportLines(b)[0] })
     }
   } catch (e) { T('C!', 'section C stopped: ' + String(e && e.message).split('\n')[0], false, String(e && e.stack).slice(0, 400)) }
+
+  // ═══ D — SHOWN ══════════════════════════════════════════════════════════════════════════════════════════════════════
+  try {
+    const prep = async (known, on) => {
+      const cc = fresh(); cc.jaGrammarFromSentencesSetEnabled(on !== false)
+      const vocab = learner(cc, known); await cc.jaGrammarMigrateV1(vocab)
+      const track = await cc.jaGrammarFinaliseTrack(trackOf(), { vocab, today: TODAY })
+      return { cc, vocab, track }
+    }
+    const exportText = (cc, track) => { cc.Blob = class { constructor(parts) { cc.__blob = parts.join('') } }; cc.URL = { createObjectURL: () => 'b', revokeObjectURL() {} }; cc.document.createElement = () => ({ style: {}, click() {}, setAttribute() {} }); cc.document.body.appendChild = () => {}; cc.document.body.removeChild = () => {}; cc.__blob = ''; cc.downloadJapaneseTrack(track); return cc.__blob }
+    const P = await prep(90), text = exportText(P.cc, P.track), g = P.track.grammarInTrack
+    T('D1', 'the export replaces the two-item BUILDING BLOCKS list with GRAMMAR IN THIS TRACK: NEW, REVIEW, ALSO USED, SEEN IN PASSING and NOT YET UNLOCKED, each with its pair numbers',
+      /\nGRAMMAR IN THIS TRACK\n/.test(text) && !/\nBUILDING BLOCKS\n/.test(text) && /\nNEW \(taught now\)/.test(text) && /\nREVIEW \(practised again\)/.test(text) && /\nSEEN IN PASSING \(not taught yet\)/.test(text) && /\nNOT YET UNLOCKED but used/.test(text) && /pairs \d\d(, \d\d)*/.test(text), text.split('\n').filter(l => /GRAMMAR|BUILDING/.test(l)))
+    const sec = text.slice(text.indexOf('GRAMMAR IN THIS TRACK'), text.indexOf('CONTENT VOCABULARY') > 0 ? text.indexOf('CONTENT VOCABULARY') : text.indexOf('TARGET VOCABULARY'))
+    const lines = sec.split('\n'), entryAt = lines.map((l, i) => /^  \S.* — pairs /.test(l) ? i : -1).filter(i => i >= 0)
+    T('D2', 'every listed entry has its pair numbers, a one-line explanation under it, and a plain label / meaning (no code ids, no model names)',
+      entryAt.length >= 8 && entryAt.every(i => /^      \S/.test(lines[i + 1] || '')) && g.new.every(x => lines.some(l => l.includes(x.label) && l.includes(x.pairs.map(p => String(p).padStart(2, '0')).join(', ')))) && !/claude|gemini|haiku|sonnet|opus/i.test(sec), entryAt.length)
+    T('D3', 'the NEW section says how many points were used and why none are added when reviews are overdue; the NOT YET UNLOCKED section lists the lines, not a rewrite (the pairs below still read exactly as before)',
+      /NEW \(taught now\) — \d of 5 points used/.test(sec) && JSON.stringify(P.track.pairs) === JSON.stringify(trackOf().pairs))
+    const Poff = await prep(90, false), textOff = exportText(Poff.cc, Poff.track)
+    T('D4', 'switch OFF: the export is the old BUILDING BLOCKS list (は / か from the scaffold) and has no GRAMMAR IN THIS TRACK section', /\nBUILDING BLOCKS\n/.test(textOff) && !/GRAMMAR IN THIS TRACK/.test(textOff) && /は \[wa\]/.test(textOff))
+    const old = exportText(P.cc, { ...trackOf() })
+    T('D5', 'a track made before this build (no grammar section stored) still exports the old list, with the switch on', /\nBUILDING BLOCKS\n/.test(old) && !/GRAMMAR IN THIS TRACK/.test(old))
+    // the screen
+    const mount = async (cc, track) => { let R; await TR.act(async () => { R = TR.create(React.createElement(cc.JaGrammarInTrack, { track })); await flush(3) }); return R }
+    const R = await mount(P.cc, P.track), json = () => textOf(R.toJSON())
+    const titles = ['NEW — taught now', 'REVIEW — practised again', 'SEEN IN PASSING', 'NOT YET UNLOCKED, but used']
+    T('D6', 'the track screen shows the same section (GRAMMAR IN THIS TRACK, NEW, REVIEW, SEEN IN PASSING, NOT YET UNLOCKED), each entry with its pair numbers', json().includes('GRAMMAR IN THIS TRACK') && titles.every(t => json().includes(t)) && /pairs\s+\d\d/.test(json()))
+    const firstNew = g.new[0], btn = R.root.findAll(x => x.props && x.props['data-grammar-entry'] === firstNew.id && typeof x.props.onClick === 'function')[0]
+    const closed = json().includes(firstNew.explain)
+    await TR.act(async () => { btn.props.onClick(); await flush(2) })
+    T('D7', 'each entry opens to its explanation (tap a point and its one-sentence explanation appears; it was not shown before)', !closed && json().includes(firstNew.explain), { id: firstNew.id })
+    const Rn = await mount(P.cc, trackOf())
+    T('D8', 'a track without the section (made before this build, or switch off) shows nothing extra', Rn.toJSON() === null)
+    // lesson end: the same HARD / OK / EASY, for the points the track taught
+    await P.cc.stSet('tt-ja-grammar-srs', await P.cc.jaGrammarLoad())
+    let RV; await TR.act(async () => { RV = TR.create(React.createElement(P.cc.JaGrammarReview, { track: P.track })); await flush(10) })
+    const rj = textOf(RV.toJSON())
+    T('D9', 'at the end of the lesson the points the track taught are the ones rated (GRAMMAR TAUGHT AND PRACTISED), each with its explanation', rj.includes('GRAMMAR TAUGHT AND PRACTISED') && g.new.every(x => rj.includes(x.label)) && rj.includes(g.new[0].explain))
+    const hard = RV.root.findAll(x => x.type === 'button' && x.children && x.children[0] === 'EASY')[0]
+    await TR.act(async () => { hard.props.onClick(); await flush(10) })
+    const stAfter = await P.cc.jaGrammarLoad(), rec = stAfter['buildingBlock:' + g.new[0].id]
+    T('D10', 'rating a taught point writes the normal progress record (interval and due date from the same SRS engine; the automatic first date is replaced)', rec && rec.introducedAt && rec.interval > 0 && rec.dueDate > TODAY && rec.status, rec)
+    // other languages and other screens
+    const ex = k => P.cc.ev('(' + k + ')').toString()
+    T('D11', 'other languages\' screens and exports are untouched: the Thai and Mandarin track downloads are byte-for-byte the same function as before', sha(ex('downloadTrack')) === '5eadb8ec58fb3387' && sha(ex('downloadMandarinTrack')) === 'ce936dc2b9d5768f', { thai: sha(ex('downloadTrack')), zh: sha(ex('downloadMandarinTrack')) })
+  } catch (e) { T('D!', 'section D stopped: ' + String(e && e.message).split('\n')[0], false, String(e && e.stack).slice(0, 400)) }
 
   out.forEach(l => console.log(l))
   console.log('\n' + (n - fails) + '/' + n + ' passed' + (fails ? ' · ' + fails + ' FAILED' : ' — ALL PASS'))

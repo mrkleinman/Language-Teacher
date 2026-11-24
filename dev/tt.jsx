@@ -34955,6 +34955,8 @@ async function jazhQcFinaliseAndListen(track, lang, o) {
     push('\u26A0 FINAL_TRACK failed: ' + (e && e.message || e) + ' \u00b7 status=FAILED_INTERNAL')
     fin = withPipelineFailure(track, code, e && e.message || e, 'final-track')
   }
+  // v773: the grammar this track teaches is chosen from its finished sentences (never fails the track; a no-op when the switch is off)
+  if (lang === 'ja' && fin && !fin.pipelineFailure) fin = await jaGrammarFinaliseTrack(fin, { vocab: o.vocab, push })
   o.onFinal && o.onFinal(fin)
   if (o.cancelled && o.cancelled()) return { track: fin, res }
   // v658 §3 — a Daily / Revision track ENDS with its Main Track: no Listening is built after it (0 Listening
@@ -60482,6 +60484,143 @@ function jaGrammarDetect(sentence, opts) {
   return { ids: [...hits.values()].sort((a, b) => a.at - b.at).map(h => h.id), hits: [...hits.values()].sort((a, b) => a.at - b.at), counts, basics: [...basics.values()], unsure }
 }
 
+// ══ v773 — GRAMMAR FROM SENTENCES: choosing, recording and showing it ═══════════════════════════════════════════════════════════
+// Grammar is taught as entries of its own, chosen AFTER the 90 target sentences are written, from what those sentences already contain. The entries sit beside the 30 target words:
+// they never use a word slot, never add a pair, never change a sentence and never reach the closed-vocabulary check (the picker only READS the finished pairs).
+//   NEW      unlocked for this learner (the same known + learning count jaBlocksAvailable always used), not yet introduced, used in at least 2 TARGET sentences; at most 5 points per
+//            track (light entries cost 1, heavy cost 2), in curriculum order; every prerequisite must already be introduced or be chosen just before. No new entry while more than 6 are overdue.
+//   REVIEW   already introduced and due, and used again here: up to 2 per track (the most overdue first), counted as a review and moved on.
+//   ALSO     already introduced and used here: counted as exposure only (jaGrammarRecordExposure).
+//   PASSING  used once, or waiting (budget, a prerequisite, too many overdue): recorded as "seen in passing", NOT introduced.
+//   LOCKED   used in any line of the track but not unlocked for this learner: listed with its pair numbers, never rewritten here.
+// Switch: jaGrammarFromSentencesSetEnabled(false) restores the old behaviour exactly (one new block chosen before writing, the two-item BUILDING BLOCKS list, the old screens).
+const JA_GRAMMAR_FROM_SENTENCES = { on: true, budget: 5, minUses: 2, maxReview: 2, overdueStop: 6, maxNewBasics: 2, autoReviewDays: 2 }
+function jaGrammarFromSentencesSetEnabled(on) { JA_GRAMMAR_FROM_SENTENCES.on = !!on }
+function jaGrammarFromSentencesOn() { return !!JA_GRAMMAR_FROM_SENTENCES.on }
+// the old per-track path: ONE genuinely new block chosen BEFORE the sentences are written (used only when the switch is off)
+function jaGrammarPreGenFresh(vocab, store) {
+  if (jaGrammarFromSentencesOn()) return []
+  return jaBlocksAvailable(vocab, store || {}).filter(b => !jaGrammarGet(store || {}, 'buildingBlock', b.id).introducedAt)
+    .sort((a, b) => (a.order || 0) - (b.order || 0)).slice(0, 1)
+}
+// a pair that teaches one of the 30 target words (the same test the final audit uses): framing, bridge and greeting lines are not
+function jaGrammarIsTargetPair(p) {
+  if (!p || p._framing || p.pairType === 'framing' || p.pairType === 'bridge' || p.isTargetPair === false) return false
+  return p.targetId != null || p.wordId != null || !!p.isTargetPair
+}
+function jaGrammarKnownCount(vocab) { return (vocab || []).filter(w => w && (w.status === 'known' || w.status === 'learning')).length }
+// what every line of a track uses: per pair the entry ids, and per entry the pair numbers (1-based, the PAIR numbers of the export) — in the target sentences and in all lines
+function jaGrammarAnalyseTrack(pairs, o) {
+  const opts = o || {}
+  const perPair = (pairs || []).map((p, i) => {
+    const d = jaGrammarDetect((p && (p.japanese || p.thai)) || '', { words: opts.words })
+    return { n: i + 1, target: jaGrammarIsTargetPair(p), ids: d.ids, hits: d.hits, basics: d.basics.map(b => b.id), unsure: d.unsure }
+  })
+  const uses = {}, basicUses = {}
+  const add = (m, id, r) => { const u = m[id] || (m[id] = { id, target: [], all: [] }); u.all.push(r.n); if (r.target) u.target.push(r.n) }
+  perPair.forEach(r => { r.ids.forEach(id => add(uses, id, r)); r.basics.forEach(id => add(basicUses, id, r)) })
+  return { perPair, uses, basicUses }
+}
+function jaGrammarAddDays(day, n) { const d = new Date(String(day) + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
+// the plan: pure — it reads the analysis, the learner's level and the stored progress, and changes nothing
+function jaGrammarPlan(an, o) {
+  const cfg = JA_GRAMMAR_FROM_SENTENCES, store = (o && o.store) || {}, known = (o && o.known) || 0, today = (o && o.today) || new Date().toISOString().slice(0, 10)
+  const rec = (type, id) => store[jaProgressKeyOf(type, id)] || null
+  const intro = (type, id) => !!(rec(type, id) && rec(type, id).introducedAt)
+  const overdue = Object.values(store).filter(r => r && r.type === 'buildingBlock' && r.introducedAt && r.dueDate && r.dueDate < today).length
+  const held = overdue > cfg.overdueStop
+  const row = (type, e, pairs) => ({ id: e.id, type, label: type === 'buildingBlock' ? e.label : e.form, romaji: e.romaji || '', meaning: type === 'buildingBlock' ? e.meaning : e.english,
+    explain: type === 'buildingBlock' ? e.explain : ('A reaction word or set phrase: ' + e.english), pairs: pairs.slice(), cost: type === 'buildingBlock' ? e.cost : 0, minKnown: e.minKnown || 0, order: e.order })
+  const plan = { today, known, overdue, held, budget: { limit: cfg.budget, spent: 0 }, new: [], review: [], alsoUsed: [], passing: [], locked: [], basics: { new: [], review: [], alsoUsed: [], passing: [], locked: [] } }
+  // one pass for the grammar blocks and one for the basics (reaction words): the same buckets
+  const pass = (type, uses, entryOf, bucket, limitNew, budgeted) => {
+    const found = Object.values(uses).map(u => ({ e: entryOf(u.id), u })).filter(x => x.e).sort((a, b) => (a.e.order || 0) - (b.e.order || 0))
+    const dueUsed = [], cand = []
+    found.forEach(({ e, u }) => {
+      const r = rec(type, e.id), tn = u.target.length
+      if (intro(type, e.id)) {
+        if (!tn) return                                              // only in framing lines: no exposure counted
+        const x = { ...row(type, e, u.target), dueDate: r.dueDate || null }
+        if (r.dueDate && r.dueDate <= today) dueUsed.push(x); else bucket.alsoUsed.push(x)
+        return
+      }
+      if (known < (e.minKnown || 0)) { bucket.locked.push({ ...row(type, e, u.all), why: 'unlocks at ' + (e.minKnown || 0) + ' known or learning words (this learner has ' + known + ')' }); return }
+      if (!tn) return                                                // unlocked, only in framing lines: nothing to teach from it
+      if (tn < cfg.minUses) { bucket.passing.push({ ...row(type, e, u.target), why: 'used once' }); return }
+      cand.push({ e, u })
+    })
+    dueUsed.sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)) || (a.order - b.order))
+    dueUsed.forEach((x, i) => { if (i < cfg.maxReview) bucket.review.push(x); else bucket.alsoUsed.push({ ...x, why: 'due, but only ' + cfg.maxReview + ' reviews per track' }) })
+    const chosen = new Set()
+    cand.forEach(({ e, u }) => {
+      const x = row(type, e, u.target)
+      if (held) { bucket.passing.push({ ...x, why: 'held back: ' + overdue + ' reviews are overdue' }); return }
+      if (bucket.new.length >= limitNew) { bucket.passing.push({ ...x, why: 'no room this track' }); return }
+      const missing = (e.prereq || []).filter(p => !intro(type, p) && !chosen.has(p))
+      if (missing.length) { bucket.passing.push({ ...x, why: 'needs ' + missing.map(p => (jaGrammarEntryById(p) || { label: p }).label).join(', ') + ' first' }); return }
+      if (budgeted && plan.budget.spent + x.cost > cfg.budget) { bucket.passing.push({ ...x, why: 'no room this track' }); return }
+      chosen.add(e.id); bucket.new.push(x); if (budgeted) plan.budget.spent += x.cost
+    })
+  }
+  pass('buildingBlock', an.uses, jaGrammarEntryById, plan, cfg.budget, true)
+  pass('conversationBasic', an.basicUses, jaGrammarBasicById, plan.basics, cfg.maxNewBasics, false)
+  return plan
+}
+// write the plan into the learner's progress store (pure on the store it is handed). Never overwrites a record that has been introduced or rated.
+function jaGrammarApplyPlan(store, plan, today) {
+  const cfg = JA_GRAMMAR_FROM_SENTENCES
+  let changes = 0
+  const expose = (type, x) => { x.pairs.forEach(() => jaGrammarRecordExposure(store, type, x.id, true)); changes++ }
+  const doBucket = (type, b) => {
+    b.new.forEach(x => {
+      const r = jaGrammarIntroduce(store, type, x.id, today); expose(type, x)
+      if (!r.dueDate) { r.dueDate = jaGrammarAddDays(today, cfg.autoReviewDays); r.autoScheduled = true }   // unrated, it still comes back: a rating at the end of the lesson replaces this date
+      changes++
+    })
+    b.review.forEach(x => {                                          // practised again: counted, and moved on unless the learner has already rated it today
+      expose(type, x)
+      const r = store[jaProgressKeyOf(type, x.id)]
+      if (r && r.dueDate && r.dueDate <= today) { r.dueDate = jaGrammarAddDays(today, Math.max(cfg.autoReviewDays, Math.round(r.interval || 0))); r.autoScheduled = true }
+    })
+    b.alsoUsed.forEach(x => expose(type, x))
+    b.passing.forEach(x => {                                         // seen, not taught: a note on the record, no introduction
+      const k = jaProgressKeyOf(type, x.id), r = store[k] || jaNewProgressRecord(type, x.id)
+      if (r.introducedAt) return
+      r.seenInPassing = (r.seenInPassing || 0) + 1; r.lastPassing = today; store[k] = r; changes++
+    })
+  }
+  doBucket('buildingBlock', plan); doBucket('conversationBasic', plan.basics)
+  return changes
+}
+// what the track carries (and the export / screens show): plain data only
+function jaGrammarSummary(plan, an) {
+  const slim = x => { const o = { id: x.id, type: x.type, label: x.label, romaji: x.romaji, meaning: x.meaning, explain: x.explain, pairs: x.pairs, cost: x.cost }; if (x.why) o.why = x.why; if (x.dueDate) o.dueDate = x.dueDate; if (x.minKnown) o.minKnown = x.minKnown; return o }
+  const grp = b => ({ new: b.new.map(slim), review: b.review.map(slim), alsoUsed: b.alsoUsed.map(slim), passing: b.passing.map(slim), locked: b.locked.map(slim) })
+  const unsure = (an.perPair || []).filter(r => r.unsure.length).map(r => r.n)
+  return { version: 1, at: plan.today, known: plan.known, budget: plan.budget, overdue: plan.overdue, held: plan.held, ...grp(plan), basics: grp(plan.basics), unsureLines: unsure, recorded: true }
+}
+// the one entry point the finaliser calls once the sentences are final: choose, record, and hand back the track with its grammar. It never fails the track.
+async function jaGrammarFinaliseTrack(track, o) {
+  if (!jaGrammarFromSentencesOn() || !track || (track.language && track.language !== 'ja')) return track
+  if (track.grammarInTrack && track.grammarInTrack.recorded) return track          // already recorded for this track: the learner's progress is never counted twice
+  const opts = o || {}
+  try {
+    const store = await jaGrammarLoad()
+    const today = opts.today || new Date().toISOString().slice(0, 10)
+    const an = jaGrammarAnalyseTrack(track.pairs)
+    const plan = jaGrammarPlan(an, { known: jaGrammarKnownCount(opts.vocab), store, today })
+    const changed = jaGrammarApplyPlan(store, plan, today)
+    if (changed) await jaGrammarSave(store)
+    const sum = jaGrammarSummary(plan, an)
+    if (opts.push) opts.push('GRAMMAR FROM SENTENCES: ' + plan.new.length + ' new (' + plan.new.map(x => x.label).join(' ') + ') · ' + plan.review.length + ' review · ' + plan.alsoUsed.length + ' also used · ' +
+      plan.passing.length + ' seen in passing · ' + plan.locked.length + ' not yet unlocked · budget ' + plan.budget.spent + '/' + plan.budget.limit + (plan.held ? ' · HELD BACK: ' + plan.overdue + ' overdue' : ''))
+    return { ...track, grammarInTrack: sum }
+  } catch (e) { console.error('[ja-grammar] could not choose grammar from the sentences — the track is unchanged', e); return track }
+}
+
+// a practice objective may name a block introduced by the new path (never changes what an old block resolves to)
+function jaGrammarObjectiveBlock(id) { return jaBlockById(id) || (jaGrammarFromSentencesOn() ? jaGrammarEntryById(id) : null) }
+
 // ── Final Japanese QC: five questions, in order ─────────────────────────────
 // Asked for EVERY pair, and asked in this order. Stylistic English differences are
 // judged LAST and only once the Japanese is known to be sound, so QC can never
@@ -62912,7 +63051,7 @@ function japaneseTargetGroupAdapter(ctx) {
   const opts = ctx.opts || {}
   const rejected = new Set()
   const _obj = opts.objectives || {}
-  const _objBlocks = (_obj.buildingBlocks || []).map(b => jaBlockById(b.id || b)).filter(Boolean)
+  const _objBlocks = (_obj.buildingBlocks || []).map(b => jaGrammarObjectiveBlock(b.id || b)).filter(Boolean)
   const _objBasics = (_obj.conversationBasics || []).map(b => jaBasicById(b.id || b)).filter(Boolean)
   const objectives = (_objBlocks.length || _objBasics.length)
     ? 'PRACTICE OBJECTIVES (only where the intent genuinely calls for them): ' + [..._objBlocks.map(b => b.label + ' (' + b.meaning + ')'), ..._objBasics.map(b => b.form + ' (' + b.english + ')')].join(', ')
@@ -62980,7 +63119,7 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
   const ORD = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th']
   let paid = 0, repairs = 0, stopReason = ''
   const _obj = o.objectives || {}
-  const _objBlocks = (_obj.buildingBlocks || []).map(b => jaBlockById(b.id || b)).filter(Boolean)
+  const _objBlocks = (_obj.buildingBlocks || []).map(b => jaGrammarObjectiveBlock(b.id || b)).filter(Boolean)
   const _objBasics = (_obj.conversationBasics || []).map(b => jaBasicById(b.id || b)).filter(Boolean)
   const _objLine = (_objBlocks.length || _objBasics.length)
     ? '\nPRACTICE OBJECTIVES (only where the intent genuinely calls for them): ' +
@@ -63184,9 +63323,8 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
     const dueBlocks = jaGrammarDue(_grammarStore, 'buildingBlock', today).map(r => jaBlockById(r.itemId)).filter(Boolean)
     const dueBasics = jaGrammarDue(_grammarStore, 'conversationBasic', today).map(r => jaBasicById(r.itemId)).filter(Boolean)
     // at most 1 genuinely NEW block per track at this level, introduced BEFORE it is used
-    const fresh = jaBlocksAvailable(vocab, _grammarStore)
-      .filter(b => !jaGrammarGet(_grammarStore, 'buildingBlock', b.id).introducedAt)
-      .sort((a, b) => (a.order || 0) - (b.order || 0)).slice(0, 1)
+    // v773: with grammar-from-sentences on, new grammar is chosen AFTER the sentences are written (jaGrammarFinaliseTrack), so nothing is introduced here; switched off, one new block as before
+    const fresh = jaGrammarPreGenFresh(vocab, _grammarStore)
     fresh.forEach(b => jaGrammarIntroduce(_grammarStore, 'buildingBlock', b.id))
     const freshBasics = jaBasicsAvailable(vocab)
       .filter(b => !jaGrammarGet(_grammarStore, 'conversationBasic', b.id).introducedAt)

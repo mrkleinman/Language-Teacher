@@ -4,6 +4,7 @@
 // and only in the one test (C12) that runs the real finaliser. The 99 Japanese lines are in fixtures/ja-grammar-lines-2026-11-17.json (pair number, line, and whether it is a target pair).
 //   A  ONE CURRICULUM   the three lists merged: 101 entries + 19 basics, ordered, no entry before its prerequisites, the old 35 / 10 untouched, migration and progress keys unchanged
 //   B  THE DETECTOR     reads sentences: masks content words first, conjugation-aware, longest match first, one hit per entry per sentence with its position; the 99 lines; the hard cases
+//   C  THE PICKER       NEW (unlocked, not introduced, used at least twice, 5 points) / REVIEW (2) / SEEN IN PASSING / NOT YET UNLOCKED; never touches target words, slots, pairs or the closed-vocabulary check; the switch
 //   node tests112.js            (current build: tt.compiled.js, or TT_FILE)
 'use strict'
 const fs = require('fs')
@@ -176,6 +177,121 @@ const CASES = [
     T('B10', 'a line the rules cannot explain is flagged (unsure), and the 99 lines of the export are not', lonely.unsure.length > 0 && FIXJ.every(l => det(l.ja).unsure.length === 0), FIXJ.filter(l => det(l.ja).unsure.length).map(l => l.n))
     const t0 = Date.now(); FIXJ.forEach(l => det(l.ja)); T('B11', 'the whole export (99 lines) is read in well under a second', Date.now() - t0 < 1500, Date.now() - t0)
   } catch (e) { T('B!', 'section B stopped: ' + String(e && e.message).split('\n')[0], false, String(e && e.stack).slice(0, 400)) }
+
+  // ═══ C — THE PICKER ══════════════════════════════════════════════════════════════════════════════════════════════════
+  try {
+    const c = fresh()
+    const plan = async (known, mutate, today, pairs) => {
+      const cc = fresh(), vocab = learner(cc, known)
+      await cc.jaGrammarMigrateV1(vocab)
+      const store = await cc.jaGrammarLoad(); if (mutate) mutate(cc, store)
+      const an = cc.jaGrammarAnalyseTrack(pairs || pairsOf())
+      return { cc, vocab, store, an, plan: cc.jaGrammarPlan(an, { known: cc.jaGrammarKnownCount(vocab), store, today: today || TODAY }) }
+    }
+    const med = await plan(90), low = await plan(25), high = await plan(200)
+    const okPlan = (r, label) => {
+      const p = r.plan, cur = r.cc.ev('JA_GRAMMAR_CURRICULUM'), byId = id => cur.find(e => e.id === id)
+      const cost = p.new.reduce((a, x) => a + x.cost, 0)
+      const problems = []
+      if (p.new.length > 5) problems.push('more than 5 new')
+      if (cost > 5 || cost !== p.budget.spent) problems.push('cost ' + cost + ' vs budget ' + p.budget.spent)
+      p.new.forEach((x, i) => {
+        const e = byId(x.id), prevChosen = new Set(p.new.slice(0, i).map(y => y.id))
+        if (!(r.cc.jaGrammarKnownCount(r.vocab) >= e.minKnown)) problems.push(x.id + ' is not unlocked')
+        if (r.store['buildingBlock:' + x.id] && r.store['buildingBlock:' + x.id].introducedAt) problems.push(x.id + ' was already introduced')
+        if (x.pairs.length < 2) problems.push(x.id + ' used fewer than 2 times')
+        if (!(e.prereq || []).every(q => (r.store['buildingBlock:' + q] && r.store['buildingBlock:' + q].introducedAt) || prevChosen.has(q))) problems.push(x.id + ' lacks a prerequisite')
+        if (i && e.order < byId(p.new[i - 1].id).order) problems.push('not in curriculum order at ' + x.id)
+      })
+      return { problems, label }
+    }
+    for (const [id, r, label] of [['C1', med, 'medium (90 words)'], ['C2', low, 'low (25 words)'], ['C3', high, 'high (200 words)']]) {
+      const k = okPlan(r, label)
+      T(id, label + ': at most 5 NEW points (light 1, heavy 2), each unlocked for this learner, not introduced yet, used in at least 2 target sentences, prerequisites met, in curriculum order', k.problems.length === 0 && r.plan.new.length > 0, { problems: k.problems, new: r.plan.new.map(x => x.id) })
+    }
+    T('C4', 'the picker answers differently at different levels (the same 90 sentences teach different points at 25, 90 and 200 words) and lists what is not unlocked',
+      JSON.stringify(low.plan.new.map(x => x.id)) !== JSON.stringify(high.plan.new.map(x => x.id)) && low.plan.locked.length > med.plan.locked.length && med.plan.locked.length >= high.plan.locked.length && low.plan.locked.every(x => x.pairs.length > 0 && x.minKnown > 25), { low: low.plan.locked.length, med: med.plan.locked.length, high: high.plan.locked.length })
+    T('C5', 'an item used once is "seen in passing" and is NOT introduced: です (once) is in the list with its reason, and after the plan is applied its record has no introducedAt',
+      med.plan.passing.some(x => x.id === 'desu' && x.why === 'used once') && (() => { const s = JSON.parse(JSON.stringify(med.store)); med.cc.jaGrammarApplyPlan(s, med.plan, TODAY); return s['buildingBlock:desu'] && !s['buildingBlock:desu'].introducedAt && s['buildingBlock:desu'].seenInPassing === 1 })())
+    // exposure and review
+    const withDue = await plan(90, (cc, st) => {
+      ;['wa', 'ne', 'yo'].forEach((id, i) => { const r = cc.jaGrammarGet(st, 'buildingBlock', id); st['buildingBlock:' + id] = { ...cc.jaNewProgressRecord('buildingBlock', id), introducedAt: '2026-09-01', status: 'learning', interval: 3, dueDate: ['2026-11-20', '2026-11-22', '2026-11-23'][i], exposures: 4 } })
+      st['buildingBlock:ka'] = { ...cc.jaNewProgressRecord('buildingBlock', 'ka'), introducedAt: '2026-09-01', status: 'learning', interval: 3, dueDate: '2027-01-01', exposures: 4 }
+    })
+    T('C6', 'introduced and used entries count as exposure; up to 2 DUE ones are kept as REVIEW (the most overdue first), the third due one is exposure only',
+      withDue.plan.review.length === 2 && withDue.plan.review[0].id === 'wa' && withDue.plan.review[1].id === 'ne' && withDue.plan.alsoUsed.some(x => x.id === 'yo') && withDue.plan.alsoUsed.some(x => x.id === 'ka'), { review: withDue.plan.review.map(x => x.id), also: withDue.plan.alsoUsed.map(x => x.id) })
+    const s2 = JSON.parse(JSON.stringify(withDue.store)); const ex0 = s2['buildingBlock:ka'].exposures
+    withDue.cc.jaGrammarApplyPlan(s2, withDue.plan, TODAY)
+    T('C7', 'applying the plan records the exposures (ka: one per sentence using it), moves a reviewed entry on (wa was due 20 Nov, now later), leaves the not-featured due one (yo) still due, and never touches a rating the learner gave',
+      s2['buildingBlock:ka'].exposures === ex0 + withDue.plan.alsoUsed.find(x => x.id === 'ka').pairs.length && s2['buildingBlock:wa'].dueDate > TODAY && s2['buildingBlock:yo'].dueDate === '2026-11-23' && s2['buildingBlock:wa'].interval === 3 && s2['buildingBlock:ka'].dueDate === '2027-01-01',
+      { ka: s2['buildingBlock:ka'], wa: s2['buildingBlock:wa'] })
+    const overdue = await plan(90, (cc, st) => { for (let i = 0; i < 7; i++) { const id = ['kedo', 'masu', 'mo', 'nai', 'past', 'tai', 'tara'][i]; st['buildingBlock:' + id] = { ...cc.jaNewProgressRecord('buildingBlock', id), introducedAt: '2026-09-01', status: 'learning', dueDate: '2026-11-01', interval: 2, exposures: 1 } } })
+    const six = await plan(90, (cc, st) => { for (let i = 0; i < 6; i++) { const id = ['kedo', 'masu', 'mo', 'nai', 'past', 'tai'][i]; st['buildingBlock:' + id] = { ...cc.jaNewProgressRecord('buildingBlock', id), introducedAt: '2026-09-01', status: 'learning', dueDate: '2026-11-01', interval: 2, exposures: 1 } } })
+    T('C8', 'no new point while MORE than 6 reviews are overdue (7 overdue ⇒ none added and the candidates wait with the reason; exactly 6 overdue still allows new points)',
+      overdue.plan.held === true && overdue.plan.new.length === 0 && overdue.plan.passing.some(x => /held back: 7/.test(x.why || '')) && six.plan.held === false && six.plan.new.length > 0, { overdue: overdue.plan.overdue, held: overdue.plan.held, six: six.plan.overdue })
+    // prerequisite chain: a heavy point never jumps its prerequisite
+    const mk = lines => lines.map((s, i) => ({ japanese: s, thai: s, targetId: 2000 + i, wordId: 2000 + i, isTargetPair: true, _target: 'x', recallIndex: 1 }))
+    const dropTe = (cc, st) => { delete st['buildingBlock:te']; delete st['buildingBlock:nai']; st['buildingBlock:plain-present'] = { ...cc.jaNewProgressRecord('buildingBlock', 'plain-present'), introducedAt: '2026-09-01', status: 'learning', dueDate: '2027-01-01', interval: 9, exposures: 5 } }
+    const chain = await plan(200, dropTe, TODAY, mk(['水、飲んでもいい？', '食べてもいい？', 'ここで待ってもいい？']))
+    T('C9', 'a point whose prerequisite is not yet introduced waits, and a prerequisite chosen just before it in the same track satisfies it: 〜てもいい (3 sentences) brings て-form with it, because the て-form is inside it',
+      chain.plan.new.map(x => x.id).join(' ') === 'te temoii' && chain.plan.budget.spent === 3, chain.plan.new.map(x => x.id + ':' + x.cost))
+    const wait = await plan(200, dropTe, TODAY, mk(['行かなくてもいい。', '食べなくてもいい。']))
+    T('C9b', 'a heavy point that needs two earlier points (〜なくてもいい needs 〜ない and 〜てもいい) is not chosen while they are missing: it waits with the reason',
+      wait.plan.new.map(x => x.id).includes('nai') && !wait.plan.new.some(x => x.id === 'nakutemoii') && wait.plan.passing.some(x => x.id === 'nakutemoii' && /needs/.test(x.why)), { new: wait.plan.new.map(x => x.id), passing: wait.plan.passing.map(x => x.id + ':' + x.why) })
+    const heavy = await plan(200, (cc, st) => { ;['wa', 'ka', 'ne', 'yo', 'da', 'plain-present', 'wo', 'ni', 'no', 'de', 'to', 'mo', 'ga', 'demo', 'masu'].forEach(id => { st['buildingBlock:' + id] = { ...cc.jaNewProgressRecord('buildingBlock', id), introducedAt: '2026-09-01', status: 'learning', dueDate: '2027-01-01', interval: 9, exposures: 5 } }) })
+    T('C10', 'light entries cost 1, heavy cost 2, and the budget of 5 is never passed (here the heavy 〜た / 〜ない / て-form are next in order)', heavy.plan.new.reduce((a, x) => a + x.cost, 0) <= 5 && heavy.plan.new.some(x => x.cost === 2) && heavy.plan.budget.spent === heavy.plan.new.reduce((a, x) => a + x.cost, 0), { new: heavy.plan.new.map(x => x.id + ':' + x.cost) })
+    // ── grammar never counts as a target word, a slot, a pair, or a vocabulary change; closed vocabulary untouched
+    {
+      const cc = fresh(), vocab = learner(cc, 90); await cc.jaGrammarMigrateV1(vocab)
+      const track = trackOf(), before = JSON.stringify(track.pairs), kw0 = JSON.stringify(track.keywords), sel0 = JSON.stringify(track.selectedTargetIds), vocab0 = JSON.stringify(vocab)
+      const inv0 = cc.japaneseLearnerInventory(vocab, vocab.slice(0, 30)), line0 = FIXJ.map(l => JSON.stringify(cc.japaneseCheckLine(l.ja, inv0)))
+      const res = await cc.jaGrammarFinaliseTrack(track, { vocab, today: TODAY })
+      const store = await cc.jaGrammarLoad()
+      const inv1 = cc.japaneseLearnerInventory(vocab, vocab.slice(0, 30)), line1 = FIXJ.map(l => JSON.stringify(cc.japaneseCheckLine(l.ja, inv1)))
+      T('C11', 'the track gets its grammar (new / review / passing / locked, with pair numbers) and nothing else changes: same 99 pairs (90 target pairs), same sentences, same 30 target words, same slots, the vocabulary list untouched',
+        !!res.grammarInTrack && res.grammarInTrack.recorded === true && res.pairs === track.pairs && res.pairs.length === 99 && JSON.stringify(res.pairs) === before && res.pairs.filter(p => cc.jaGrammarIsTargetPair(p)).length === 90 &&
+        JSON.stringify(res.keywords) === kw0 && res.keywords.length === 30 && JSON.stringify(res.selectedTargetIds) === sel0 && JSON.stringify(vocab) === vocab0, { has: !!res.grammarInTrack })
+      T('C12', 'grammar entries are stored apart from the words: the progress store holds only buildingBlock: / conversationBasic: records, and the vocabulary key is not written',
+        Object.keys(store).every(k => /^(buildingBlock|conversationBasic):/.test(k)) && (await cc.stGet('tt-ja-vocab')) == null, Object.keys(store).slice(0, 5))
+      T('C13', 'the closed-vocabulary check is not affected: the same words are judged untaught before and after (all 99 lines), and the allowed grammar is the same list',
+        JSON.stringify(line0) === JSON.stringify(line1) && JSON.stringify(inv0.grammarScaffold.map(g => g.id)) === JSON.stringify(inv1.grammarScaffold.map(g => g.id)), line1.slice(0, 2))
+      const res2 = await cc.jaGrammarFinaliseTrack(res, { vocab, today: TODAY }), store2 = await cc.jaGrammarLoad()
+      T('C14', 'a track is never counted twice: finalising it again returns it as it is and the stored exposures do not move', res2 === res && JSON.stringify(store2) === JSON.stringify(store))
+      // closed-vocabulary scenario: a sentence the closed vocabulary rejects is rejected the same with the switch off
+      const off = fresh(); off.jaGrammarFromSentencesSetEnabled(false)
+      const v2 = learner(off, 90); await off.jaGrammarMigrateV1(v2)
+      const s0 = JSON.stringify(await off.jaGrammarLoad()), r0 = await off.jaGrammarFinaliseTrack(trackOf(), { vocab: v2, today: TODAY }), s1 = JSON.stringify(await off.jaGrammarLoad())
+      T('C15', 'switch OFF (jaGrammarFromSentencesSetEnabled(false)): nothing is chosen, nothing is stored, the track is returned unchanged', !r0.grammarInTrack && s0 === s1 && off.jaGrammarFromSentencesOn() === false)
+      const st0 = await off.jaGrammarLoad()
+      const legacyFresh = off.jaGrammarPreGenFresh(v2, st0)
+      const expected = off.jaBlocksAvailable(v2, st0).filter(b => !off.jaGrammarGet(st0, 'buildingBlock', b.id).introducedAt).sort((a, b) => (a.order || 0) - (b.order || 0)).slice(0, 1)
+      T('C16', 'switch OFF: the old path (at most ONE new building block chosen before writing) is exactly what it was; switch ON: nothing is introduced before the sentences exist',
+        JSON.stringify(legacyFresh.map(b => b.id)) === JSON.stringify(expected.map(b => b.id)) && legacyFresh.length <= 1 && cc.jaGrammarFromSentencesOn() === true && cc.jaGrammarPreGenFresh(vocab, await cc.jaGrammarLoad()).length === 0, { legacyFresh: legacyFresh.map(b => b.id) })
+    }
+    // ── through the real finaliser (the model transport scripted, as in the other pipeline suites)
+    {
+      const { setup, makeTrack, mock } = require('./tests14')
+      const run = async on => {
+        const S = setup('ja'); S.c.jaGrammarFromSentencesSetEnabled(on); S.c.console.error = () => {}; S.c.console.warn = () => {}
+        mock(S, 'ja', {})
+        const base = makeTrack(S, 'ja', { tag: on ? '-on' : '-off' }), c = S.c
+        const tc = c.jaGeneratorTrackContext(S.targets, null, 'daily', 'natural', 'run-grammar')
+        const pairs = base.pairs.map((p, i) => p.targetId != null ? c.stampPairProvenance(p, c.jaPairProvenance(tc, S.targets.find(t => t.id === p.targetId), p.recallIndex || 1, 'generation'))
+          : c.stampPairProvenance(p, { language: 'ja', trackId: tc.trackId, generationRunId: tc.generationRunId, isTargetPair: false, kind: i ? 'reply' : 'opening', slot: i, sourceStage: 'scene' }))
+        const t0 = c.jaTrackObject(tc, { pairs, scene: null, recallCount: pairs.filter(p => p.targetId != null).length, framingCount: 2 }, S.targets.map(t => ({ ...t, selectionRole: 'review' })), 'natural', 'm', 'daily')
+        const logs = []
+        const r = await S.c.jazhQcFinaliseAndListen(t0, 'ja', { vocab: S.vocab, apiKey: 'k', model: S.c.ev('GEMINI_DEFAULT_MODEL'), register: 'natural', runId: S.c.aiBeginRun('ja-grammar-' + on), push: m => logs.push(m), onListening: () => {} })
+        return { r, logs, S, store: await S.c.jaGrammarLoad() }
+      }
+      const on = await run(true), off = await run(false)
+      const a = on.r.track, b = off.r.track
+      T('C17', 'the real finaliser (QC, final audit, then the grammar step): the finished track carries its grammar, the log says so, and the grammar is recorded',
+        !!a.grammarInTrack && a.grammarInTrack.recorded === true && on.logs.some(l => /GRAMMAR FROM SENTENCES/.test(l)) && Object.keys(on.store).length > 0, { has: !!a.grammarInTrack, logs: on.logs.filter(l => /GRAMMAR/.test(l)) })
+      T('C18', 'the finished track is the same with and without grammar: the same MAIN TRACK readiness line (TARGET PAIRS · TARGET WORDS · every target 3/3), the same invariants and integrity, the same pairs and the same 30 words — grammar adds a section and counts nowhere',
+        !b.grammarInTrack && on.S.c.trackReadinessExportLines(a)[0] === off.S.c.trackReadinessExportLines(b)[0] && JSON.stringify(a.integrity && a.integrity.invariants) === JSON.stringify(b.integrity && b.integrity.invariants) &&
+        a.pairs.length === b.pairs.length && JSON.stringify(a.keywords) === JSON.stringify(b.keywords) && Object.keys(off.store).length === 0, { on: on.S.c.trackReadinessExportLines(a)[0], off: off.S.c.trackReadinessExportLines(b)[0] })
+    }
+  } catch (e) { T('C!', 'section C stopped: ' + String(e && e.message).split('\n')[0], false, String(e && e.stack).slice(0, 400)) }
 
   out.forEach(l => console.log(l))
   console.log('\n' + (n - fails) + '/' + n + ' passed' + (fails ? ' · ' + fails + ' FAILED' : ' — ALL PASS'))

@@ -58901,6 +58901,7 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
     if (!cp) { setCpOfferJa(null); return null }
     const o = { cp, compat: genCheckpointCompatible(cp, 'ja', targets, authorisedJa), summary: genCheckpointSummary(cp, targets) }
     if (o.compat.ok && !jaPartialFromJSON(cp.extra && cp.extra.partial)) o.compat = { ok: false, reason: 'the saved draft is incomplete' }
+    if (jaStudyReadyOn()) o.studyOk = jaDraftStudyOk(cp, targets, authorisedJa)    // v778 — "Study what's ready" is offered on the saved-draft screen only for a draft of THIS selection with something verified and something missing
     setCpOfferJa(o); return o
   }
   function jaSaveDraft(part, status) {
@@ -58953,6 +58954,22 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
     }
   }
   async function startNewJa() { await genCheckpointClear('ja'); cpRefJa.current = null; setCpOfferJa(null); buildScene() }
+  // v778 — "Study what's ready" on the saved-draft screen: the draft's verified recalls become the same NOT_READY track as on the recover screen (finishJapaneseIncomplete, the normal final audit,
+  // no request to write the missing recalls). The draft itself is not touched: it stays saved (a draft is never a lesson), so Retry missing recalls still works on the done screen; only "Study anyway" hands the track over
+  function studyJaDraft(cp) {
+    const part0 = jaPartialFromJSON(cp && cp.extra && cp.extra.partial)
+    if (!jaStudyReadyOn() || !part0 || !(part0.missingRecalls || []).length) return
+    cpRefJa.current = cp; setCpOfferJa(null)
+    if (!aiRunRef.current) aiRunRef.current = aiBeginRun('ja-track')
+    if (part0.trackContext) trackCtxRef.current = part0.trackContext
+    if (part0.scene) setScene(part0.scene)
+    const kept = (part0.perTarget || []).flat().filter(p => p && p.targetId != null)
+    const tp = {}; kept.forEach(p => { const cur = tp[p.targetId] || { recallsCompleted: 0, recalls: [] }; cur.recalls.push({ recallIndex: p.recallIndex, checkTier: pairCheckCount(p) || 1, source: p._source, history: pairCheckHistory(p) }); cur.recallsCompleted = cur.recalls.length; tp[p.targetId] = cur })
+    setTargetProgress(tp); setRecallDone(part0.recallCount || kept.length); setFramingDone(FRAMING_SLOTS)
+    setAcceptanceHistory(kept.map((p, i) => ({ source: p._source, kind: 'recall', targetId: p.targetId, recallIndex: p.recallIndex, at: i })))
+    push('♻ STUDY_WHAT_IS_READY from the saved draft ' + cp.id + ' · ' + (part0.recallCount || kept.length) + '/' + recallTotal + ' verified recalls kept (no request) · ' + (part0.missingRecalls || []).length + ' left out')
+    finishJapaneseIncomplete(part0, { studyReady: true })
+  }
   // §16 — show ONLY what this track actually uses, and §15 cap new grammar at 2.
   const sceneText = scene ? [scene.opening, scene.reply, scene.closing, scene.closing_reply].join('') : ''
   // Phase 3 — curriculum rows with NEW / DUE / REINFORCE / LEARNED status. Generation
@@ -59427,7 +59444,9 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
   // v682 — a saved Japanese draft: Retry missing recalls (resume) or Start new generation (discard), never automatic
   if (phase === 'resume-choice') return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', gap:16 }}>
-      <GenCheckpointChoice offer={cpOfferJa} total={recallTotal} langLabel="Japanese" onRetryMissing={() => cpOfferJa && cpOfferJa.compat.ok && resumeJaDraft(cpOfferJa.cp)} onStartNew={startNewJa} onBack={onBack} />
+      {jaStudyReadyOn() && cpOfferJa && cpOfferJa.studyOk
+        ? <JaDraftChoice offer={cpOfferJa} total={recallTotal} onRetryMissing={() => cpOfferJa && cpOfferJa.compat.ok && resumeJaDraft(cpOfferJa.cp)} onStudy={() => studyJaDraft(cpOfferJa.cp)} onStartNew={startNewJa} onBack={onBack} />
+        : <GenCheckpointChoice offer={cpOfferJa} total={recallTotal} langLabel="Japanese" onRetryMissing={() => cpOfferJa && cpOfferJa.compat.ok && resumeJaDraft(cpOfferJa.cp)} onStartNew={startNewJa} onBack={onBack} />}
     </div>
   )
   if (phase === 'error') return (
@@ -64658,6 +64677,36 @@ function jaStudyReadyNote(produced, missing, draftKept) {
       'Your word progress changes only when you rate the words at the end, as always.']
   if (draftKept) p.push('Your draft stays saved, so the next screen still offers Retry missing recalls.')
   return p
+}
+// can the saved draft of THIS selection be studied as it is? The same 30 words and the same allowed vocabulary as the draft (the retry limit does not matter: nothing is retried), at least one
+// verified recall, at least one missing, and a draft that can be restored. A draft of another selection is never studied.
+function jaDraftStudyOk(cp, targets, authorisedWords) {
+  if (!cp || !cp.fingerprint) return false
+  const sm = genCheckpointSummary(cp, targets), part = jaPartialFromJSON(cp.extra && cp.extra.partial)
+  return sm.accepted > 0 && sm.missing.length > 0 && !!part && (part.missingRecalls || []).length > 0 && genCheckpointCompatible({ ...cp, resumes: 0 }, 'ja', targets, authorisedWords).ok
+}
+// the saved-draft screen when "Study what's ready" is offered: the same card and buttons as the shared choice (which Thai and Mandarin keep, untouched) with one more button between Retry and
+// Start new generation, and the card's last sentence said the way that is true here
+function JaDraftChoice({ offer, total, onRetryMissing, onStudy, onStartNew, onBack }) {
+  const sm = offer.summary || { accepted: 0, expected: total, missing: [] }
+  const miss = sm.missing || [], exp = sm.expected || total
+  return (
+    <>
+      <Card style={{ padding:'12px 14px', width:'100%' }}>
+        <p style={{ fontSize:13, fontWeight:700, marginBottom:6 }}>{'💾'} Saved Japanese draft</p>
+        <p style={{ fontSize:12, color:'var(--muted)', lineHeight:1.6 }}>
+          {sm.accepted} / {exp} recalls are verified and kept. {miss.length + ' still missing:'}
+        </p>
+        <p style={{ fontSize:12, lineHeight:1.6, marginTop:4 }}>{miss.slice(0, 8).map(m => m.target + ' (recall ' + m.recallIndex + ')').join(' · ')}{miss.length > 8 ? ' …' : ''}</p>
+        <p data-ja-study-ready-note="1" style={{ fontSize:11, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>{'The draft itself is not a lesson: it is not in your track list and your word progress is unchanged. Study what\'s ready makes a track from the ' + sm.accepted + ' verified recalls (marked not ready, the missing ones left out) without another try; the draft stays saved until you study that track.'}</p>
+        {!offer.compat.ok && <p style={{ fontSize:12, color:'#f59e0b', marginTop:6, lineHeight:1.5 }}>It cannot be resumed: {offer.compat.reason}.</p>}
+      </Card>
+      {offer.compat.ok && <Btn onClick={onRetryMissing} style={{ width:'100%', justifyContent:'center' }}>{'↻'} {'Retry missing recalls (' + miss.length + ')'}</Btn>}
+      <Btn onClick={onStudy} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>{'▶'} {'Study what\'s ready (' + sm.accepted + '/' + exp + ')'}</Btn>
+      <Btn onClick={onStartNew} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Start new generation{sm.accepted ? ' (discards the ' + sm.accepted + ' saved)' : ''}</Btn>
+      <Btn onClick={onBack} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+    </>
+  )
 }
 // ══ end v778 ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId, apiKey, model, onLog, onProgress, recOpts) {

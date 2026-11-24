@@ -1,0 +1,80 @@
+{
+ "about": "Values taken from the UNCHANGED v777 build (commit 7474de1, source dev/tt.jsx as released in v777) by running TT_PROBE=1 node tests118.js on it, before any change for Study what's ready: the Japanese generation-needs-a-recall screen for an 89/90 generation (text, whole tree, buttons), for the same with the whole-track cost limit reached, for 87/90 (three missing recalls of two words) and after one Retry that fails; the buttons of the done screen when the only missing recall is used up (finishJapaneseIncomplete, the case the app already finished by itself); the Japanese saved-draft screen (text, tree, buttons); the shared saved-draft choice as Thai and Mandarin show it (with and without a resume possible); the final audit of a track with a word short of a recall for Thai, Japanese and Mandarin (status, reasons, counts, log, lines); and the code of the Thai, Mandarin and Cantonese generators, the shared draft choice, the Listening gate and button, the Topic screens, the brick grid and the live log. tests118.js compares the new build, its switch off, to these.",
+ "recover89": {
+  "text": "d64cf04bb2d8c18f",
+  "tree": "6e016e09405deb7e",
+  "buttons": [
+   "⬇ log",
+   "↻ Retry missing recall",
+   "Start over",
+   "Back"
+  ]
+ },
+ "recoverCost": {
+  "text": "52aa7369185a1d4f",
+  "tree": "4746ece8d3bf2f30",
+  "buttons": [
+   "⬇ log",
+   "↻ Retry missing recall",
+   "Start over",
+   "Back"
+  ]
+ },
+ "recover87": {
+  "text": "02eec2211c440573",
+  "tree": "33d25a08383505c6",
+  "buttons": [
+   "▲ History",
+   "⬇ log",
+   "↻ Retry missing recall",
+   "Start over",
+   "Back"
+  ]
+ },
+ "recoverRetried": {
+  "text": "86c03e3a9e287d1a",
+  "tree": "d621afe8e4513f14"
+ },
+ "doneUsedUp": {
+  "actions": [
+   "↻ Retry missing recalls ( 1 ) — the 89 verified recalls are kept",
+   "▶ Study anyway — track not ready (89/90)",
+   "↻ Run quality check again",
+   "Back"
+  ],
+  "head": "Track not ready (89/90) 0 % 30 words · 9",
+  "states": null
+ },
+ "draftJa": {
+  "text": "5d9f7cce54968b38",
+  "tree": "a708dc7cb86a2546",
+  "buttons": [
+   "↻ Retry missing recalls (1)",
+   "Start new generation (discards the 89 saved)",
+   "Back"
+  ]
+ },
+ "choice": {
+  "th": "c831b9ad59c28060",
+  "zh": "cc74672093209fe6",
+  "thBad": "65352243559cb0fb",
+  "zhBad": "ca90d457041d9ed2"
+ },
+ "fin": {
+  "th": "dfb7a986dfcf0028",
+  "ja": "3830ed7b6b1541ba",
+  "zh": "634a199790cd086f"
+ },
+ "code": {
+  "Generator": "d1f42a7582826659",
+  "MandarinGenerator": "96f46784417b0789",
+  "CantoneseGenerator": "944745366a992693",
+  "GenCheckpointChoice": "a5cb3a48a7ba5ece",
+  "ListenFirstGate": "3c45b78cbe7a20d8",
+  "ListeningTrackButton": "4ba6c642b011012f",
+  "TopicsView": "948ebb980958a289",
+  "TopicWordsView": "2b765286c82db1d4",
+  "GenerationBrickGrid": "47d3a749c8edee01",
+  "GenerationLiveLog": "b971a678b969d9a2"
+ }
+}

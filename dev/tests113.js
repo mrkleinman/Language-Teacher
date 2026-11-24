@@ -329,6 +329,113 @@ const TARA = mkRecall('行ったら言ってね。', 'Tell me when you go.')
       T('C17', 'both off ⇒ no context at all (v773 behaviour)', cc.jaGrammarGateContext(L.vocab, L.store, { register: 'natural', today: TODAY }) === null) }
   } catch (e) { T('C!', 'section C stopped: ' + String(e && e.message).split('\n')[0], false, String(e && e.stack).slice(0, 500)) }
 
+  // ═══ D — KNOWN AFTER 3 SIGHTINGS ════════════════════════════════════════════════════════════════════════════════════════════════
+  try {
+    const c = fresh(), ev = x => c.ev(x)
+    const TARA3 = ['行ったら言ってね。', '友達に会ったら教えてね。', '雨が降ったら行かないよ。']       // 3 sentences that use 〜たら
+    const mk = lines => lines.map((s, i) => ({ speaker: 'A', japanese: s, thai: s, targetId: 3000 + i, wordId: 3000 + i, isTargetPair: true, recallIndex: 1 }))
+    const trk = (id, lines) => ({ language: 'ja', createdAt: id, date: id.slice(0, 10), mode: 'daily', speechStyle: 'natural', trackContext: { trackId: id, language: 'ja' }, keywords: [{ japanese: 'w', wordId: 1, rating: null }], selectedTargetIds: [1], pairs: mk(lines), buildingBlocks: [] })
+    const intro = (store, ids) => ids.forEach(id => c.jaGrammarIntroduce(store, 'buildingBlock', id, '2026-09-01'))
+    const rec = (store, an, trackId, day) => c.jaGrammarRecordSightings(store, an, trackId, day || TODAY)
+    const R = ev('JA_GRAMMAR_KNOWN_RULE')
+    T('D1', 'the rule is written down: known at 3 sentences across 2 different tracks', R.minSentences === 3 && R.minTracks === 2)
+    // 3 uses in ONE track do not make it known; 3 uses across 2 tracks do
+    { const st = {}; intro(st, ['tara'])
+      const anA = c.jaGrammarAnalyseTrack(mk(TARA3)); const r1 = rec(st, anA, 'track-A')
+      const x = st['buildingBlock:tara']
+      T('D2', 'three sentences in ONE track do NOT make an entry known: 3 sightings, 1 track, no known date',
+        x.sightings === 3 && x.sightingTracks.length === 1 && !x.knownAt && r1.becameKnown.length === 0 && r1.changes >= 1, x) }
+    { const st = {}; intro(st, ['tara'])
+      rec(st, c.jaGrammarAnalyseTrack(mk(TARA3.slice(0, 1))), 'track-A')
+      const mid = JSON.stringify(st['buildingBlock:tara'])
+      const r2 = rec(st, c.jaGrammarAnalyseTrack(mk(TARA3.slice(1))), 'track-B', '2026-11-25'), x = st['buildingBlock:tara']
+      T('D3', 'three sentences across TWO tracks (1 + 2) make it known: 3 sightings, tracks A and B, the day it became known; one sentence and then one more (2 in all) is not enough',
+        !JSON.parse(mid).knownAt && x.sightings === 3 && x.sightingTracks.join() === 'track-A,track-B' && x.knownAt === '2026-11-25' && r2.becameKnown.join() === 'tara', { mid, x })
+      const st2 = {}; intro(st2, ['tara']); rec(st2, c.jaGrammarAnalyseTrack(mk(TARA3.slice(0, 1))), 'track-A'); rec(st2, c.jaGrammarAnalyseTrack(mk(TARA3.slice(1, 2))), 'track-B')
+      const x2 = JSON.parse(JSON.stringify(st2['buildingBlock:tara'])); rec(st2, c.jaGrammarAnalyseTrack(mk(TARA3.slice(2))), 'track-C', '2026-11-26')
+      T('D4', 'one sentence in each of three tracks is known at the third (3 sentences, 3 tracks); two sentences in two tracks are not', !x2.knownAt && x2.sightings === 2 && st2['buildingBlock:tara'].knownAt === '2026-11-26' && st2['buildingBlock:tara'].sightingTracks.length === 3) }
+    // a track is never counted twice
+    { const st = {}; intro(st, ['tara']); const an = c.jaGrammarAnalyseTrack(mk(TARA3.slice(0, 2)))
+      rec(st, an, 'track-A'); const once = JSON.stringify(st); const r = rec(st, an, 'track-A'); rec(st, an, 'track-A')
+      T('D5', 'idempotent: recording the same track again changes nothing (same counters, same track list, no second count)', JSON.stringify(st) === once && r.changes === 0 && st['buildingBlock:tara'].sightings === 2, st['buildingBlock:tara']) }
+    // only introduced entries count; existing records keep everything they had
+    { const st = {}; intro(st, ['wa']); st['buildingBlock:wa'] = { ...st['buildingBlock:wa'], interval: 7, dueDate: '2026-12-01', exposures: 9, status: 'learning', note: 'mine' }
+      const before = JSON.stringify(st['buildingBlock:wa']); rec(st, c.jaGrammarAnalyseTrack(mk(['私は行く。'])), 'track-A')
+      const w = st['buildingBlock:wa']
+      T('D6', 'an entry that is not introduced gets no sightings (〜たら here), and an introduced one keeps every field it had (interval, due date, exposures, status, extra fields) — it starts at 0 sightings, no invented history',
+        !st['buildingBlock:tara'] && w.interval === 7 && w.dueDate === '2026-12-01' && w.exposures === 9 && w.status === 'learning' && w.note === 'mine' && w.sightings === 1 && JSON.parse(before).sightings === undefined, w) }
+    // known entries leave NEW and REVIEW, take no review slot
+    const knownStore = () => { const st = {}; intro(st, ['wa', 'ka', 'ne', 'yo', 'da']);
+      ;['wa', 'ka', 'ne'].forEach((id, i) => { Object.assign(st['buildingBlock:' + id], { dueDate: ['2026-11-20', '2026-11-21', '2026-11-22'][i], interval: 3, status: 'learning' }) })
+      Object.assign(st['buildingBlock:wa'], { knownAt: '2026-11-10', sightings: 6, sightingTracks: ['a', 'b'] }); return st }
+    { const st = knownStore(), p = c.jaGrammarPlan(c.jaGrammarAnalyseTrack(mk(['私は行くか。', '水は飲むね。', 'これは本だね。', 'あれは本だよ。', '私は行くよ。'])), { known: 90, store: st, today: TODAY })
+      T('D7', 'a known entry leaves the NEW and REVIEW lists and takes no review slot: は is due but known, so the two review slots go to か and ね, and は is listed as known',
+        p.review.map(x => x.id).join() === 'ka,ne' && !p.new.some(x => x.id === 'wa') && p.knownGrammar.map(x => x.id).join() === 'wa' && !p.alsoUsed.some(x => x.id === 'wa'), { review: p.review.map(x => x.id), known: p.knownGrammar.map(x => x.id) })
+      const due = c.jaGrammarDue(st, 'buildingBlock', TODAY).map(r => r.itemId).join(), tp = c.jaGrammarTrackPlan(st, 90, { today: TODAY })
+      T('D8', 'anything that reads "due" skips it (the due list, the overdue count behind "no new entries while more than 6 are overdue", the review list on the plan screen) — and anything that reads "introduced" still counts it (allowed, never planned again, still satisfies a prerequisite)',
+        due === 'ka,ne' && tp.review.map(x => x.id).join() === 'ka,ne' && tp.overdue === 2 && !tp.next.some(x => x.id === 'wa') && c.jaGrammarIntroducedIds(st).includes('wa') && c.jaGrammarGateContext(learner(c, 90), st, { register: 'natural', today: TODAY }).introducedIds.includes('wa') &&
+        c.jaBlocksAvailable(learner(c, 90), st).some(b => b.id === 'mo'), { due, tp: tp.review.map(x => x.id), overdue: tp.overdue })
+      const many = knownStore(); ;['plain-present', 'san', 'wo', 'ni', 'no', 'de'].forEach(id => { intro(many, [id]); Object.assign(many['buildingBlock:' + id], { dueDate: '2026-11-01', interval: 2 }) })
+      Object.assign(many['buildingBlock:ka'], { knownAt: '2026-11-10' }); Object.assign(many['buildingBlock:ne'], { knownAt: '2026-11-10' })
+      const od = c.jaGrammarTrackPlan(many, 90, { today: TODAY })
+      const offK = fresh(); offK.jaGrammarKnownSetEnabled(false); const od0 = offK.jaGrammarTrackPlan(many, 90, { today: TODAY })
+      T('D9', 'known entries do not count as overdue: 9 entries are overdue, 3 of them known, so 6 count and new entries are still planned (7 or more would hold them back; with the known rule off the same store counts 9 and holds)', od.overdue === 6 && od.held === false && od.next.length > 0 && od0.overdue === 9 && od0.held === true && od0.next.length === 0, { on: od.overdue, off: od0.overdue })
+      const ln = c.jaItemStatus(st['buildingBlock:wa'], TODAY)
+      T('D10', 'the status shown for a known entry is LEARNED (it was DUE)', ln === 'LEARNED' && c.jaItemStatus({ ...st['buildingBlock:wa'], knownAt: null }, TODAY) === 'DUE', ln) }
+    // the real finaliser: two tracks, the second makes it known; the summary and the export say so; one track finalised twice counts once
+    {
+      const cc = fresh(), vocab = learner(cc, 90); await cc.jaGrammarMigrateV1(vocab)
+      const st0 = await cc.jaGrammarLoad(); const snap = JSON.stringify(st0)
+      const A = await cc.jaGrammarFinaliseTrack(trk('2026-11-20T10:00:00.000Z', ['私は水を飲む？', '私は行くよ。', 'これは私の本だよ。']), { vocab, today: '2026-11-20' })
+      const stA = await cc.jaGrammarLoad()
+      const wa1 = stA['buildingBlock:wa']
+      const A2 = await cc.jaGrammarFinaliseTrack(trk('2026-11-20T10:00:00.000Z', ['私は水を飲む？', '私は行くよ。', 'これは私の本だよ。']), { vocab, today: '2026-11-20' })   // an equal track without its grammar section: finalised "again"
+      const stA2 = await cc.jaGrammarLoad()
+      T('D11', 'finalised twice (a second copy of the same track, without the grammar section the first one received): the sightings and the track list do not change, the track is not counted again',
+        wa1 && wa1.sightings === 3 && wa1.sightingTracks.join() === '2026-11-20T10:00:00.000Z' && stA2['buildingBlock:wa'].sightings === 3 && stA2['buildingBlock:wa'].sightingTracks.length === 1 && !stA2['buildingBlock:wa'].knownAt, { wa1, wa2: stA2['buildingBlock:wa'] })
+      const B = await cc.jaGrammarFinaliseTrack(trk('2026-11-22T10:00:00.000Z', ['私は寝る。']), { vocab, today: '2026-11-22' })
+      const stB = await cc.jaGrammarLoad(), wa = stB['buildingBlock:wa']
+      T('D12', 'a second track that uses は once more makes it known (4 sentences, 2 tracks): the record carries the counters, the two track ids and the date, and the track summary names it as having become known',
+        wa.sightings === 4 && wa.sightingTracks.length === 2 && wa.knownAt === '2026-11-22' && B.grammarInTrack.becameKnown && B.grammarInTrack.becameKnown.some(x => x.id === 'wa' && x.sightings === 4 && x.tracks === 2) && !A.grammarInTrack.becameKnown, { wa, b: B.grammarInTrack.becameKnown })
+      T('D13', 'nothing was deleted or overwritten: every record that existed before is still there, every field it had keeps its value except the new counters',
+        Object.keys(JSON.parse(snap)).every(k => stB[k] && Object.keys(JSON.parse(snap)[k]).every(f => JSON.stringify(stB[k][f]) === JSON.stringify(JSON.parse(snap)[k][f]) || ['exposures', 'productiveExposures', 'lastSeen', 'dueDate', 'autoScheduled', 'sightings', 'sightingTracks', 'knownAt', 'seenInPassing', 'lastPassing', 'introducedAt', 'status', 'interval'].includes(f))) &&
+        Object.keys(JSON.parse(snap)).every(k => JSON.parse(snap)[k].introducedAt ? stB[k].introducedAt === JSON.parse(snap)[k].introducedAt : true))
+      // the third track: は is known now — not NEW, not REVIEW, listed as known, and exposures still counted
+      const C3 = await cc.jaGrammarFinaliseTrack(trk('2026-11-25T10:00:00.000Z', ['私は走る。', '私は行く？']), { vocab, today: '2026-11-25' })
+      const g3 = C3.grammarInTrack
+      T('D14', 'in the next track は is KNOWN: it is in neither NEW nor REVIEW nor ALSO USED, it is listed as known, it takes no review slot — and a known entry\'s sightings keep counting',
+        g3.knownUsed && g3.knownUsed.some(x => x.id === 'wa') && !g3.new.concat(g3.review, g3.alsoUsed).some(x => x.id === 'wa') && (await cc.jaGrammarLoad())['buildingBlock:wa'].sightings === 6, { known: g3.knownUsed && g3.knownUsed.map(x => x.id) })
+      const txt = exportText(cc, B), txt3 = exportText(cc, C3)
+      T('D15', 'the export says so: "BECAME KNOWN WITH THIS TRACK" in the track that made it known, "KNOWN (…not reviewed)" in the next one',
+        /\nBECAME KNOWN WITH THIS TRACK/.test(txt) && /は \[wa\]|は — topic marker/.test(txt.slice(txt.indexOf('BECAME KNOWN'))) && /\nKNOWN \(/.test(txt3) && !/\nBECAME KNOWN/.test(txt3), txt.split('\n').filter(l => /KNOWN/.test(l)))
+      // the Known grammar list in the Japanese Words area
+      await cc.stSet('tt-ja-grammar-srs', stB)
+      const lst = cc.jaGrammarKnownList(stB)
+      T('D16', 'the Known grammar list has, for each known entry, its short explanation, how many sightings (and tracks) and the day it became known: は (4 sentences, 2 tracks) and the plain present (3, 2)', lst.length === 2 && lst[0].id === 'wa' && lst[0].label === 'は' && lst[0].explain.length > 5 && lst[0].sightings === 4 && lst[0].tracks === 2 && lst[0].knownAt === '2026-11-22' && lst[1].id === 'plain-present' && lst[1].sightings === 3 && lst[1].explain.length > 5, lst)
+      let W; await TR.act(async () => { W = TR.create(React.createElement(cc.WordListView, { vocab: [], lang: 'ja', initialFilter: 'all', onBack() {} })); await flush(10) })
+      let j = textOf(W.toJSON())
+      T('D17', 'the Japanese Words area carries one slim row "Known grammar (2)", closed by default (the least intrusive place that already exists: the word list the Words / Known tiles open)', /Known grammar \(\s*2\s*\)/.test(j) && !j.includes(lst[0].explain))
+      const tog = W.root.findAll(x => x.props && x.props['data-known-grammar-toggle'] && typeof x.props.onClick === 'function')[0]
+      await TR.act(async () => { tog.props.onClick(); await flush(3) }); j = textOf(W.toJSON())
+      T('D18', 'opened, it lists は with its explanation, "4 sightings in 2 tracks" and "known since 2026-11-22"', j.includes(lst[0].explain) && /4\s+sightings/.test(j) && /2\s+tracks/.test(j) && /2026-11-22/.test(j), j.slice(0, 400))
+      let Wt; await TR.act(async () => { Wt = TR.create(React.createElement(cc.WordListView, { vocab: [], lang: 'th', initialFilter: 'all', onBack() {} })); await flush(5) })
+      T('D19', 'the other languages\' word lists are untouched: no Known grammar row in the Thai list', !/Known grammar/.test(textOf(Wt.toJSON())))
+      // the empty state
+      const ce = fresh(); let We; await TR.act(async () => { We = TR.create(React.createElement(ce.WordListView, { vocab: [], lang: 'ja', initialFilter: 'all', onBack() {} })); await flush(10) })
+      const te = We.root.findAll(x => x.props && x.props['data-known-grammar-toggle'] && typeof x.props.onClick === 'function')[0]; await TR.act(async () => { te.props.onClick(); await flush(3) })
+      T('D20', 'with nothing known yet the row says so and tells the rule (3 sentences across 2 tracks)', /Known grammar \(\s*0\s*\)/.test(textOf(We.toJSON())) && /3\s+sentences/.test(textOf(We.toJSON())) && /2\s+(different\s+)?tracks/.test(textOf(We.toJSON())))
+    }
+    // the switch
+    { const cc = fresh(); cc.jaGrammarKnownSetEnabled(false); const st = knownStore(), vocab = learner(cc, 90); await cc.jaGrammarMigrateV1(vocab)
+      const p = cc.jaGrammarPlan(cc.jaGrammarAnalyseTrack(mk(['私は行く？', '水は飲む？', 'これはいいね。', 'あれは本だよ。'])), { known: 90, store: st, today: TODAY })
+      const f1 = await cc.jaGrammarFinaliseTrack(trk('2026-11-20T10:00:00.000Z', ['私は水を飲む？', '私は行くよ。']), { vocab, today: '2026-11-20' }), f2 = await cc.jaGrammarFinaliseTrack(trk('2026-11-22T10:00:00.000Z', ['私は寝る。', '私は走る。']), { vocab, today: '2026-11-22' })
+      const stx = await cc.jaGrammarLoad()
+      let We; await TR.act(async () => { We = TR.create(React.createElement(cc.WordListView, { vocab: [], lang: 'ja', initialFilter: 'all', onBack() {} })); await flush(10) })
+      T('D21', 'known switch off: a known flag is ignored (は is due and takes a review slot as before), no counters are written however many tracks are finalised, nothing becomes known, and the Known grammar row is not shown',
+        cc.jaGrammarKnownOn() === false && cc.jaGrammarDue(st, 'buildingBlock', TODAY).map(r => r.itemId).join() === 'wa,ka,ne' && p.review.some(x => x.id === 'wa') && !p.knownGrammar.length &&
+        Object.values(stx).every(r => r.sightings === undefined && r.sightingTracks === undefined && r.knownAt === undefined) && !f1.grammarInTrack.becameKnown && !f2.grammarInTrack.becameKnown && !f2.grammarInTrack.knownUsed && !/Known grammar/.test(textOf(We.toJSON()))) }
+  } catch (e) { T('D!', 'section D stopped: ' + String(e && e.message).split('\n')[0], false, String(e && e.stack).slice(0, 500)) }
+
   // ═══ F — SAFETY AND SWITCHES ═════════════════════════════════════════════════════════════════════════════════════════════════════
   try {
     // values of the v773 build (TT_PROBE=1 on the unchanged build prints them)

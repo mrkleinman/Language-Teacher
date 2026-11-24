@@ -15590,7 +15590,8 @@ function jaGrammarApplyRating(store, type, id, rating) {
 }
 function jaGrammarDue(store, type, today) {
   const t = today || new Date().toISOString().slice(0, 10)
-  return Object.values(store || {}).filter(r => r && r.type === type && r.introducedAt && r.dueDate && r.dueDate <= t)
+  // v774 D: a KNOWN grammar entry takes no review slot (it stays introduced: still allowed, still a satisfied prerequisite)
+  return Object.values(store || {}).filter(r => r && r.type === type && r.introducedAt && r.dueDate && r.dueDate <= t && !(type === 'buildingBlock' && jaGrammarIsKnownRec(r)))
 }
 // Curriculum unlock: available when its word gate is met AND every prerequisite is introduced.
 function jaBlocksAvailable(vocab, store) {
@@ -49844,6 +49845,7 @@ function WordListView({ vocab, lang, initialFilter, onBack, onVocabUpdate, noteF
   return (
     <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
       <Btn onClick={onBack} variant="ghost" style={{ alignSelf:'flex-start' }}>{'\u2190'} Back</Btn>
+      {lang === 'ja' && <ErrorBoundary><JaKnownGrammar /></ErrorBoundary>}
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search words..."
         style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 12px', color:'var(--text)', fontSize:14 }} />
       <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
@@ -58377,7 +58379,7 @@ function jaVerifyDeclaredBlocks(sentence, declaredBlocks, declaredBasics, availa
 function jaItemStatus(rec, today) {
   const t = today || new Date().toISOString().slice(0, 10)
   if (!rec || !rec.introducedAt) return 'NEW'
-  if (rec.status === 'known') return 'LEARNED'
+  if (rec.status === 'known' || (rec.type === 'buildingBlock' && jaGrammarIsKnownRec(rec))) return 'LEARNED'
   if (rec.dueDate && rec.dueDate <= t) return 'DUE'
   return 'REINFORCE'
 }
@@ -60538,11 +60540,11 @@ function jaGrammarPlan(an, o) {
   const cfg = JA_GRAMMAR_FROM_SENTENCES, store = (o && o.store) || {}, known = (o && o.known) || 0, today = (o && o.today) || new Date().toISOString().slice(0, 10)
   const rec = (type, id) => store[jaProgressKeyOf(type, id)] || null
   const intro = (type, id) => !!(rec(type, id) && rec(type, id).introducedAt)
-  const overdue = Object.values(store).filter(r => r && r.type === 'buildingBlock' && r.introducedAt && r.dueDate && r.dueDate < today).length
+  const overdue = Object.values(store).filter(r => r && r.type === 'buildingBlock' && r.introducedAt && r.dueDate && r.dueDate < today && !jaGrammarIsKnownRec(r)).length
   const held = overdue > cfg.overdueStop
   const row = (type, e, pairs) => ({ id: e.id, type, label: type === 'buildingBlock' ? e.label : e.form, romaji: e.romaji || '', meaning: type === 'buildingBlock' ? e.meaning : e.english,
     explain: type === 'buildingBlock' ? e.explain : ('A reaction word or set phrase: ' + e.english), pairs: pairs.slice(), cost: type === 'buildingBlock' ? e.cost : 0, minKnown: e.minKnown || 0, order: e.order })
-  const plan = { today, known, overdue, held, budget: { limit: cfg.budget, spent: 0 }, new: [], review: [], alsoUsed: [], passing: [], locked: [], basics: { new: [], review: [], alsoUsed: [], passing: [], locked: [] } }
+  const plan = { today, known, overdue, held, budget: { limit: cfg.budget, spent: 0 }, new: [], review: [], alsoUsed: [], knownGrammar: [], passing: [], locked: [], basics: { new: [], review: [], alsoUsed: [], passing: [], locked: [] } }
   // one pass for the grammar blocks and one for the basics (reaction words): the same buckets
   const pass = (type, uses, entryOf, bucket, limitNew, budgeted) => {
     const found = Object.values(uses).map(u => ({ e: entryOf(u.id), u })).filter(x => x.e).sort((a, b) => (a.e.order || 0) - (b.e.order || 0))
@@ -60552,6 +60554,7 @@ function jaGrammarPlan(an, o) {
       if (intro(type, e.id)) {
         if (!tn) return                                              // only in framing lines: no exposure counted
         const x = { ...row(type, e, u.target), dueDate: r.dueDate || null }
+        if (type === 'buildingBlock' && jaGrammarIsKnownRec(r)) { bucket.knownGrammar.push(x); return }      // v774 D: known — neither NEW nor REVIEW, no review slot
         if (r.dueDate && r.dueDate <= today) dueUsed.push(x); else bucket.alsoUsed.push(x)
         return
       }
@@ -60594,6 +60597,7 @@ function jaGrammarApplyPlan(store, plan, today) {
       if (r && r.dueDate && r.dueDate <= today) { r.dueDate = jaGrammarAddDays(today, Math.max(cfg.autoReviewDays, Math.round(r.interval || 0))); r.autoScheduled = true }
     })
     b.alsoUsed.forEach(x => expose(type, x))
+    ;(b.knownGrammar || []).forEach(x => expose(type, x))
     b.passing.forEach(x => {                                         // seen, not taught: a note on the record, no introduction
       const k = jaProgressKeyOf(type, x.id), r = store[k] || jaNewProgressRecord(type, x.id)
       if (r.introducedAt) return
@@ -60608,7 +60612,8 @@ function jaGrammarSummary(plan, an) {
   const slim = x => { const o = { id: x.id, type: x.type, label: x.label, romaji: x.romaji, meaning: x.meaning, explain: x.explain, pairs: x.pairs, cost: x.cost }; if (x.why) o.why = x.why; if (x.dueDate) o.dueDate = x.dueDate; if (x.minKnown) o.minKnown = x.minKnown; return o }
   const grp = b => ({ new: b.new.map(slim), review: b.review.map(slim), alsoUsed: b.alsoUsed.map(slim), passing: b.passing.map(slim), locked: b.locked.map(slim) })
   const unsure = (an.perPair || []).filter(r => r.unsure.length).map(r => r.n)
-  return { version: 1, at: plan.today, known: plan.known, budget: plan.budget, overdue: plan.overdue, held: plan.held, ...grp(plan), basics: grp(plan.basics), unsureLines: unsure, recorded: true }
+  return { version: 1, at: plan.today, known: plan.known, budget: plan.budget, overdue: plan.overdue, held: plan.held, ...grp(plan), basics: grp(plan.basics), unsureLines: unsure, recorded: true,
+    ...(plan.knownGrammar && plan.knownGrammar.length ? { knownUsed: plan.knownGrammar.map(slim) } : {}) }
 }
 // the one entry point the finaliser calls once the sentences are final: choose, record, and hand back the track with its grammar. It never fails the track.
 async function jaGrammarFinaliseTrack(track, o) {
@@ -60621,8 +60626,12 @@ async function jaGrammarFinaliseTrack(track, o) {
     const an = jaGrammarAnalyseTrack(track.pairs)
     const plan = jaGrammarPlan(an, { known: jaGrammarKnownCount(opts.vocab), store, today })
     const changed = jaGrammarApplyPlan(store, plan, today)
-    if (changed) await jaGrammarSave(store)
+    // v774 D: count this track's sentences into the entries' own records (idempotent per track id); an entry that reaches 3 sentences across 2 tracks becomes known
+    const sight = jaGrammarKnownOn() ? jaGrammarRecordSightings(store, an, jaGrammarTrackIdOf(track), today) : { changes: 0, becameKnown: [] }
+    if (changed || sight.changes) await jaGrammarSave(store)
     const sum = jaGrammarSummary(plan, an)
+    if (sight.becameKnown.length) sum.becameKnown = sight.becameKnown.map(id => { const e = jaGrammarEntryById(id), r = store[jaProgressKeyOf('buildingBlock', id)]
+      return { id, label: e ? e.label : id, romaji: e ? e.romaji : '', meaning: e ? e.meaning : '', explain: e ? e.explain : '', sightings: r.sightings || 0, tracks: (r.sightingTracks || []).length } })
     // v774 A/B — what the writer was allowed (planned before writing) and every line whose final text still uses an entry outside that list. Reported, never rewritten, never a reason to fail the track.
     { const _gate = (jaGrammarGateOn() || jaGrammarStageOn()) && track.trackContext && track.trackContext.grammarGate
       if (_gate && (_gate.gate || _gate.stage)) { sum.gate = jaGrammarGateReport(track, _gate, an, plan, (opts.vocab || []).filter(w => w && /^[おご]/.test(w.japanese || '')))
@@ -60647,7 +60656,7 @@ async function jaGrammarFinaliseTrack(track, o) {
 //                         per-line limits: generateTargetGroup / generateJapaneseOneRecall). A line that still fails when its attempts are used is KEPT and carries _grammarFlag; the finished track lists it
 //                         (GRAMMAR NOT YET TAUGHT: pair N uses X) and it never blocks READY. Pure code: no model request.
 // The plan the writer receives is one plain object (jaGrammarGateContext) carried by the track context (tc.grammarGate), so recovery, the quality-check repair and the finaliser all read the same one.
-const JA_GRAMMAR_GATE = { gate: true, stage: true }
+const JA_GRAMMAR_GATE = { gate: true, stage: true, known: true }
 function jaGrammarGateSetEnabled(on) { JA_GRAMMAR_GATE.gate = !!on }
 // the list of entries a track will introduce belongs to the picker (v773), which introduces them after writing: with the picker off there is nothing for a gate to hand out
 function jaGrammarGateOn() { return !!JA_GRAMMAR_GATE.gate && jaGrammarFromSentencesOn() }
@@ -60660,6 +60669,74 @@ function jaGrammarGateOn() { return !!JA_GRAMMAR_GATE.gate && jaGrammarFromSente
 //            30+ introduced   30 characters   ("broad")         nearly everything the 99 lines of the 17 Nov export say (the longest has 25)
 //      The free core and the short reaction words never count, so ね / よ and えっ / ええと / ねえ stay as natural as they are. A sentence that still breaks a ceiling when its attempts are used up is
 //      KEPT and flagged exactly like grammar outside the list (GRAMMAR STAGE: pair N …). The writer's prompt states the stage in words.
+// D  KNOWN  (jaGrammarKnownSetEnabled)  An entry becomes KNOWN once it has been used in at least 3 sentences across at least 2 DIFFERENT tracks (JA_GRAMMAR_KNOWN_RULE). Counted by the detector over the
+//      final pairs of a track when that track is finalised (jaGrammarRecordSightings): every sentence of the track counts, framing lines included, one sentence once per entry. The counters live in the
+//      entry's own progress record (sightings, sightingTracks = the ids of the tracks counted, knownAt); a track id already in the list is never counted again (finalising a track twice changes nothing).
+//      Only entries the learner has been introduced to are counted, and existing records start at 0 sightings: no history is invented, no field is overwritten or deleted. A known entry stays introduced
+//      (still allowed, still satisfies prerequisites) but leaves the NEW and REVIEW lists and takes no review slot, and is not counted as overdue. The Known grammar list is in the Japanese Words area.
+function jaGrammarKnownSetEnabled(on) { JA_GRAMMAR_GATE.known = !!on }
+function jaGrammarKnownOn() { return !!JA_GRAMMAR_GATE.known }
+const JA_GRAMMAR_KNOWN_RULE = Object.freeze({ minSentences: 3, minTracks: 2, keepTrackIds: 60 })
+function jaGrammarIsKnownRec(r) { return !!(r && r.knownAt && jaGrammarKnownOn()) }
+function jaGrammarTrackIdOf(track) { return String((track && ((track.trackContext && track.trackContext.trackId) || track.createdAt || track.trackId)) || '') }
+// counts one finalised track into the entries' own records (pure on the store it is handed). Returns { changes, becameKnown:[ids] }.
+function jaGrammarRecordSightings(store, an, trackId, today) {
+  const rule = JA_GRAMMAR_KNOWN_RULE, becameKnown = []
+  let changes = 0
+  if (!trackId) return { changes, becameKnown }                     // a track with no id cannot be told apart from another: nothing is counted
+  Object.values((an && an.uses) || {}).forEach(u => {
+    const k = jaProgressKeyOf('buildingBlock', u.id), r = store[k]
+    if (!r || !r.introducedAt) return                              // only what the learner has been introduced to
+    const ids = Array.isArray(r.sightingTracks) ? r.sightingTracks : []
+    if (ids.includes(trackId)) return                              // this track is already counted
+    r.sightings = (r.sightings || 0) + u.all.length
+    r.sightingTracks = ids.concat(trackId).slice(-rule.keepTrackIds)
+    changes++
+    if (!r.knownAt && r.sightings >= rule.minSentences && r.sightingTracks.length >= rule.minTracks) { r.knownAt = today || new Date().toISOString().slice(0, 10); becameKnown.push(u.id) }
+  })
+  return { changes, becameKnown }
+}
+// the Known grammar list: the entries that became known, the newest first
+function jaGrammarKnownList(store) {
+  const out = []
+  JA_GRAMMAR_CURRICULUM.forEach(e => {
+    const r = (store || {})[jaProgressKeyOf('buildingBlock', e.id)]
+    if (r && r.introducedAt && r.knownAt) out.push({ id: e.id, label: e.label, romaji: e.romaji || '', meaning: e.meaning, explain: e.explain, sightings: r.sightings || 0, tracks: (r.sightingTracks || []).length, knownAt: r.knownAt, order: e.order })
+  })
+  return out.sort((a, b) => String(b.knownAt).localeCompare(String(a.knownAt)) || (a.order - b.order))
+}
+function JaKnownGrammar() {
+  const [rows, setRows] = useState(null)
+  const [open, setOpen] = useState(false)
+  useEffect(() => { let go = true
+    ;(async () => { try { const st = await jaGrammarLoad(); if (go) setRows(jaGrammarKnownList(st)) } catch (e) { if (go) setRows([]) } })()
+    return () => { go = false } }, [])
+  if (!jaGrammarKnownOn() || rows == null) return null
+  return (
+    <div data-ja-known-grammar="1" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 12px' }}>
+      <button onClick={() => setOpen(o => !o)} aria-expanded={open} data-known-grammar-toggle="1"
+        style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 8, background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', color: 'var(--text)', fontSize: 13, fontWeight: 700, textAlign: 'left' }}>
+        <span>Known grammar ({rows.length})</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--muted)' }}>{open ? 'hide' : 'show'}</span>
+      </button>
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '6px 0 4px' }}>
+          {rows.length === 0 && <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>Nothing yet. A grammar point becomes known when it has been used in {JA_GRAMMAR_KNOWN_RULE.minSentences} sentences across {JA_GRAMMAR_KNOWN_RULE.minTracks} different tracks. Known points are no longer reviewed.</p>}
+          {rows.map(x => (
+            <div key={x.id} data-known-grammar-entry={x.id} style={{ background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span className="jp" style={{ fontSize: 15, fontWeight: 700 }}>{x.label}</span>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 3, lineHeight: 1.45 }}>{x.explain}</div>
+              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>{x.sightings} sightings in {x.tracks} tracks · known since {x.knownAt}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 function jaGrammarStageSetEnabled(on) { JA_GRAMMAR_GATE.stage = !!on }
 function jaGrammarStageOn() { return !!JA_GRAMMAR_GATE.stage && jaGrammarFromSentencesOn() }
 const JA_GRAMMAR_STAGES = Object.freeze([
@@ -60689,9 +60766,10 @@ function jaGrammarTrackPlan(store, known, o) {
   const rec = id => st[jaProgressKeyOf('buildingBlock', id)] || null
   const intro = id => !!(rec(id) && rec(id).introducedAt)
   const row = e => ({ id: e.id, label: e.label, romaji: e.romaji || '', meaning: e.meaning, explain: e.explain, cost: e.cost, minKnown: e.minKnown || 0, order: e.order })
-  const overdue = Object.values(st).filter(r => r && r.type === 'buildingBlock' && r.introducedAt && r.dueDate && r.dueDate < today).length
+  const live = r => r && r.type === 'buildingBlock' && r.introducedAt && !jaGrammarIsKnownRec(r)     // a known entry takes no review slot and is never overdue
+  const overdue = Object.values(st).filter(r => live(r) && r.dueDate && r.dueDate < today).length
   const held = overdue > cfg.overdueStop
-  const dueAll = Object.values(st).filter(r => r && r.type === 'buildingBlock' && r.introducedAt && r.dueDate && r.dueDate <= today).map(r => ({ r, e: jaGrammarEntryById(r.itemId) })).filter(x => x.e)
+  const dueAll = Object.values(st).filter(r => live(r) && r.dueDate && r.dueDate <= today).map(r => ({ r, e: jaGrammarEntryById(r.itemId) })).filter(x => x.e)
     .sort((a, b) => String(a.r.dueDate).localeCompare(String(b.r.dueDate)) || (a.e.order - b.e.order))
   const review = dueAll.slice(0, cfg.maxReview).map(x => ({ ...row(x.e), dueDate: x.r.dueDate }))
   const next = []; let spent = 0, stopped = null
@@ -60822,6 +60900,9 @@ function jaGrammarExportLines(track) {
   sect('NEW (taught now) — ' + ((g.budget && g.budget.spent) || 0) + ' of ' + ((g.budget && g.budget.limit) || 5) + ' points used' + (g.held ? ' — none added: ' + g.overdue + ' reviews are overdue' : ''), all('new'))
   sect('REVIEW (practised again)', all('review'), x => x.dueDate ? 'was due ' + x.dueDate : '')
   if (all('alsoUsed').length) L.push('ALSO USED (already learned): ' + all('alsoUsed').map(x => x.label).join(' '))
+  if (g.knownUsed && g.knownUsed.length) L.push('KNOWN (learned for good, used again here, not reviewed): ' + g.knownUsed.map(x => x.label).join(' '))
+  if (g.becameKnown && g.becameKnown.length) { L.push('BECAME KNOWN WITH THIS TRACK (used in ' + JA_GRAMMAR_KNOWN_RULE.minSentences + ' or more sentences across ' + JA_GRAMMAR_KNOWN_RULE.minTracks + ' or more tracks; no longer reviewed)')
+    g.becameKnown.forEach(x => L.push('  ' + x.label + (x.romaji ? ' [' + x.romaji + ']' : '') + ' — ' + x.meaning + ' — ' + x.sightings + ' sentences in ' + x.tracks + ' tracks')) }
   sect('SEEN IN PASSING (not taught yet)', all('passing'), x => x.why || '')
   sect('NOT YET UNLOCKED but used (listed only; the sentences are not rewritten)', all('locked'), x => x.minKnown ? 'unlocks at ' + x.minKnown + ' words' : '')
   // v774: what the writer was allowed, and every line that still uses grammar outside it (never hidden)
@@ -60884,6 +60965,13 @@ function JaGrammarInTrack({ track }) {
         </div>
       ))}
       {alsoUsed.length > 0 && <p style={{ fontSize: 10, color: 'var(--muted)', margin: '4px 2px' }}>Also used, already learned: <span className="jp">{alsoUsed.map(x => x.label).join(' ')}</span></p>}
+      {g.knownUsed && g.knownUsed.length > 0 && <p data-ja-grammar-known-used="1" style={{ fontSize: 10, color: 'var(--muted)', margin: '4px 2px' }}>Known, not reviewed: <span className="jp">{g.knownUsed.map(x => x.label).join(' ')}</span></p>}
+      {g.becameKnown && g.becameKnown.length > 0 && (
+        <div data-ja-grammar-became-known="1" style={{ margin: '6px 2px' }}>
+          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, color: '#10b981' }}>BECAME KNOWN WITH THIS TRACK</span>
+          {g.becameKnown.map(x => <div key={x.id} style={{ fontSize: 11, color: 'var(--muted)', padding: '2px 8px' }}><span className="jp" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{x.label}</span> {x.meaning} · {x.sightings} sentences in {x.tracks} tracks · no longer reviewed</div>)}
+        </div>
+      )}
       {g.gate && (
         <div data-ja-grammar-gate="1" style={{ marginTop: 8 }}>
           {g.gate.gate && (<>

@@ -61182,6 +61182,14 @@ function jaGrammarShownOf(x) {
 function jaGrammarShownLabel(x) { const o = jaGrammarShownOf(x); return o ? o.label : (x ? x.label : '') }
 function jaGrammarShownRomaji(x) { const o = jaGrammarShownOf(x); return o ? o.romaji : (x ? (x.romaji || '') : '') }
 function jaGrammarShownMeaning(x) { const o = jaGrammarShownOf(x); return o && o.meaning ? o.meaning : (x ? x.meaning : '') }
+// the few words of prose a stored track holds about an entry (the "needs … first" reason, the outcome of a planned point, the stage line "combines … new grammar points (…)") name the entry by the words it had when the
+// track was written; a track saved before is shown with the same words put right (a track written now already holds the new name, and the new name has none of the old words in it, so nothing changes twice)
+function jaGrammarShownProse(s) {
+  if (!jaGrammarShownLabelOn() || typeof s !== 'string') return s
+  let t = s
+  Object.keys(JA_GRAMMAR_SHOWN_TEXT).forEach(id => { const e = jaGrammarEntryById(id); if (e && e.label) t = t.replace(new RegExp(e.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?! /)', 'g'), () => JA_GRAMMAR_SHOWN_TEXT[id].label) })
+  return t
+}
 // end of the v778 block
 
 // ROMAJI. The stored romaji of the entry. Four entries whose label has two forms keep the stored reading first and carry the second one too (the stored field itself is untouched). No romaji stored ⇒ none.
@@ -61504,17 +61512,17 @@ function jaGrammarExportLines(track) {
   if (g.knownUsed && g.knownUsed.length) L.push('KNOWN (learned for good, used again here, not reviewed): ' + g.knownUsed.map(x => rmOn ? labR(x) : jaGrammarShownLabel(x)).join(' '))
   if (g.becameKnown && g.becameKnown.length) { L.push('BECAME KNOWN WITH THIS TRACK (used in ' + JA_GRAMMAR_KNOWN_RULE.minSentences + ' or more sentences across ' + JA_GRAMMAR_KNOWN_RULE.minTracks + ' or more tracks; no longer reviewed)')
     g.becameKnown.forEach(x => L.push('  ' + jaGrammarShownLabel(x) + (rmOn ? rmTag(x) : (x.romaji ? ' [' + x.romaji + ']' : '')) + ' — ' + jaGrammarShownMeaning(x) + ' — ' + x.sightings + ' sentences in ' + x.tracks + ' tracks')) }
-  sect('SEEN IN PASSING (not taught yet)', all('passing'), x => x.why || '')
+  sect('SEEN IN PASSING (not taught yet)', all('passing'), x => jaGrammarShownProse(x.why) || '')
   sect('NOT YET UNLOCKED but used (listed only; the sentences are not rewritten)', all('locked'), x => x.minKnown ? 'unlocks at ' + x.minKnown + ' words' : '')
   // v774: what the writer was allowed, and every line that still uses grammar outside it (never hidden)
   if (g.gate) {
     const gt = g.gate
     if (gt.gate) {
       L.push('PLANNED BEFORE WRITING (the writer was allowed to use these, on top of the free core of ' + gt.coreCount + ' points and the ' + gt.introducedCount + ' already taught)' + (gt.planned.length ? '' : ': none' + (gt.held ? ' — ' + gt.overdue + ' reviews are overdue' : '')))
-      gt.planned.forEach(x => L.push('  ' + (rmOn ? labR(x) : jaGrammarShownLabel(x)) + ' — ' + jaGrammarShownMeaning(x) + ' — ' + (x.pairs.length ? 'pairs ' + nums(x.pairs) : 'no pair') + ' — ' + x.outcome))
+      gt.planned.forEach(x => L.push('  ' + (rmOn ? labR(x) : jaGrammarShownLabel(x)) + ' — ' + jaGrammarShownMeaning(x) + ' — ' + (x.pairs.length ? 'pairs ' + nums(x.pairs) : 'no pair') + ' — ' + jaGrammarShownProse(x.outcome)))
       if (gt.stillNew && gt.stillNew.length) {
         L.push('STILL NEW BEFORE WRITING (not rated yet; the writer was told they are NEW and to use them again)')
-        gt.stillNew.forEach(x => L.push('  ' + (rmOn ? labR(x) : jaGrammarShownLabel(x)) + ' — ' + jaGrammarShownMeaning(x) + ' — ' + (x.pairs.length ? 'pairs ' + nums(x.pairs) : 'no pair') + ' — ' + x.outcome))
+        gt.stillNew.forEach(x => L.push('  ' + (rmOn ? labR(x) : jaGrammarShownLabel(x)) + ' — ' + jaGrammarShownMeaning(x) + ' — ' + (x.pairs.length ? 'pairs ' + nums(x.pairs) : 'no pair') + ' — ' + jaGrammarShownProse(x.outcome)))
       }
     }
     if (gt.stageOn && gt.ceilings) L.push('STAGE WHEN THE SENTENCES WERE WRITTEN: ' + gt.ceilings.name + ' (' + gt.introducedCount + ' grammar points taught) — at most ' + gt.ceilings.maxChars + ' characters and ' + gt.ceilings.maxGated + ' grammar points that are not free in one sentence')
@@ -61523,7 +61531,7 @@ function jaGrammarExportLines(track) {
       else L.push('GRAMMAR NOT YET TAUGHT: none')
     }
     if (gt.stageOn) {
-      if (gt.stageFlags.length) gt.stageFlags.forEach(x => L.push('GRAMMAR STAGE: pair ' + String(x.n).padStart(2, '0') + ' ' + x.text))
+      if (gt.stageFlags.length) gt.stageFlags.forEach(x => L.push('GRAMMAR STAGE: pair ' + String(x.n).padStart(2, '0') + ' ' + jaGrammarShownProse(x.text)))
       else L.push('GRAMMAR STAGE: none')
     }
   }
@@ -61564,7 +61572,7 @@ function JaGrammarInTrack({ track }) {
                   <span style={{ fontSize: 11, color: 'var(--muted)' }}>{jaGrammarShownMeaning(x)}</span>
                   <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>pairs {x.pairs.map(n => String(n).padStart(2, '0')).join(' ')}</span>
                 </button>
-                {(x.why || (sec.key === 'locked' && x.minKnown)) && <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>{x.why || ('unlocks at ' + x.minKnown + ' words')}</div>}
+                {(x.why || (sec.key === 'locked' && x.minKnown)) && <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>{jaGrammarShownProse(x.why) || ('unlocks at ' + x.minKnown + ' words')}</div>}
                 {open[k] && <div data-grammar-explain={x.id} style={{ fontSize: 12, color: 'var(--text)', marginTop: 5, lineHeight: 1.5 }}>{x.explain}{x.romaji && !jaGrammarRomajiOn() ? <span style={{ color: 'var(--muted)' }}>{'  ·  ' + x.romaji}</span> : null}</div>}
               </div>
             )
@@ -61591,7 +61599,7 @@ function JaGrammarInTrack({ track }) {
                 <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{jaGrammarShownLabel(x)}</span>
                 {jaGrammarRomajiSpan(x)}
                 <span style={{ fontSize: 11, color: 'var(--muted)' }}>{jaGrammarShownMeaning(x)}</span>
-                <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>{x.pairs.length ? 'pairs ' + x.pairs.map(n => String(n).padStart(2, '0')).join(' ') + ' · ' : ''}{x.outcome}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>{x.pairs.length ? 'pairs ' + x.pairs.map(n => String(n).padStart(2, '0')).join(' ') + ' · ' : ''}{jaGrammarShownProse(x.outcome)}</span>
               </div>
             ))}
             {(g.gate.stillNew || []).length > 0 && <div style={{ fontSize: 10, color: 'var(--muted)', margin: '4px 2px 0' }}>Still NEW before writing (not rated yet; the writer was told to use them again):</div>}
@@ -61600,7 +61608,7 @@ function JaGrammarInTrack({ track }) {
                 <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{jaGrammarShownLabel(x)}</span>
                 {jaGrammarRomajiSpan(x)}
                 <span style={{ fontSize: 11, color: 'var(--muted)' }}>{jaGrammarShownMeaning(x)}</span>
-                <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>{x.pairs.length ? 'pairs ' + x.pairs.map(n => String(n).padStart(2, '0')).join(' ') + ' · ' : ''}{x.outcome}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>{x.pairs.length ? 'pairs ' + x.pairs.map(n => String(n).padStart(2, '0')).join(' ') + ' · ' : ''}{jaGrammarShownProse(x.outcome)}</span>
               </div>
             ))}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '10px 2px 4px' }}>
@@ -61623,7 +61631,7 @@ function JaGrammarInTrack({ track }) {
             </div>
             {g.gate.stageFlags.map(x => (
               <div key={x.n + ':' + x.kind} data-grammar-stage-flag={x.kind} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 10px' }}>
-                <span style={{ fontSize: 11, color: 'var(--muted)' }}>pair {String(x.n).padStart(2, '0')} {x.text}</span>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>pair {String(x.n).padStart(2, '0')} {jaGrammarShownProse(x.text)}</span>
               </div>
             ))}
           </>)}

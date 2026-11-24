@@ -31,7 +31,7 @@ const info = m => out.push('     · ' + m)
 const FILE = process.env.TT_FILE || 'tt.compiled.js'
 const sha = s => crypto.createHash('sha256').update(String(s)).digest('hex').slice(0, 16)
 const FIXJ = JSON.parse(fs.readFileSync(__dirname + '/fixtures/ja-grammar-lines-2026-11-17.json', 'utf8')).lines
-const SRC = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')
+const SRC = fs.readFileSync(process.env.TT_SRC || (__dirname + '/tt.jsx'), 'utf8')                 // (TT_SRC: a mutated copy of the source, to prove the source scan sees a place that was missed)
 const KEY = 'AIza' + 'SyTEST-harness-key-000000', MODEL = 'gemini-2.5-flash-lite'     // the harness's stand-in (never a real key), built here so no key-shaped text sits in the file
 const TODAY = '2026-11-24'
 const KS = 'tt-ja-grammar-srs', MIGK = 'tt-migrations', MIGID = 'ja-grammar-curriculum-v1'
@@ -222,8 +222,10 @@ async function probe(on, back) {
   const trackScreenText = async (c, track) => { const Rn = await mount(c, React.createElement(c.JaGrammarInTrack, { track }), 4), t = ws(textOf(Rn.toJSON())); await unmount(Rn); return t }
   const cardText = async (c, track) => { const Rn = await mount(c, React.createElement(c.JaGrammarReview, { track })), t = ws(textOf(Rn.toJSON())); await unmount(Rn); return t }
   // the section of a track from the hand-made analysis (the application's own picker and summary), with the gate report of the strict gate
-  const synTrack = async (cn) => { const [, sname, known, uses] = SYN.find(x => x[0] === cn), c = await ctxWith(STS[sname].store), vocab = learner(c, known), an = synAn(uses, 3)
+  const synTrack = async (cn, stale) => { const [, sname, known, uses] = SYN.find(x => x[0] === cn), c = await ctxWith(STS[sname].store), vocab = learner(c, known), an = synAn(uses, 3)
+    if (stale) setShown(c, false)                                                                          // stale: the section is built as v777 stored it ...
     const plan = c.jaGrammarPlan(an, { known, store: clone(STS[sname].store), today: TODAY }), sum = c.jaGrammarSummary(plan, an), track = miniTrack({ grammarInTrack: sum }); sum.gate = c.jaGrammarGateReport(track, strictGate(c, vocab, STS[sname].store), an, plan, [])
+    if (stale) setShown(c, true)                                                                           // ... and shown by this build
     return { c, track, sum, plan } }
   // every object anywhere in a value that is a row of one of the two entries (an id and a label)
   const rowsOf = (v, acc) => { acc = acc || []; if (Array.isArray(v)) v.forEach(x => rowsOf(x, acc)); else if (v && typeof v === 'object') { if (TWO.includes(v.id) && typeof v.label === 'string') acc.push(v); Object.keys(v).forEach(k => rowsOf(v[k], acc)) } return acc }
@@ -364,12 +366,16 @@ async function probe(on, back) {
       const blk = t.split('Building blocks')[1] || ''                                        // the pills of the old screen (the target chips above it also contain 行く)
       return [!!pp && !!nm && nm.form === OLD[NM].label && pp.form === '行く' && blk.includes(NEW[NM].label + ' ' + NEW[NM].romaji + ' ' + NEW[NM].meaning) && !/noun-modifying clause/.test(t) && blk.includes('行く') && blk.includes('plain present / future') && !blk.includes(NEW[PP].label),
         { nm: nm && nm.form, pp: pp && pp.form, blk: blk.slice(0, 600) }] })
-  await TT('B18', 'a track saved by v777 (its grammar section holds the English-only names) is SHOWN with the new text: the track screen, the export and the card read the name from the entry, not from the stored words; switched off, the stored words are shown as they were',
-    async () => { const c = await ctxWith(ST('bothNew').store); setShown(c, false); const an = synAn([PP, NM, 'tai'], 3), plan = c.jaGrammarPlan(an, { known: 200, store: clone(ST('bothNew').store), today: TODAY }), sum = c.jaGrammarSummary(plan, an), track = miniTrack({ grammarInTrack: sum })
-      const stored = JSON.stringify(sum), oldOk = TWO.every(id => rowsOf(sum).filter(r => r.id === id).every(r => r.label === OLD[id].label)) && rowsOf(sum).length > 0
-      const tOff = await trackScreenText(c, track), eOff = exportText(c, track); setShown(c, true)
-      const tOn = await trackScreenText(c, track), eOn = exportText(c, track), cOn = await cardText(c, track)
-      return [oldOk && oldPP(tOff) && oldNM(tOff) && oldPP(eOff) && SHOWS(tOn, PP) && SHOWS(tOn, NM) && noOld(tOn) && SHOWS(eOn, PP) && SHOWS(eOn, NM) && noOld(eOn) && SHOWS(cOn, PP) && SHOWS(cOn, NM) && noOld(cOn), { stored: stored.slice(0, 200), tOn: tOn.slice(0, 300) }] })
+  await TT('B18', 'a track saved by v777 (every row of its grammar section, the gate report included, holds the English-only names) is SHOWN with the new text: the track screen, the export and the card read the name from the entry, not from the stored words — in every section, for all eight hand-made sections; switched off, the stored words are shown as they were',
+    async () => { const bad = []
+      for (const [cn] of SYN) { const s = await synTrack(cn, true), rows = rowsOf(s.sum), ids = [...new Set(rows.map(r => r.id))]
+        if (!rows.length || !rows.every(r => r.label === OLD[r.id].label)) { bad.push(cn + ': the stale section does not hold the old words (' + rows.map(r => r.label).join('|') + ')'); continue }
+        const t = await trackScreenText(s.c, s.track), e = exportText(s.c, s.track), k = await cardText(s.c, s.track)
+        ids.forEach(id => { if (!t.includes(NEW[id].label)) bad.push(cn + '/' + id + ': screen'); if (!e.includes(NEW[id].label)) bad.push(cn + '/' + id + ': export') })
+        const ctx = x => (x.match(/.{0,45}(?:plain present(?! \/)|noun-modifying clause).{0,30}/g) || []).slice(0, 3).join(' // ')
+        if (!noOld(t)) bad.push(cn + ': screen still has an English-only name: ' + ctx(t)); if (!noOld(e)) bad.push(cn + ': export still has one: ' + ctx(e)); if (!noOld(k)) bad.push(cn + ': card still has one: ' + ctx(k))
+        s.c.jaGrammarShownLabelSetEnabled(false); const tOff = await trackScreenText(s.c, s.track), eOff = exportText(s.c, s.track); if (ids.includes(PP) && !(oldPP(tOff) && oldPP(eOff))) bad.push(cn + ': switched off, the stored words are not shown') }
+      return [bad.length === 0, bad.slice(0, 10)] })
   await TT('B19', 'the track the learner reads after BECOMING KNOWN: the plain present reaching 3 sentences in 2 tracks is listed under "BECAME KNOWN WITH THIS TRACK" with the new name, reading and meaning (screen and export)',
     async () => { const st = { 'buildingBlock:plain-present': V774REC(PP, { sightings: 2, sightingTracks: ['earlier-track'] }) }, c = await ctxWith(st), vocab = learner(c, 150)
       const fin = await c.jaGrammarFinaliseTrack(trackOf('2026-11-24T09:00:00.000Z'), { vocab, today: TODAY }), bk = (fin.grammarInTrack.becameKnown || []).find(x => x.id === PP)
@@ -403,6 +409,11 @@ async function probe(on, back) {
       region('rating card', /^function JaGrammarReview\(/, /^function Player\(/)
       // the writer's practice objectives and the generation log lines live inside the two big generators: every line that builds them is checked
       let n = 0; lines.forEach((l, i) => { if (/^\s*\/\//.test(l)) return; if (/PRACTICE OBJECTIVES|_objBlocks\.map|GRAMMAR GATE: '|\.planned\.map\(|\.stillNew\.map\(|fresh\.map\(b/.test(l)) { n++; if (isRaw(l)) bad.push('objectives / log:' + (i + 1) + ': ' + l.trim().slice(0, 150)) } })
+      // the prose a stored track holds about an entry (the reason, the outcome, the stage line) is shown through the prose helper, in the export and on the track screen
+      { const i0 = at(/^function jaGrammarExportLines\(/), i1 = at(/^\/\/ ── Final Japanese QC/); seen.prose = [i0, i1]; let np = 0
+        for (let i = i0; i >= 0 && i < i1; i++) { const l = lines[i]; if (/^\s*\/\//.test(l)) continue; const t = l.replace(/jaGrammarShownProse\((?:[^()]|\([^()]*\))*\)/g, 'P')
+          if (/\bjaGrammarShownProse\b/.test(l)) np++; if (/\b\w+\.outcome\b|\bx\.text\b|\bx\.why\b(?! \|\|)/.test(t)) bad.push('prose:' + (i + 1) + ': ' + l.trim().slice(0, 150)) }
+        if (i0 < 0 || np < 8) bad.push('prose: the stored reasons are shown in ' + np + ' places (8 expected)') }
       return [bad.length === 0 && n >= 5, { bad: bad.slice(0, 12), n: bad.length, objectiveAndLogLines: n, seen }] })
   await TT('C3', 'the new text lives in one place: one table (JA_GRAMMAR_SHOWN_TEXT) keyed by the two entry ids holds "食べる · 行く · する", "taberu · iku · suru", "買った本", "katta hon" and the new meaning, and only the helpers read it',
     async () => { const code = SRC.split('\n').filter(l => !/^\s*\/\//.test(l)), count = s => code.filter(l => l.includes(s)).length
@@ -516,6 +527,8 @@ async function probe(on, back) {
     async () => { const c = fresh(), pre = ['jaGrammarFromSentences', 'jaGrammarSlots', 'jaGrammarKnown', 'jaGrammarRomaji', 'jaGrammarChecklist', 'jaGrammarGate', 'jaGrammarStage', 'jaGrammarPreview', 'jaGrammarReviewArea', 'jaGrammarNotShown', 'jaGrammarReset', 'jaGrammarClearWording'].filter(p => has(c, p + 'On')).map(p => [p, c[p + 'On']()])
       setShown(c, false); const mid = pre.map(([p]) => [p, c[p + 'On']()]), off = c.jaGrammarShownLabel(entry(c, PP)); setShown(c, true); const back = c.jaGrammarShownLabel(entry(c, PP))
       return [same(pre, mid) && c[SWITCH + 'On']() === true && off === OLD[PP].label && back === NEW[PP].label, { pre: pre.length }] })
+  info('THE TWO ROWS NOW READ: plain-present "' + NEW[PP].label + '" (' + NEW[PP].romaji + ') ' + NEW[PP].meaning + ' (was "' + OLD[PP].label + '", no reading) · noun-modify "' + NEW[NM].label + '" (' + NEW[NM].romaji + ') ' + NEW[NM].meaning + ' (was "' + OLD[NM].label + '", no reading, "' + OLD[NM].meaning + '")')
+  info('SHOWN BY: the preview, the plan screen, Grammar review, All grammar, Known grammar, the rating card, GRAMMAR IN THIS TRACK (screen, export), the writer\'s block and refusals, the practice objectives, the log lines, the old building-block pill; the other 99 entries, the detector, the plan, the gate and the stored fields are the v777 ones')
   out.forEach(l => console.log(l))
   console.log('\n' + (n - fails) + '/' + n + ' passed' + (fails ? ' · ' + fails + ' FAILED' : ' — ALL PASS'))
   process.exit(fails ? 1 : 0)

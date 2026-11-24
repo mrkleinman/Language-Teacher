@@ -55598,13 +55598,15 @@ const JA_BLOCK_TO_MARKER = { teru:['teiru','te'], te:['te'], past:['past'], nai:
   masu:['masu'], tai:['tai'], volitional:['volitional'], nakya:['nai'], tara:['past'], takotoaru:['past'],
   'nai-invite':['nai'], 'no-question':['no'], nda:['no'], toomou:['toomou'], tekureru:['te'], temoii:['te'] }
 let JA_CURRICULUM_ALLOWED = new Set()
-function jaSetCurriculumAllowed(store) {
+// v774: extraIds = the entries this track is about to introduce (the writer is told it may use them, so the older closed-grammar check must not refuse them)
+function jaSetCurriculumAllowed(store, extraIds) {
   const s = new Set()
   Object.values(store || {}).forEach(r => {
     if (!r || r.type !== 'buildingBlock' || !r.introducedAt) return
     s.add(r.itemId)
     ;(JA_BLOCK_TO_MARKER[r.itemId] || []).forEach(m => s.add(m))
   })
+  ;(extraIds || []).forEach(id => { s.add(id); (JA_BLOCK_TO_MARKER[id] || []).forEach(m => s.add(m)) })
   JA_CURRICULUM_ALLOWED = s
   return s
 }
@@ -60657,6 +60659,8 @@ async function jaGrammarFinaliseTrack(track, o) {
 //                         otherwise good). An entry outside the allowed set refuses the candidate with a plain reason naming it (GRAMMAR_NOT_YET_TAUGHT); the refusal goes through the existing retry path (the same
 //                         per-line limits: generateTargetGroup / generateJapaneseOneRecall). A line that still fails when its attempts are used is KEPT and carries _grammarFlag; the finished track lists it
 //                         (GRAMMAR NOT YET TAUGHT: pair N uses X) and it never blocks READY. Pure code: no model request.
+// Not given the list: the scene's four greeting / parting lines (written by the scene writer, whose prompt is unchanged) and the opt-in test generator. The finaliser still reads their final text, so a line of
+// either that uses grammar outside the list is named in the export like any other; it is just not refused and rewritten.
 // The plan the writer receives is one plain object (jaGrammarGateContext) carried by the track context (tc.grammarGate), so recovery, the quality-check repair and the finaliser all read the same one.
 const JA_GRAMMAR_GATE = { gate: true, stage: true, known: true, preview: true }
 function jaGrammarGateSetEnabled(on) { JA_GRAMMAR_GATE.gate = !!on }
@@ -63817,7 +63821,7 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
       .sort((a, b) => (a.order || 0) - (b.order || 0)).slice(0, 1)
     freshBasics.forEach(b => jaGrammarIntroduce(_grammarStore, 'conversationBasic', b.id))
     if (fresh.length || freshBasics.length) await jaGrammarSave(_grammarStore)
-    jaSetCurriculumAllowed(_grammarStore)          // curriculum is now authoritative for the gate
+    jaSetCurriculumAllowed(_grammarStore, _grammarGate && _grammarGate.gate ? _grammarGate.plannedIds : [])          // curriculum is now authoritative for the gate (v774: and so are the entries planned for this track)
     // v774: with a gate the entries to practise again are the ones the plan screen shows as due (every curriculum entry, the most overdue first), not only the 35 of the old list
     _objectives = { buildingBlocks: _grammarGate ? _grammarGate.review.map(x => jaGrammarEntryById(x.id)).filter(Boolean) : [...dueBlocks, ...fresh].slice(0, 3), conversationBasics: [...dueBasics, ...freshBasics].slice(0, 2) }
     onProgress && onProgress(0, totalRecall, { apiError:

@@ -14,7 +14,7 @@
 const fs = require('fs')
 const crypto = require('crypto')
 const { load } = require('./harness')
-const { setup, mock } = require('./tests14')
+const { setup, makeTrack, mock } = require('./tests14')
 const React = require('react'), TR = require('react-test-renderer')
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const out = []; let fails = 0, n = 0
@@ -24,7 +24,7 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
 const sha = s => crypto.createHash('sha256').update(String(s)).digest('hex').slice(0, 16)
 const FIXJ = JSON.parse(fs.readFileSync(__dirname + '/fixtures/ja-grammar-lines-2026-11-17.json', 'utf8')).lines
 const SRC = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')
-const KEY = 'AIzaSyTEST-harness-key-000000', MODEL = 'gemini-2.5-flash-lite'
+const KEY = 'AIza' + 'SyTEST-harness-key-000000', MODEL = 'gemini-2.5-flash-lite'     // the harness's stand-in (never a real key), built here so no key-shaped text sits in the file
 const TODAY = '2026-11-24'
 const textOf = x => x == null ? '' : typeof x === 'string' ? x : Array.isArray(x) ? x.map(textOf).join(' ') : textOf(x.children)
 const flush = async (k = 20) => { for (let i = 0; i < k; i++) await new Promise(r => setImmediate(r)) }
@@ -159,8 +159,20 @@ const TARA = mkRecall('行ったら言ってね。', 'Tell me when you go.')
       const res = await c2.generateJapaneseTrack(S2.targets.slice(0, 3), S2.vocab, 'natural', KEY, MODEL, () => {}, () => {}, { cancelled: false }, { scene: 'Two friends at a station', characterA: 'Kenji, a man', characterB: 'Yuki, a woman', opening: '', reply: '', closing: '', closing_reply: '' }, { trackContext: tc, runId: tc.generationRunId })
       const st = await c2.jaGrammarLoad(), plan = c2.jaGrammarTrackPlan(st, c2.jaGrammarKnownCount(S2.vocab), { today: new Date().toISOString().slice(0, 10) })
       const first = calls.find(x => /JAPANESE TARGET: ★/.test(x)) || ''
-      T('A12', 'a real track: the request the writer receives lists exactly the entries jaGrammarTrackPlan returns for the stored progress (the one function behind both the preview and the prompt), and the track context carries the same list',
-        res.complete === true && plan.next.length > 0 && plan.next.every(x => first.includes(x.label)) && /use ONLY this grammar/.test(first) && !!tc.grammarGate && tc.grammarGate.plannedIds.join() === plan.next.map(x => x.id).join(), { complete: res.complete, planned: plan.next.map(x => x.id), gate: tc.grammarGate && tc.grammarGate.plannedIds })
+      T('A12', 'a real track: the request the writer receives lists exactly the entries jaGrammarTrackPlan returns for the stored progress (the one function behind both the preview and the prompt), and the track context carries the same list (and the older closed-grammar check is told the same entries are allowed)',
+        res.complete === true && plan.next.length > 0 && plan.next.every(x => first.includes(x.label)) && /use ONLY this grammar/.test(first) && !!tc.grammarGate && tc.grammarGate.plannedIds.join() === plan.next.map(x => x.id).join() && plan.next.every(x => c2.ev('JA_CURRICULUM_ALLOWED').has(x.id)), { complete: res.complete, planned: plan.next.map(x => x.id), gate: tc.grammarGate && tc.grammarGate.plannedIds })
+    }
+    // the older closed-grammar check (what a sentence may CONTAIN, by introduced words) must not refuse an entry the plan has just allowed
+    {
+      const cA = fresh(), v50 = cA.initJapaneseVocab().map((w, i) => i < 50 ? { ...w, status: 'known', introducedAt: '2026-01-01', repCount: 3 } : w), inv50 = cA.japaneseLearnerInventory(v50, [])
+      const pair = { japanese: '行きたい。', segments: [] }
+      cA.jaSetCurriculumAllowed({}, [])
+      const before = cA.validateJapaneseGrammarClosure(pair, inv50)
+      cA.jaSetCurriculumAllowed({}, ['tai'])
+      const after = cA.validateJapaneseGrammarClosure(pair, inv50)
+      cA.jaSetCurriculumAllowed({}, [])
+      T('A13', 'the older closed-grammar check agrees with the plan: at 50 taught words 〜たい is refused by it (its own unlock is 70), and once the plan lists 〜たい as new in this track it is allowed — the writer is never told it may use what the older check refuses',
+        before.ok === false && /たい/.test(before.problems.join(' ')) && after.ok === true, { before: before.problems, after: after.problems })
     }
   } catch (e) { T('A!', 'section A stopped: ' + String(e && e.message).split('\n')[0], false, String(e && e.stack).slice(0, 500)) }
 
@@ -540,6 +552,24 @@ const TARA = mkRecall('行ったら言ってね。', 'Tell me when you go.')
       T('F6', 'a real generation with the gate on and off: both complete with 5 targets × 3 = 15 target pairs, the same targets, 3 uses each; grammar is not a target and adds no pair',
         a.res.complete && b.res.complete && tp(a).length === 15 && tp(b).length === 15 && a.S.targets.slice(0, 5).every(t => [1, 2, 3].every(r => tp(a).some(p => p.targetId === t.id && p.recallIndex === r))) &&
         tp(a).map(p => p.targetId).join() === tp(b).map(p => p.targetId).join() && !!a.tc.grammarGate && !b.tc.grammarGate)
+    }
+    // through the real finaliser (quality check, final audit, then the grammar step) with a gate in the track context: the report is attached, the readiness line is the same as without a gate
+    {
+      const run = async withGate => {
+        const S = setup('ja'); const c2 = quiet(S.c); mock(S, 'ja', {})
+        const base = makeTrack(S, 'ja', { tag: withGate ? '-g' : '-n' })
+        const tc = c2.jaGeneratorTrackContext(S.targets, null, 'daily', 'natural', 'run-gate')
+        if (withGate) { const L = levelOf(c2, LV.L1); tc.grammarGate = c2.jaGrammarGateContext(L.vocab, L.store, { register: 'natural', today: TODAY }) }
+        const pairs = base.pairs.map((p, i) => p.targetId != null ? c2.stampPairProvenance(p, c2.jaPairProvenance(tc, S.targets.find(t => t.id === p.targetId), p.recallIndex || 1, 'generation'))
+          : c2.stampPairProvenance(p, { language: 'ja', trackId: tc.trackId, generationRunId: tc.generationRunId, isTargetPair: false, kind: i ? 'reply' : 'opening', slot: i, sourceStage: 'scene' }))
+        const t0 = c2.jaTrackObject(tc, { pairs, scene: null, recallCount: pairs.filter(p => p.targetId != null).length, framingCount: 2 }, S.targets.map(t => ({ ...t, selectionRole: 'review' })), 'natural', 'm', 'daily')
+        const r = await c2.jazhQcFinaliseAndListen(t0, 'ja', { vocab: S.vocab, apiKey: KEY, model: c2.ev('GEMINI_DEFAULT_MODEL'), register: 'natural', runId: c2.aiBeginRun('ja-gate-' + withGate), push: () => {}, onListening: () => {} })
+        return { track: r.track, c: c2 }
+      }
+      const a = await run(true), b = await run(false)
+      T('F8', 'through the real finaliser (quality check, final audit, then the grammar step): a track whose context carries the plan gets its report (planned entries, flags) and the same readiness line, integrity and pairs as the track without one',
+        !!a.track.grammarInTrack && !!a.track.grammarInTrack.gate && a.track.grammarInTrack.gate.planned.length > 0 && !b.track.grammarInTrack.gate && a.c.trackReadinessExportLines(a.track)[0] === b.c.trackReadinessExportLines(b.track)[0] &&
+        a.track.pairs.length === b.track.pairs.length && JSON.stringify(a.track.integrity && a.track.integrity.invariants) === JSON.stringify(b.track.integrity && b.track.integrity.invariants), { a: a.c.trackReadinessExportLines(a.track)[0], b: b.c.trackReadinessExportLines(b.track)[0], gate: !!(a.track.grammarInTrack && a.track.grammarInTrack.gate) })
     }
     // the rules of the repo: no key, no access code, no model names in comments
     const added = SRC.slice(SRC.indexOf('v774 — THE GRAMMAR A TRACK MAY USE'))

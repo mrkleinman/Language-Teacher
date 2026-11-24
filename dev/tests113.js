@@ -31,7 +31,10 @@ const flush = async (k = 20) => { for (let i = 0; i < k; i++) await new Promise(
 // v775: this suite states the v774 contract (what the plan, the gate, the picker and the screens do with grammar points that were introduced). v775 changes that contract only while its
 // "slots" switch is on (a point introduced and never rated is NEW and takes one of the 5 slots; the fixtures here introduce points and never rate them), and the new contract has its own
 // suite (tests114.js). So every context of this suite is made with that one switch off. Nothing else is changed: every assertion below is the one v774 shipped with.
-const quiet = c => { c.console.info = () => {}; c.console.warn = () => {}; c.console.error = () => {}; if (typeof c.jaGrammarSlotsSetEnabled === 'function') c.jaGrammarSlotsSetEnabled(false); return c }
+// v778 (explained here on purpose): the two English-only grammar names (the plain present, the noun-modifying clause) are now shown with Japanese examples (jaGrammarShownLabelSetEnabled, added after this suite was
+// written, ON by default). This suite states the earlier contract, whose screens, prompts, exports and logs name those two entries in English, so every context of this suite is made with that one switch off too.
+// Nothing else is changed: every assertion below is the one it shipped with, and the new text has its own suite (tests117.js).
+const quiet = c => { c.console.info = () => {}; c.console.warn = () => {}; c.console.error = () => {}; if (typeof c.jaGrammarSlotsSetEnabled === 'function') c.jaGrammarSlotsSetEnabled(false); if (typeof c.jaGrammarShownLabelSetEnabled === 'function') c.jaGrammarShownLabelSetEnabled(false); return c }
 const fresh = () => quiet(load(FILE, { realBelt: true, React }))
 // a learner with `known` words known (the measure the grammar unlock always used: known + learning)
 const learner = (c, known) => c.initJapaneseVocab().map((w, i) => i < known ? { ...w, status: 'known' } : w)

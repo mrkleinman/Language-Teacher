@@ -60987,14 +60987,70 @@ function JaGrammarReviewArea({ open: openFirst }) {
   const [shown, setShown] = useState(null)                  // the lists as they were when the area opened: a point just rated stays on screen, with its mark, until the area is opened again
   const [rated, setRated] = useState({})
   const [open, setOpen] = useState(!!openFirst)
+  const [backup, setBackup] = useState(null)                // v776: the copy a reset left (Undo), when the reset switch is on
+  const [ask, setAsk] = useState(false)                     // v776: the in-app confirmation of "Start grammar from scratch" is showing
+  const [note, setNote] = useState(null)                    // v776: what the last reset or undo did, in plain words
+  const [busy, setBusy] = useState(false)
   useEffect(() => { let go = true
-    ;(async () => { try { const s = await jaGrammarLoad(); if (go) { setStore(s); setShown(jaGrammarReviewAreaList(s)) } } catch (e) { if (go) { setStore({}); setShown({ due: [], newUnrated: [] }) } } })()
+    ;(async () => { try { const s = await jaGrammarLoad(); const b = jaGrammarResetOn() ? await jaGrammarResetBackupLoad() : null; if (go) { setStore(s); setShown(jaGrammarReviewAreaList(s)); setBackup(b) } } catch (e) { if (go) { setStore({}); setShown({ due: [], newUnrated: [] }) } } })()
     return () => { go = false } }, [])
   if (!jaGrammarReviewAreaOn() || store == null || !shown) return null
   const total = shown.due.length + shown.newUnrated.length
   const rate = async (id, rating) => {
     const r = await jaGrammarRateAndSave(store, 'buildingBlock', id, rating)
     setStore(r.local); setRated(m => ({ ...m, [id]: rating }))
+  }
+  // v776: START GRAMMAR FROM SCRATCH — the confirmation is in the screen (never window.confirm); the reset and the undo are jaGrammarStartFromScratch / jaGrammarUndoReset, and the lists are read again afterwards
+  const resetOn = jaGrammarResetOn(), wordingOn = jaGrammarClearWordingOn()
+  const pts = n => n + (n === 1 ? ' grammar point' : ' grammar points')
+  const fresh = async () => { const s = await jaGrammarLoad(), b = await jaGrammarResetBackupLoad(); setStore(s); setShown(jaGrammarReviewAreaList(s)); setRated({}); setBackup(b) }
+  const doReset = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const r = await jaGrammarStartFromScratch()
+      await fresh(); setAsk(false); setOpen(true)
+      setNote(r.changed ? 'Done. ' + pts(r.count) + ' went back to \u201Cnot taught yet\u201D.' : r.reason === 'backup-failed' ? 'Nothing was changed: the backup could not be saved, so no grammar point was removed.' : 'Nothing was changed.')
+    } catch (e) { setAsk(false); setNote('Nothing was changed.') }
+    setBusy(false)
+  }
+  const doUndo = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const r = await jaGrammarUndoReset()
+      await fresh()
+      setNote((r.restored ? 'Put back ' + pts(r.restored) + '.' : 'Nothing was put back.') + (r.skipped ? ' Skipped ' + r.skipped + ' that ' + (r.skipped === 1 ? 'has' : 'have') + ' a newer record since the reset (kept as ' + (r.skipped === 1 ? 'it is' : 'they are') + ').' : ''))
+    } catch (e) { setNote('Nothing was put back.') }
+    setBusy(false)
+  }
+  const atText = at => { try { return new Date(at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) } catch (e) { return String(at).slice(0, 16).replace('T', ' ') } }
+  const resetPart = () => {
+    const n = jaGrammarResetPlan(store).ids.length
+    const small = { padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 12, fontWeight: 700, background: 'var(--surface2)', color: 'var(--text)' }
+    return (
+      <div data-ja-grammar-reset="1" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {backup && (
+          <div data-reset-undo="1" style={{ background: 'var(--surface2)', borderRadius: 8, padding: '7px 10px' }}>
+            <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{pts(backup.count || backup.ids.length) + ((backup.count || backup.ids.length) === 1 ? ' was' : ' were') + ' reset on ' + atText(backup.at) + '. Undo puts ' + ((backup.count || backup.ids.length) === 1 ? 'it' : 'them') + ' back exactly as ' + ((backup.count || backup.ids.length) === 1 ? 'it was' : 'they were') + '.'}</div>
+            <button onClick={doUndo} disabled={busy} data-reset-undo-button="1" style={{ ...small, marginTop: 6 }}>Undo</button>
+          </div>
+        )}
+        {note && <div data-reset-note="1" style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{note}</div>}
+        {!ask && <button onClick={() => { setNote(null); setAsk(true) }} data-reset-start="1" style={{ ...small, alignSelf: 'flex-start' }}>Start grammar from scratch</button>}
+        {ask && (
+          <div data-reset-confirm="1" style={{ background: 'var(--surface2)', border: '1px solid var(--gold)', borderRadius: 8, padding: '8px 10px' }}>
+            {n > 0
+              ? <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{'Start grammar from scratch? The ' + pts(n) + ' you have never rated ' + (n === 1 ? 'goes' : 'go') + ' back to \u201Cnot taught yet\u201D. Points you have rated, your words and your tracks are not touched. You can undo this.'}</div>
+              : <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>No grammar point is waiting for a rating, so there is nothing to reset. Nothing was changed.</div>}
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              {n > 0 && <button onClick={doReset} disabled={busy} data-reset-yes="1" style={{ ...small, borderColor: '#ef4444', color: '#ef4444' }}>Yes, start from scratch</button>}
+              <button onClick={() => setAsk(false)} data-reset-cancel="1" style={small}>{n > 0 ? 'Cancel' : 'Close'}</button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
   }
   const btnOf = (id, rating, label, bg) => (
     <button key={rating} onClick={() => rate(id, rating)}
@@ -61033,6 +61089,7 @@ function JaGrammarReviewArea({ open: openFirst }) {
       </button>
       {open && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '6px 0 4px' }}>
+          {resetOn && resetPart()}
           {total === 0 && <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>Nothing to review in grammar right now. Grammar comes back here when it is due, and a point taught in a track stays here, as NEW, until you rate it.</p>}
           {shown.due.length > 0 && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: '#60a5fa', marginTop: 2 }}>GRAMMAR DUE ({shown.due.length})</div>}
           {shown.due.map(x => card(x, 'due'))}

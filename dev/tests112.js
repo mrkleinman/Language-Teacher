@@ -20,7 +20,11 @@ const sha = s => crypto.createHash('sha256').update(String(s)).digest('hex').sli
 const FIXJ = JSON.parse(fs.readFileSync(__dirname + '/fixtures/ja-grammar-lines-2026-11-17.json', 'utf8')).lines
 const textOf = x => x == null ? '' : typeof x === 'string' ? x : Array.isArray(x) ? x.map(textOf).join(' ') : textOf(x.children)
 const flush = async (k = 20) => { for (let i = 0; i < k; i++) await new Promise(r => setImmediate(r)) }
-const fresh = () => { const c = load(FILE, { realBelt: true, React }); c.console.info = () => {}; c.console.warn = () => {}; c.console.error = () => {}; return c }
+// v775: this suite states the v774 contract (the picker introduces up to 5 points whatever the learner has or has not rated). v775 changes that only while its "slots" switch is on
+// (a point introduced and never rated is NEW and takes one of the 5 slots; the first-run migration and the fixtures here introduce points that are never rated), and the new contract has its
+// own suite (tests114.js). So every context of this suite is made with that one switch off. Nothing else is changed: every assertion below is the one v774 shipped with.
+const pinV774 = c => { if (typeof c.jaGrammarSlotsSetEnabled === 'function') c.jaGrammarSlotsSetEnabled(false); return c }
+const fresh = () => { const c = load(FILE, { realBelt: true, React }); c.console.info = () => {}; c.console.warn = () => {}; c.console.error = () => {}; return pinV774(c) }
 // a learner with `known` words known (the measure the grammar unlock always used: known + learning)
 const learner = (c, known) => c.initJapaneseVocab().map((w, i) => i < known ? { ...w, status: 'known' } : w)
 // the track of the export: 99 pairs, 90 of them target pairs (framing and bridge lines carry no target)
@@ -273,7 +277,7 @@ const CASES = [
     {
       const { setup, makeTrack, mock } = require('./tests14')
       const run = async on => {
-        const S = setup('ja'); S.c.jaGrammarFromSentencesSetEnabled(on); S.c.console.error = () => {}; S.c.console.warn = () => {}
+        const S = setup('ja'); pinV774(S.c); S.c.jaGrammarFromSentencesSetEnabled(on); S.c.console.error = () => {}; S.c.console.warn = () => {}
         mock(S, 'ja', {})
         const base = makeTrack(S, 'ja', { tag: on ? '-on' : '-off' }), c = S.c
         const tc = c.jaGeneratorTrackContext(S.targets, null, 'daily', 'natural', 'run-grammar')

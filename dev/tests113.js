@@ -28,7 +28,10 @@ const KEY = 'AIza' + 'SyTEST-harness-key-000000', MODEL = 'gemini-2.5-flash-lite
 const TODAY = '2026-11-24'
 const textOf = x => x == null ? '' : typeof x === 'string' ? x : Array.isArray(x) ? x.map(textOf).join(' ') : textOf(x.children)
 const flush = async (k = 20) => { for (let i = 0; i < k; i++) await new Promise(r => setImmediate(r)) }
-const quiet = c => { c.console.info = () => {}; c.console.warn = () => {}; c.console.error = () => {}; return c }
+// v775: this suite states the v774 contract (what the plan, the gate, the picker and the screens do with grammar points that were introduced). v775 changes that contract only while its
+// "slots" switch is on (a point introduced and never rated is NEW and takes one of the 5 slots; the fixtures here introduce points and never rate them), and the new contract has its own
+// suite (tests114.js). So every context of this suite is made with that one switch off. Nothing else is changed: every assertion below is the one v774 shipped with.
+const quiet = c => { c.console.info = () => {}; c.console.warn = () => {}; c.console.error = () => {}; if (typeof c.jaGrammarSlotsSetEnabled === 'function') c.jaGrammarSlotsSetEnabled(false); return c }
 const fresh = () => quiet(load(FILE, { realBelt: true, React }))
 // a learner with `known` words known (the measure the grammar unlock always used: known + learning)
 const learner = (c, known) => c.initJapaneseVocab().map((w, i) => i < known ? { ...w, status: 'known' } : w)
@@ -44,7 +47,9 @@ const levelOf = (c, lv, mutate) => {
 const gateOf = (c, lv, o) => { const L = levelOf(c, lv, o && o.mutate); return c.jaGrammarGateContext(L.vocab, L.store, { register: (o && o.register) || 'natural', today: TODAY }) }
 const setEq = (a, b) => { const x = new Set(a), y = new Set(b); return x.size === y.size && [...x].every(v => y.has(v)) }
 const SWITCHES = ['jaGrammarGateSetEnabled', 'jaGrammarStageSetEnabled', 'jaGrammarKnownSetEnabled', 'jaGrammarPreviewSetEnabled']
-const allOff = c => SWITCHES.forEach(f => typeof c[f] === 'function' && c[f](false))
+// v775: "everything off" also means the four v775 switches (they change the same screens and the export: romaji beside every entry, the Not shown button, the Review area, the slots); the v773 values below are for none of them
+const V775_SWITCHES = ['jaGrammarSlotsSetEnabled', 'jaGrammarNotShownSetEnabled', 'jaGrammarRomajiSetEnabled', 'jaGrammarReviewAreaSetEnabled']
+const allOff = c => SWITCHES.concat(V775_SWITCHES).forEach(f => typeof c[f] === 'function' && c[f](false))
 // the track of the owner's 17 Nov export: 99 pairs, 90 of them target pairs (framing and bridge lines carry no target)
 const pairsOf = () => FIXJ.map(l => ({ speaker: l.n % 2 ? 'A' : 'B', japanese: l.ja, thai: l.ja, reading: '', romaji: '', english: '', prompt: '',
   ...(l.kind === 'target' ? { targetId: 1000 + l.n, wordId: 1000 + l.n, isTargetPair: true, _target: 'x', recallIndex: 1 } : l.kind === 'bridge' ? { pairType: 'bridge', isTargetPair: false } : { _framing: true, pairType: 'framing', isTargetPair: false, _target: 'greeting' }) }))

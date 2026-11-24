@@ -47506,10 +47506,10 @@ function JaGrammarReview({ track }) {
   const _stillIds = new Set(((_gt && _gt.stillNew) || []).map(x => x.id))
   const rows = [
     { key: 'buildingBlock', title: _gt ? 'GRAMMAR TAUGHT AND PRACTISED' : 'BUILDING BLOCKS PRACTISED', items: _gt
-        ? _asItems(_gt.new.concat(_gt.stillNew || [], _gt.review), jaGrammarEntryById).map(x => ({ ...x, label: x.def.label, meaning: x.def.meaning, carried: _stillIds.has(x.id) }))
+        ? _asItems(_gt.new.concat(_gt.stillNew || [], _gt.review), jaGrammarEntryById).map(x => ({ ...x, label: jaGrammarShownLabel(x.def), meaning: jaGrammarShownMeaning(x.def), carried: _stillIds.has(x.id) }))
         : agg.blocks.filter(jaRatingEligible)
           .map(e => ({ ...e, def: jaBlockById(e.id) })).filter(x => x.def)
-          .map(x => ({ ...x, label: x.def.label, meaning: x.def.meaning })) },
+          .map(x => ({ ...x, label: jaGrammarShownLabel(x.def), meaning: jaGrammarShownMeaning(x.def) })) },
     { key: 'conversationBasic', title: 'CONVERSATION BASICS PRACTISED', items: _gt
         ? _asItems(((_gt.basics && _gt.basics.new) || []).concat((_gt.basics && _gt.basics.review) || []), jaGrammarBasicById).map(x => ({ ...x, label: x.def.form, meaning: x.def.english }))
         : agg.basics.filter(jaRatingEligible)
@@ -58485,15 +58485,17 @@ function GenTargetPreview({ targets, availableCount, textOf, subOf, basics, basi
 }
 
 function JapaneseBlockPill({ b, kind, row }) {
+  // v778: a block that has no register form of its own (the noun-modifying clause: its form is its English name) is shown by its Japanese example, with the reading and the meaning; the plain present keeps its register form (行く)
+  const _sh = kind === 'block' && (!row || !row.form || row.form === b.label) && !!jaGrammarShownOf(b)
   // row (Phase 3) carries curriculum status; without it the pill renders exactly as before.
   const S = { NEW:{ bg:'var(--accent)', fg:'#fff' }, DUE:{ bg:'#f59e0b', fg:'#1a1a1a' },
               REINFORCE:{ bg:'var(--surface)', fg:'var(--muted)' }, LEARNED:{ bg:'transparent', fg:'var(--muted)' } }[row ? row.status : ''] || null
   return (
     <div style={{ display:'flex', alignItems:'baseline', gap:8, background:'var(--surface2)',
       border:'1px solid ' + (row && row.status === 'NEW' ? 'var(--accent)' : 'var(--border)'), borderRadius:8, padding:'6px 10px', minWidth:0 }}>
-      <span className="jp" style={{ color:'var(--text)', fontSize:15, fontWeight:700, lineHeight:1.2 }}>{(row && row.form) || b.form || b.label}</span>
-      <span className="phon" style={{ color:'var(--gold)', fontSize:11, lineHeight:1.2 }}>{(row && row.romaji) || b.romaji}</span>
-      <span style={{ color:'var(--muted)', fontSize:11, lineHeight:1.3 }}>{(row && row.meaning) || b.meaning || b.english}</span>
+      <span className="jp" style={{ color:'var(--text)', fontSize:15, fontWeight:700, lineHeight:1.2 }}>{_sh ? jaGrammarShownLabel(b) : ((row && row.form) || b.form || b.label)}</span>
+      <span className="phon" style={{ color:'var(--gold)', fontSize:11, lineHeight:1.2 }}>{_sh ? jaGrammarRomajiShown(b) : ((row && row.romaji) || b.romaji)}</span>
+      <span style={{ color:'var(--muted)', fontSize:11, lineHeight:1.3 }}>{_sh ? jaGrammarShownMeaning(b) : ((row && row.meaning) || b.meaning || b.english)}</span>
       {row && row.status === 'NEW' && row.explain && (
         <span style={{ color:'var(--muted)', fontSize:10, lineHeight:1.3, fontStyle:'italic', flex:'1 1 100%' }}>{row.explain}</span>
       )}
@@ -60661,8 +60663,8 @@ async function jaGrammarFinaliseTrack(track, o) {
     // v774 A/B — what the writer was allowed (planned before writing) and every line whose final text still uses an entry outside that list. Reported, never rewritten, never a reason to fail the track.
     { const _gate = (jaGrammarGateOn() || jaGrammarStageOn()) && track.trackContext && track.trackContext.grammarGate
       if (_gate && (_gate.gate || _gate.stage)) { sum.gate = jaGrammarGateReport(track, _gate, an, plan, (opts.vocab || []).filter(w => w && /^[おご]/.test(w.japanese || '')))
-        if (opts.push) opts.push('GRAMMAR GATE: ' + sum.gate.planned.length + ' planned before writing (' + sum.gate.planned.map(x => x.label + ' ' + x.outcome).join(' · ') + ') · ' + sum.gate.notTaught.length + ' use(s) of grammar not yet taught kept and listed' + (sum.gate.notTaught.length ? ': pair ' + [...new Set(sum.gate.notTaught.map(x => x.n))].join(', ') : '')) } }
-    if (opts.push) opts.push('GRAMMAR FROM SENTENCES: ' + plan.new.length + ' new (' + plan.new.map(x => x.label).join(' ') + ') · ' + plan.review.length + ' review · ' + plan.alsoUsed.length + ' also used · ' +
+        if (opts.push) opts.push('GRAMMAR GATE: ' + sum.gate.planned.length + ' planned before writing (' + sum.gate.planned.map(x => jaGrammarShownLabel(x) + ' ' + x.outcome).join(' · ') + ') · ' + sum.gate.notTaught.length + ' use(s) of grammar not yet taught kept and listed' + (sum.gate.notTaught.length ? ': pair ' + [...new Set(sum.gate.notTaught.map(x => x.n))].join(', ') : '')) } }
+    if (opts.push) opts.push('GRAMMAR FROM SENTENCES: ' + plan.new.length + ' new (' + plan.new.map(x => jaGrammarShownLabel(x)).join(' ') + ') · ' + plan.review.length + ' review · ' + plan.alsoUsed.length + ' also used · ' +
       plan.passing.length + ' seen in passing · ' + plan.locked.length + ' not yet unlocked · budget ' + plan.budget.spent + '/' + plan.budget.limit + (plan.held ? ' · HELD BACK: ' + plan.overdue + ' overdue' : '') +
       (sum.slots ? ' · NEW slots: ' + sum.slots.before + ' still NEW before, ' + sum.slots.free + ' free, ' + sum.slots.after + ' NEW now (at most ' + sum.slots.limit + ')' : ''))
     return { ...track, grammarInTrack: sum }
@@ -60722,7 +60724,7 @@ function JaGrammarPreview({ vocab, store }) {
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: '#60a5fa' }}>Due for review</div>
           {plan.review.length === 0
             ? <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>nothing is due</div>
-            : plan.review.map(x => <div key={x.id} data-preview-review={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 3 }}><span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>{jaGrammarRomajiSpan(x)}<span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span><span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>due {when(x.dueDate)}</span></div>)}
+            : plan.review.map(x => <div key={x.id} data-preview-review={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 3 }}><span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{jaGrammarShownLabel(x)}</span>{jaGrammarRomajiSpan(x)}<span style={{ fontSize: 11, color: 'var(--muted)' }}>{jaGrammarShownMeaning(x)}</span><span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>due {when(x.dueDate)}</span></div>)}
           {plan.moreDue > 0 && <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>and {plan.moreDue} more due, for a later track</div>}
         </div>
         {plan.slots && plan.stillNew.length > 0 && (
@@ -60732,7 +60734,7 @@ function JaGrammarPreview({ vocab, store }) {
               {wordingOn ? <span data-preview-waiting="1" style={{ fontSize: 10, color: 'var(--muted)' }}>{jaGrammarWaitingText(plan.stillNew.length, plan.slots.limit)}</span> : <span style={{ fontSize: 10, color: 'var(--muted)' }}>{plan.stillNew.length} of {plan.slots.limit} slots</span>}
             </div>
             {wordingOn && <div data-preview-practised-line="1" style={{ fontSize: 10, color: 'var(--muted)', margin: '2px 0 0' }}>{JA_GRAMMAR_PRACTISED_LINE}</div>}
-            {plan.stillNew.map(x => <div key={x.id} data-preview-still-new={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 3 }}><span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>{jaGrammarRomajiSpan(x)}<span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>{!wordingOn && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>practised again</span>}</div>)}
+            {plan.stillNew.map(x => <div key={x.id} data-preview-still-new={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 3 }}><span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{jaGrammarShownLabel(x)}</span>{jaGrammarRomajiSpan(x)}<span style={{ fontSize: 11, color: 'var(--muted)' }}>{jaGrammarShownMeaning(x)}</span>{!wordingOn && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>practised again</span>}</div>)}
           </div>
         )}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px' }}>
@@ -60743,7 +60745,7 @@ function JaGrammarPreview({ vocab, store }) {
           {plan.held && <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>No new points this track: {plan.overdue} reviews are overdue. Review first.</div>}
           {!plan.held && plan.next.length === 0 && plan.slots && plan.slots.free === 0 && (wordingOn ? <div data-preview-none-reason="1" style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>{jaGrammarNoNewText(plan.slots.newCount)}</div> : <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>No new points this track: {plan.slots.newCount} grammar points are still NEW (not rated). Rate them to free the slots: the card at the end of a track, or Words, Grammar review.</div>)}
           {!plan.held && plan.next.length === 0 && !(plan.slots && plan.slots.free === 0) && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>nothing new unlocks yet at this level</div>}
-          {plan.next.map(x => <div key={x.id} data-preview-next={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 3 }}><span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>{jaGrammarRomajiSpan(x)}<span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span><span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>{x.cost === 2 ? 'heavy' : 'light'}</span></div>)}
+          {plan.next.map(x => <div key={x.id} data-preview-next={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 3 }}><span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{jaGrammarShownLabel(x)}</span>{jaGrammarRomajiSpan(x)}<span style={{ fontSize: 11, color: 'var(--muted)' }}>{jaGrammarShownMeaning(x)}</span><span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>{x.cost === 2 ? 'heavy' : 'light'}</span></div>)}
         </div>
         {st && <div style={{ fontSize: 10, color: 'var(--muted)', margin: '2px 2px 0' }}>Stage: {st.name} ({plan.introducedCount} points taught): sentences up to {st.maxChars} characters, at most {st.maxGated} new points in one sentence.</div>}
       </div>
@@ -60813,9 +60815,9 @@ function JaKnownGrammarRow() {
           {rows.map(x => (
             <div key={x.id} data-known-grammar-entry={x.id} style={{ background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span className="jp" style={{ fontSize: 15, fontWeight: 700 }}>{x.label}</span>
+                <span className="jp" style={{ fontSize: 15, fontWeight: 700 }}>{jaGrammarShownLabel(x)}</span>
                 {jaGrammarRomajiSpan(x)}
-                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{jaGrammarShownMeaning(x)}</span>
               </div>
               <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 3, lineHeight: 1.45 }}>{x.explain}</div>
               <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>{x.via === 'easy' ? 'rated EASY · ' : x.via === 'checklist' ? 'marked known by you · ' : ''}{x.sightings} sightings in {x.tracks} tracks · known since {x.knownAt}</div>
@@ -61137,9 +61139,9 @@ function JaGrammarChecklist() {
             {shown.map(x => (
               <div key={x.id} data-checklist-row={x.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', minWidth: 0 }}>
                 <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 8 }}>
-                  <span className="jp" style={{ color: 'var(--text)', fontSize: 15, fontWeight: 700 }}>{x.label}</span>
+                  <span className="jp" style={{ color: 'var(--text)', fontSize: 15, fontWeight: 700 }}>{jaGrammarShownLabel(x)}</span>
                   {jaGrammarRomajiSpan({ id: x.id }, { color: 'var(--muted)' })}
-                  <span style={{ color: 'var(--muted)', fontSize: 11, marginLeft: 'auto', textAlign: 'right' }}>{x.meaning}</span>
+                  <span style={{ color: 'var(--muted)', fontSize: 11, marginLeft: 'auto', textAlign: 'right' }}>{jaGrammarShownMeaning(x)}</span>
                 </div>
                 <button data-checklist-status={x.id} data-status={x.status} onClick={() => tap(x)} title={askOf(x)} aria-label={askOf(x)}
                   style={{ flexShrink: 0, minWidth: 78, minHeight: 40, padding: '0 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 9, fontWeight: 700, letterSpacing: 0.3,
@@ -61291,9 +61293,9 @@ function JaGrammarReviewArea({ open: openFirst }) {
     return (
       <div key={kind + x.id} {...{ ['data-review-area-' + kind]: x.id }} style={{ background: 'var(--surface2)', borderRadius: 8, padding: '7px 10px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-          <span className="jp" style={{ fontSize: 15, fontWeight: 700 }}>{x.label}</span>
+          <span className="jp" style={{ fontSize: 15, fontWeight: 700 }}>{jaGrammarShownLabel(x)}</span>
           {jaGrammarRomajiSpan(x)}
-          <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>
+          <span style={{ fontSize: 11, color: 'var(--muted)' }}>{jaGrammarShownMeaning(x)}</span>
           {kind === 'due' && x.dueDate && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>due {x.dueDate}</span>}
           {kind === 'new' && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: '#10b981' }}>NEW</span>}
         </div>
@@ -61388,7 +61390,7 @@ const JA_GATE_FREE_TEXT = 'は が を に で の と も か ね よ だ で�
 // what the writer is told (both writers: the target group and the single sentence). Empty without a gate.
 function jaGrammarGatePromptBlock(gate) {
   if (!gate || (!gate.gate && !gate.stage)) return ''
-  const lab = id => { const e = jaGrammarEntryById(id); return e ? e.label + (e.meaning ? ' (' + e.meaning + ')' : '') : id }
+  const lab = id => { const e = jaGrammarEntryById(id); return e ? jaGrammarShownLabel(e) + (jaGrammarShownMeaning(e) ? ' (' + jaGrammarShownMeaning(e) + ')' : '') : id }
   const core = new Set(gate.coreIds || []), carriedNew = new Set((gate.stillNewIds || [])), taught = (gate.introducedIds || []).filter(id => !core.has(id) && !carriedNew.has(id))
   const free = JA_GATE_FREE_TEXT + ((gate.coreIds || []).includes('masu') ? ' · 〜ます verbs (polite speech)' : '')
   const L = []
@@ -61397,7 +61399,7 @@ function jaGrammarGatePromptBlock(gate) {
     L.push('  FREE from day one: ' + free)
     L.push('  TAUGHT ALREADY (allowed): ' + (taught.length ? taught.map(lab).join(' · ') : 'nothing yet beyond the free list'))
     // v775: a point the learner has not rated yet is still NEW: it is listed here (first, marked) and not under TAUGHT ALREADY
-    const newList = (gate.stillNew || []).map(x => x.label + (x.meaning ? ' (' + x.meaning + ', still new, not rated yet)' : ' (still new, not rated yet)')).concat((gate.planned || []).map(x => x.label + (x.meaning ? ' (' + x.meaning + ')' : '')))
+    const newList = (gate.stillNew || []).map(x => jaGrammarShownLabel(x) + (jaGrammarShownMeaning(x) ? ' (' + jaGrammarShownMeaning(x) + ', still new, not rated yet)' : ' (still new, not rated yet)')).concat((gate.planned || []).map(x => jaGrammarShownLabel(x) + (jaGrammarShownMeaning(x) ? ' (' + jaGrammarShownMeaning(x) + ')' : '')))
     L.push('  NEW THIS TRACK (also allowed, where a sentence naturally calls for them): ' + (newList.length ? newList.join(' · ') : 'none'))
   } else L.push('GRAMMAR STAGE FOR THIS LEARNER — FREE (never counted): ' + free)
   if (gate.stage && gate.ceilings) {
@@ -61422,7 +61424,7 @@ function jaGrammarCheckSentence(sentence, gate, o) {
   const norm = String(sentence == null ? '' : sentence).normalize('NFKC')
   const keep = (list, text) => list.filter(h => !h.implied && !(h.id === 'o-go' && jaGrammarPrefixIsWord(text, h, opts.words)))
   const hits = keep(opts.hits || jaGrammarDetect(norm).hits, norm)
-  const lab = id => { const e = jaGrammarEntryById(id); return e ? e.label + (e.meaning ? ' (' + e.meaning + ')' : '') : id }
+  const lab = id => { const e = jaGrammarEntryById(id); return e ? jaGrammarShownLabel(e) + (jaGrammarShownMeaning(e) ? ' (' + jaGrammarShownMeaning(e) + ')' : '') : id }
   const problems = []
   const locked = []
   if (gate.gate) {
@@ -61441,8 +61443,8 @@ function jaGrammarCheckSentence(sentence, gate, o) {
       if (gated.length > cl.maxGated && (!worstMany || gated.length > worstMany.ids.length)) worstMany = { ids: gated, sentence: seg }
       if (chars > cl.maxChars && (!worstLong || chars > worstLong.chars)) worstLong = { chars, sentence: seg }
     })
-    if (worstMany) problems.push({ kind: 'many', ids: worstMany.ids, labels: worstMany.ids.map(id => (jaGrammarEntryById(id) || { label: id }).label), sentence: worstMany.sentence, max: cl.maxGated,
-      text: 'GRAMMAR_STAGE: too many new grammar points in one sentence (' + worstMany.ids.length + ': ' + worstMany.ids.map(id => (jaGrammarEntryById(id) || { label: id }).label).join(', ') + ' — at most ' + cl.maxGated + ' at this stage); keep it simpler' })
+    if (worstMany) problems.push({ kind: 'many', ids: worstMany.ids, labels: worstMany.ids.map(id => jaGrammarShownLabel(jaGrammarEntryById(id) || { id: id, label: id })), sentence: worstMany.sentence, max: cl.maxGated,
+      text: 'GRAMMAR_STAGE: too many new grammar points in one sentence (' + worstMany.ids.length + ': ' + worstMany.ids.map(id => jaGrammarShownLabel(jaGrammarEntryById(id) || { id: id, label: id })).join(', ') + ' — at most ' + cl.maxGated + ' at this stage); keep it simpler' })
     if (worstLong) problems.push({ kind: 'long', chars: worstLong.chars, max: cl.maxChars, sentence: worstLong.sentence,
       text: 'GRAMMAR_STAGE: too long for this stage (' + worstLong.chars + ' characters; at most ' + cl.maxChars + ' at this stage); use a shorter sentence' })
   }
@@ -61486,8 +61488,8 @@ function jaGrammarExportLines(track) {
   const L = ['GRAMMAR IN THIS TRACK', '-'.repeat(30),
     'Chosen after the sentences were written, from the grammar they already use. Pair numbers are the PAIR numbers below. A point is taught NEW when it is unlocked for this learner, not yet learned and used in at least ' + JA_GRAMMAR_FROM_SENTENCES.minUses + ' target sentences (up to ' + ((g.budget && g.budget.limit) || JA_GRAMMAR_FROM_SENTENCES.budget) + ' points a track: light = 1, heavy = 2).']
   // v775 (romaji): the stored romaji right after the Japanese, in square brackets, in every list; nothing when the entry has none. Off: exactly what v774 printed (the stored romaji in two sections only).
-  const rmOn = jaGrammarRomajiOn(), rmTag = x => { const r = rmOn ? jaGrammarRomajiText(x) : ''; return r ? ' [' + r + ']' : '' }, labR = x => x.label + rmTag(x)
-  const line = (x, tag) => '  ' + x.label + (rmOn ? rmTag(x) : (x.romaji ? ' [' + x.romaji + ']' : '')) + ' — ' + x.meaning + ' — pairs ' + nums(x.pairs) + (x.cost ? ' — ' + (x.cost === 2 ? 'heavy' : 'light') : '') + (tag ? ' — ' + tag : '') + '\n      ' + x.explain
+  const rmOn = jaGrammarRomajiOn(), rmTag = x => { const r = rmOn ? jaGrammarRomajiText(x) : ''; return r ? ' [' + r + ']' : '' }, labR = x => jaGrammarShownLabel(x) + rmTag(x)
+  const line = (x, tag) => '  ' + jaGrammarShownLabel(x) + (rmOn ? rmTag(x) : (x.romaji ? ' [' + x.romaji + ']' : '')) + ' — ' + jaGrammarShownMeaning(x) + ' — pairs ' + nums(x.pairs) + (x.cost ? ' — ' + (x.cost === 2 ? 'heavy' : 'light') : '') + (tag ? ' — ' + tag : '') + '\n      ' + x.explain
   const sect = (title, rows, tag) => { L.push(title + (rows.length ? '' : ': none')); rows.forEach(x => L.push(line(x, tag ? tag(x) : ''))) }
   const all = k => g[k].concat((g.basics && g.basics[k]) || [])
   sect('NEW (taught now) — ' + ((g.budget && g.budget.spent) || 0) + ' of ' + ((g.budget && g.budget.limit) || 5) + ' points used' + (g.held ? ' — none added: ' + g.overdue + ' reviews are overdue' : ''), all('new'))
@@ -61498,10 +61500,10 @@ function jaGrammarExportLines(track) {
     L.push('NEW SLOTS: ' + g.slots.before + ' point' + (g.slots.before === 1 ? ' was' : 's were') + ' still NEW (not rated) before this track, ' + g.slots.free + ' of ' + g.slots.limit + ' slots free, ' + g.new.length + ' taught now, ' + g.slots.after + ' NEW after it. Rate them (the card at the end of the track, or Words > Grammar review) to free the slots.')
   }
   sect('REVIEW (practised again)', all('review'), x => x.dueDate ? 'was due ' + x.dueDate : '')
-  if (all('alsoUsed').length) L.push('ALSO USED (already learned): ' + all('alsoUsed').map(x => rmOn ? labR(x) : x.label).join(' '))
-  if (g.knownUsed && g.knownUsed.length) L.push('KNOWN (learned for good, used again here, not reviewed): ' + g.knownUsed.map(x => rmOn ? labR(x) : x.label).join(' '))
+  if (all('alsoUsed').length) L.push('ALSO USED (already learned): ' + all('alsoUsed').map(x => rmOn ? labR(x) : jaGrammarShownLabel(x)).join(' '))
+  if (g.knownUsed && g.knownUsed.length) L.push('KNOWN (learned for good, used again here, not reviewed): ' + g.knownUsed.map(x => rmOn ? labR(x) : jaGrammarShownLabel(x)).join(' '))
   if (g.becameKnown && g.becameKnown.length) { L.push('BECAME KNOWN WITH THIS TRACK (used in ' + JA_GRAMMAR_KNOWN_RULE.minSentences + ' or more sentences across ' + JA_GRAMMAR_KNOWN_RULE.minTracks + ' or more tracks; no longer reviewed)')
-    g.becameKnown.forEach(x => L.push('  ' + x.label + (rmOn ? rmTag(x) : (x.romaji ? ' [' + x.romaji + ']' : '')) + ' — ' + x.meaning + ' — ' + x.sightings + ' sentences in ' + x.tracks + ' tracks')) }
+    g.becameKnown.forEach(x => L.push('  ' + jaGrammarShownLabel(x) + (rmOn ? rmTag(x) : (x.romaji ? ' [' + x.romaji + ']' : '')) + ' — ' + jaGrammarShownMeaning(x) + ' — ' + x.sightings + ' sentences in ' + x.tracks + ' tracks')) }
   sect('SEEN IN PASSING (not taught yet)', all('passing'), x => x.why || '')
   sect('NOT YET UNLOCKED but used (listed only; the sentences are not rewritten)', all('locked'), x => x.minKnown ? 'unlocks at ' + x.minKnown + ' words' : '')
   // v774: what the writer was allowed, and every line that still uses grammar outside it (never hidden)
@@ -61509,15 +61511,15 @@ function jaGrammarExportLines(track) {
     const gt = g.gate
     if (gt.gate) {
       L.push('PLANNED BEFORE WRITING (the writer was allowed to use these, on top of the free core of ' + gt.coreCount + ' points and the ' + gt.introducedCount + ' already taught)' + (gt.planned.length ? '' : ': none' + (gt.held ? ' — ' + gt.overdue + ' reviews are overdue' : '')))
-      gt.planned.forEach(x => L.push('  ' + (rmOn ? labR(x) : x.label) + ' — ' + x.meaning + ' — ' + (x.pairs.length ? 'pairs ' + nums(x.pairs) : 'no pair') + ' — ' + x.outcome))
+      gt.planned.forEach(x => L.push('  ' + (rmOn ? labR(x) : jaGrammarShownLabel(x)) + ' — ' + jaGrammarShownMeaning(x) + ' — ' + (x.pairs.length ? 'pairs ' + nums(x.pairs) : 'no pair') + ' — ' + x.outcome))
       if (gt.stillNew && gt.stillNew.length) {
         L.push('STILL NEW BEFORE WRITING (not rated yet; the writer was told they are NEW and to use them again)')
-        gt.stillNew.forEach(x => L.push('  ' + (rmOn ? labR(x) : x.label) + ' — ' + x.meaning + ' — ' + (x.pairs.length ? 'pairs ' + nums(x.pairs) : 'no pair') + ' — ' + x.outcome))
+        gt.stillNew.forEach(x => L.push('  ' + (rmOn ? labR(x) : jaGrammarShownLabel(x)) + ' — ' + jaGrammarShownMeaning(x) + ' — ' + (x.pairs.length ? 'pairs ' + nums(x.pairs) : 'no pair') + ' — ' + x.outcome))
       }
     }
     if (gt.stageOn && gt.ceilings) L.push('STAGE WHEN THE SENTENCES WERE WRITTEN: ' + gt.ceilings.name + ' (' + gt.introducedCount + ' grammar points taught) — at most ' + gt.ceilings.maxChars + ' characters and ' + gt.ceilings.maxGated + ' grammar points that are not free in one sentence')
     if (gt.gate) {
-      if (gt.notTaught.length) gt.notTaught.forEach(x => L.push('GRAMMAR NOT YET TAUGHT: pair ' + String(x.n).padStart(2, '0') + ' uses ' + (rmOn ? labR(x) : x.label) + (x.taughtNow ? ' (taught NEW at the end of this track)' : '')))
+      if (gt.notTaught.length) gt.notTaught.forEach(x => L.push('GRAMMAR NOT YET TAUGHT: pair ' + String(x.n).padStart(2, '0') + ' uses ' + (rmOn ? labR(x) : jaGrammarShownLabel(x)) + (x.taughtNow ? ' (taught NEW at the end of this track)' : '')))
       else L.push('GRAMMAR NOT YET TAUGHT: none')
     }
     if (gt.stageOn) {
@@ -61557,9 +61559,9 @@ function JaGrammarInTrack({ track }) {
               <div key={k} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '7px 10px', marginBottom: 5 }}>
                 <button onClick={() => setOpen(o => ({ ...o, [k]: !o[k] }))} aria-expanded={!!open[k]} data-grammar-entry={x.id}
                   style={{ display: 'flex', alignItems: 'baseline', gap: 8, width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', color: 'var(--text)' }}>
-                  <span className="jp" style={{ fontSize: 15, fontWeight: 700 }}>{x.label}</span>
+                  <span className="jp" style={{ fontSize: 15, fontWeight: 700 }}>{jaGrammarShownLabel(x)}</span>
                   {jaGrammarRomajiSpan(x)}
-                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{jaGrammarShownMeaning(x)}</span>
                   <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>pairs {x.pairs.map(n => String(n).padStart(2, '0')).join(' ')}</span>
                 </button>
                 {(x.why || (sec.key === 'locked' && x.minKnown)) && <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>{x.why || ('unlocks at ' + x.minKnown + ' words')}</div>}
@@ -61569,12 +61571,12 @@ function JaGrammarInTrack({ track }) {
           })}
         </div>
       ))}
-      {alsoUsed.length > 0 && <p style={{ fontSize: 10, color: 'var(--muted)', margin: '4px 2px' }}>Also used, already learned: {jaGrammarRomajiOn() ? alsoUsed.map(x => <span key={x.type + x.id} style={{ marginRight: 8 }}><span className="jp">{x.label}</span>{' '}{jaGrammarRomajiSpan(x, { fontSize: 10 })}</span>) : <span className="jp">{alsoUsed.map(x => x.label).join(' ')}</span>}</p>}
-      {g.knownUsed && g.knownUsed.length > 0 && <p data-ja-grammar-known-used="1" style={{ fontSize: 10, color: 'var(--muted)', margin: '4px 2px' }}>Known, not reviewed: {jaGrammarRomajiOn() ? g.knownUsed.map(x => <span key={x.type + x.id} style={{ marginRight: 8 }}><span className="jp">{x.label}</span>{' '}{jaGrammarRomajiSpan(x, { fontSize: 10 })}</span>) : <span className="jp">{g.knownUsed.map(x => x.label).join(' ')}</span>}</p>}
+      {alsoUsed.length > 0 && <p style={{ fontSize: 10, color: 'var(--muted)', margin: '4px 2px' }}>Also used, already learned: {jaGrammarRomajiOn() ? alsoUsed.map(x => <span key={x.type + x.id} style={{ marginRight: 8 }}><span className="jp">{jaGrammarShownLabel(x)}</span>{' '}{jaGrammarRomajiSpan(x, { fontSize: 10 })}</span>) : <span className="jp">{alsoUsed.map(x => jaGrammarShownLabel(x)).join(' ')}</span>}</p>}
+      {g.knownUsed && g.knownUsed.length > 0 && <p data-ja-grammar-known-used="1" style={{ fontSize: 10, color: 'var(--muted)', margin: '4px 2px' }}>Known, not reviewed: {jaGrammarRomajiOn() ? g.knownUsed.map(x => <span key={x.type + x.id} style={{ marginRight: 8 }}><span className="jp">{jaGrammarShownLabel(x)}</span>{' '}{jaGrammarRomajiSpan(x, { fontSize: 10 })}</span>) : <span className="jp">{g.knownUsed.map(x => jaGrammarShownLabel(x)).join(' ')}</span>}</p>}
       {g.becameKnown && g.becameKnown.length > 0 && (
         <div data-ja-grammar-became-known="1" style={{ margin: '6px 2px' }}>
           <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, color: '#10b981' }}>BECAME KNOWN WITH THIS TRACK</span>
-          {g.becameKnown.map(x => <div key={x.id} style={{ fontSize: 11, color: 'var(--muted)', padding: '2px 8px' }}><span className="jp" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{x.label}</span> {jaGrammarRomajiSpan(x)} {x.meaning} · {x.sightings} sentences in {x.tracks} tracks · no longer reviewed</div>)}
+          {g.becameKnown.map(x => <div key={x.id} style={{ fontSize: 11, color: 'var(--muted)', padding: '2px 8px' }}><span className="jp" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{jaGrammarShownLabel(x)}</span> {jaGrammarRomajiSpan(x)} {jaGrammarShownMeaning(x)} · {x.sightings} sentences in {x.tracks} tracks · no longer reviewed</div>)}
         </div>
       )}
       {g.gate && (
@@ -61586,18 +61588,18 @@ function JaGrammarInTrack({ track }) {
             </div>
             {g.gate.planned.map(x => (
               <div key={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 10px' }}>
-                <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>
+                <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{jaGrammarShownLabel(x)}</span>
                 {jaGrammarRomajiSpan(x)}
-                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{jaGrammarShownMeaning(x)}</span>
                 <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>{x.pairs.length ? 'pairs ' + x.pairs.map(n => String(n).padStart(2, '0')).join(' ') + ' · ' : ''}{x.outcome}</span>
               </div>
             ))}
             {(g.gate.stillNew || []).length > 0 && <div style={{ fontSize: 10, color: 'var(--muted)', margin: '4px 2px 0' }}>Still NEW before writing (not rated yet; the writer was told to use them again):</div>}
             {(g.gate.stillNew || []).map(x => (
               <div key={'sn' + x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 10px' }}>
-                <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>
+                <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{jaGrammarShownLabel(x)}</span>
                 {jaGrammarRomajiSpan(x)}
-                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{jaGrammarShownMeaning(x)}</span>
                 <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>{x.pairs.length ? 'pairs ' + x.pairs.map(n => String(n).padStart(2, '0')).join(' ') + ' · ' : ''}{x.outcome}</span>
               </div>
             ))}
@@ -61608,9 +61610,9 @@ function JaGrammarInTrack({ track }) {
             {g.gate.notTaught.map(x => (
               <div key={x.n + ':' + x.id} data-grammar-not-taught={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 10px' }}>
                 <span style={{ fontSize: 11, color: 'var(--muted)' }}>pair {String(x.n).padStart(2, '0')} uses</span>
-                <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>
+                <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{jaGrammarShownLabel(x)}</span>
                 {jaGrammarRomajiSpan(x)}
-                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}{x.taughtNow ? ' · taught NEW at the end of this track' : ''}</span>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{jaGrammarShownMeaning(x)}{x.taughtNow ? ' · taught NEW at the end of this track' : ''}</span>
               </div>
             ))}
           </>)}
@@ -64106,7 +64108,7 @@ function japaneseTargetGroupAdapter(ctx) {
   const _objBlocks = (_obj.buildingBlocks || []).map(b => jaGrammarObjectiveBlock(b.id || b)).filter(Boolean)
   const _objBasics = (_obj.conversationBasics || []).map(b => jaBasicById(b.id || b)).filter(Boolean)
   const objectives = (_objBlocks.length || _objBasics.length)
-    ? 'PRACTICE OBJECTIVES (only where the intent genuinely calls for them): ' + [..._objBlocks.map(b => b.label + ' (' + b.meaning + ')'), ..._objBasics.map(b => b.form + ' (' + b.english + ')')].join(', ')
+    ? 'PRACTICE OBJECTIVES (only where the intent genuinely calls for them): ' + [..._objBlocks.map(b => jaGrammarShownLabel(b) + ' (' + jaGrammarShownMeaning(b) + ')'), ..._objBasics.map(b => b.form + ' (' + b.english + ')')].join(', ')
     : ''
   return {
     language: 'ja',
@@ -64175,7 +64177,7 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
   const _objBasics = (_obj.conversationBasics || []).map(b => jaBasicById(b.id || b)).filter(Boolean)
   const _objLine = (_objBlocks.length || _objBasics.length)
     ? '\nPRACTICE OBJECTIVES (only where the intent genuinely calls for them): ' +
-      [..._objBlocks.map(b => b.label + ' (' + b.meaning + ')'), ..._objBasics.map(b => b.form + ' (' + b.english + ')')].join(', ')
+      [..._objBlocks.map(b => jaGrammarShownLabel(b) + ' (' + jaGrammarShownMeaning(b) + ')'), ..._objBasics.map(b => b.form + ' (' + b.english + ')')].join(', ')
     : ''
   const record = (outcome, extra) => {
     onLog && onLog('  GENERATION_ATTEMPT_BUDGET targetId=' + target.id + ' recall=' + recallIndex + ' used=' + paid + ' max=' + paidMax + ' outcome=' + outcome +
@@ -64383,7 +64385,7 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
     _grammarGate = jaGrammarGateContext(vocab, _grammarStore, { register: registerId, today })
     if (_grammarGate) { _tc.grammarGate = _grammarGate
       onLog && onLog('\u2139 GRAMMAR GATE: ' + _grammarGate.introducedCount + ' grammar point(s) taught · free core ' + _grammarGate.coreIds.length + (_grammarGate.gate ? ' · new in this track (' + _grammarGate.budget.spent + '/' + _grammarGate.budget.limit + ' points): ' +
-        (_grammarGate.planned.map(x => x.label).join(' ') || 'none') + (_grammarGate.held ? ' · none planned: ' + _grammarGate.overdue + ' reviews are overdue' : '') + (_grammarGate.slots ? ' · still NEW (not rated, carried): ' + (_grammarGate.stillNew.map(x => x.label).join(' ') || 'none') + ' · ' + _grammarGate.slots.free + ' of ' + _grammarGate.slots.limit + ' NEW slots free' : '') + ' · a sentence outside this list is refused and written again' : '') +
+        (_grammarGate.planned.map(x => jaGrammarShownLabel(x)).join(' ') || 'none') + (_grammarGate.held ? ' · none planned: ' + _grammarGate.overdue + ' reviews are overdue' : '') + (_grammarGate.slots ? ' · still NEW (not rated, carried): ' + (_grammarGate.stillNew.map(x => jaGrammarShownLabel(x)).join(' ') || 'none') + ' · ' + _grammarGate.slots.free + ' of ' + _grammarGate.slots.limit + ' NEW slots free' : '') + ' · a sentence outside this list is refused and written again' : '') +
         (_grammarGate.stage ? ' · stage "' + _grammarGate.ceilings.name + '": at most ' + _grammarGate.ceilings.maxChars + ' characters and ' + _grammarGate.ceilings.maxGated + ' grammar points that are not free per sentence' : '')) }
     const dueBlocks = jaGrammarDue(_grammarStore, 'buildingBlock', today).map(r => jaBlockById(r.itemId)).filter(Boolean)
     const dueBasics = jaGrammarDue(_grammarStore, 'conversationBasic', today).map(r => jaBasicById(r.itemId)).filter(Boolean)
@@ -64401,7 +64403,7 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
     _objectives = { buildingBlocks: _grammarGate ? _grammarGate.review.concat((_grammarGate.stillNew || []).slice(0, JA_GRAMMAR_NEWRATED.newSlots)).map(x => jaGrammarEntryById(x.id)).filter(Boolean) : [...dueBlocks, ...fresh].slice(0, 3), conversationBasics: [...dueBasics, ...freshBasics].slice(0, 2) }
     onProgress && onProgress(0, totalRecall, { apiError:
       'Content targets: ' + targets.length + ' · Building Blocks due: ' + dueBlocks.length +
-      ' · new: ' + fresh.map(b => b.label).join(' ') + ' · Conversation Basics due: ' + dueBasics.length +
+      ' · new: ' + fresh.map(b => jaGrammarShownLabel(b)).join(' ') + ' · Conversation Basics due: ' + dueBasics.length +
       ' · new: ' + freshBasics.map(b => b.form).join(' ') }, null, null)
   } catch (e) { console.error('[ja-grammar] objectives unavailable — generation continues unchanged', e) }
   const seenMap = new Map()

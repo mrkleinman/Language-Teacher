@@ -60624,8 +60624,8 @@ async function jaGrammarFinaliseTrack(track, o) {
     if (changed) await jaGrammarSave(store)
     const sum = jaGrammarSummary(plan, an)
     // v774 A/B — what the writer was allowed (planned before writing) and every line whose final text still uses an entry outside that list. Reported, never rewritten, never a reason to fail the track.
-    { const _gate = jaGrammarGateOn() && track.trackContext && track.trackContext.grammarGate
-      if (_gate && _gate.gate) { sum.gate = jaGrammarGateReport(track, _gate, an, plan, (opts.vocab || []).filter(w => w && /^[おご]/.test(w.japanese || '')))
+    { const _gate = (jaGrammarGateOn() || jaGrammarStageOn()) && track.trackContext && track.trackContext.grammarGate
+      if (_gate && (_gate.gate || _gate.stage)) { sum.gate = jaGrammarGateReport(track, _gate, an, plan, (opts.vocab || []).filter(w => w && /^[おご]/.test(w.japanese || '')))
         if (opts.push) opts.push('GRAMMAR GATE: ' + sum.gate.planned.length + ' planned before writing (' + sum.gate.planned.map(x => x.label + ' ' + x.outcome).join(' · ') + ') · ' + sum.gate.notTaught.length + ' use(s) of grammar not yet taught kept and listed' + (sum.gate.notTaught.length ? ': pair ' + [...new Set(sum.gate.notTaught.map(x => x.n))].join(', ') : '')) } }
     if (opts.push) opts.push('GRAMMAR FROM SENTENCES: ' + plan.new.length + ' new (' + plan.new.map(x => x.label).join(' ') + ') · ' + plan.review.length + ' review · ' + plan.alsoUsed.length + ' also used · ' +
       plan.passing.length + ' seen in passing · ' + plan.locked.length + ' not yet unlocked · budget ' + plan.budget.spent + '/' + plan.budget.limit + (plan.held ? ' · HELD BACK: ' + plan.overdue + ' overdue' : ''))
@@ -60647,10 +60647,30 @@ async function jaGrammarFinaliseTrack(track, o) {
 //                         per-line limits: generateTargetGroup / generateJapaneseOneRecall). A line that still fails when its attempts are used is KEPT and carries _grammarFlag; the finished track lists it
 //                         (GRAMMAR NOT YET TAUGHT: pair N uses X) and it never blocks READY. Pure code: no model request.
 // The plan the writer receives is one plain object (jaGrammarGateContext) carried by the track context (tc.grammarGate), so recovery, the quality-check repair and the finaliser all read the same one.
-const JA_GRAMMAR_GATE = { gate: true }
+const JA_GRAMMAR_GATE = { gate: true, stage: true }
 function jaGrammarGateSetEnabled(on) { JA_GRAMMAR_GATE.gate = !!on }
 // the list of entries a track will introduce belongs to the picker (v773), which introduces them after writing: with the picker off there is nothing for a gate to hand out
 function jaGrammarGateOn() { return !!JA_GRAMMAR_GATE.gate && jaGrammarFromSentencesOn() }
+// C  STAGE  (jaGrammarStageSetEnabled)  SIMPLE FIRST, RICHER AS TAUGHT. Per sentence (a line of several sentences is read one sentence at a time):
+//      · at most 2 GATED entries — anything that is not in the free core — while fewer than 15 entries are introduced, at most 3 from 15 on ("too many new grammar points in one sentence");
+//      · a length ceiling that rises with the number of introduced entries ("too long for this stage"), counted in characters without punctuation or spaces:
+//            0–5 introduced   12 characters   ("first steps")   a day-one sentence is a short one: これ、本です。 水、飲む？ 明日、行くよ。 (the owner's 99 lines: median 10, 90th percentile 15)
+//            6–14 introduced  16 characters   ("early")         room for one plain clause with a place or a time
+//            15–29 introduced 22 characters   ("growing")       two short clauses, or one with a reason
+//            30+ introduced   30 characters   ("broad")         nearly everything the 99 lines of the 17 Nov export say (the longest has 25)
+//      The free core and the short reaction words never count, so ね / よ and えっ / ええと / ねえ stay as natural as they are. A sentence that still breaks a ceiling when its attempts are used up is
+//      KEPT and flagged exactly like grammar outside the list (GRAMMAR STAGE: pair N …). The writer's prompt states the stage in words.
+function jaGrammarStageSetEnabled(on) { JA_GRAMMAR_GATE.stage = !!on }
+function jaGrammarStageOn() { return !!JA_GRAMMAR_GATE.stage && jaGrammarFromSentencesOn() }
+const JA_GRAMMAR_STAGES = Object.freeze([
+  Object.freeze({ upTo: 5, name: 'first steps', maxChars: 12, maxGated: 2 }),
+  Object.freeze({ upTo: 14, name: 'early', maxChars: 16, maxGated: 2 }),
+  Object.freeze({ upTo: 29, name: 'growing', maxChars: 22, maxGated: 3 }),
+  Object.freeze({ upTo: Infinity, name: 'broad', maxChars: 30, maxGated: 3 }),
+])
+function jaGrammarStageFor(introducedCount) { const k = Math.max(0, introducedCount || 0); return JA_GRAMMAR_STAGES.find(x => k <= x.upTo) || JA_GRAMMAR_STAGES[JA_GRAMMAR_STAGES.length - 1] }
+// characters of a sentence as the ceiling counts them: no spaces, no punctuation (the long vowel mark of ラーメン is a character)
+function jaGrammarCharCount(s) { return String(s == null ? '' : s).replace(/[\s\u3000、。，．,.？！?!…・「」『』（）()〜~]/g, '').length }
 const JA_GRAMMAR_CORE = Object.freeze(['wa', 'ga', 'wo', 'ni', 'de', 'no', 'to', 'mo', 'ka', 'ne', 'yo', 'yone', 'da', 'desu', 'plain-present', 'demo', 'dakara'])
 const JA_GRAMMAR_CORE_POLITE = Object.freeze(['masu'])
 function jaGrammarCoreIds(register) { return canonicalJapaneseSpeechStyle(register) === 'polite' ? JA_GRAMMAR_CORE.concat(JA_GRAMMAR_CORE_POLITE) : JA_GRAMMAR_CORE.slice() }
@@ -60690,24 +60710,36 @@ function jaGrammarTrackPlan(store, known, o) {
 }
 // the plain object the writer, the repair paths and the finaliser share. null when nothing is switched on.
 function jaGrammarGateContext(vocab, store, o) {
-  if (!jaGrammarGateOn()) return null
+  const gateOn = jaGrammarGateOn(), stageOn = jaGrammarStageOn()
+  if (!gateOn && !stageOn) return null
   const opts = o || {}, st = store || {}, known = jaGrammarKnownCount(vocab)
   const plan = jaGrammarTrackPlan(st, known, { today: opts.today })
   const introducedIds = jaGrammarIntroducedIds(st), register = canonicalJapaneseSpeechStyle(opts.register)
-  return { version: 1, at: plan.today, register, known, gate: true, introducedCount: introducedIds.length, coreIds: jaGrammarCoreIds(register), introducedIds,
-    plannedIds: plan.next.map(x => x.id), planned: plan.next.map(x => ({ id: x.id, label: x.label, meaning: x.meaning, cost: x.cost })),
+  const stage = jaGrammarStageFor(introducedIds.length)
+  return { version: 1, at: plan.today, register, known, gate: gateOn, stage: stageOn, introducedCount: introducedIds.length, coreIds: jaGrammarCoreIds(register), introducedIds,
+    ceilings: { name: stage.name, maxChars: stage.maxChars, maxGated: stage.maxGated },
+    plannedIds: gateOn ? plan.next.map(x => x.id) : [], planned: gateOn ? plan.next.map(x => ({ id: x.id, label: x.label, meaning: x.meaning, cost: x.cost })) : [],
     review: plan.review.map(x => ({ id: x.id, label: x.label, meaning: x.meaning, dueDate: x.dueDate })), held: plan.held, overdue: plan.overdue, budget: plan.budget }
 }
 const JA_GATE_FREE_TEXT = 'は が を に で の と も か ね よ だ です · verbs in the plain present (行く, 食べる) · でも だから じゃあ · よね (ね and よ together) · the conversation basics and short reactions (うん, あの, えっ, ええと, ねえ, へえ, ほら, ああ, やった, よかった, ほんと？, そっか, なるほど, そうだね, いいね, こんにちは, またね, どうしよう)'
 // what the writer is told (both writers: the target group and the single sentence). Empty without a gate.
 function jaGrammarGatePromptBlock(gate) {
-  if (!gate || !gate.gate) return ''
+  if (!gate || (!gate.gate && !gate.stage)) return ''
   const lab = id => { const e = jaGrammarEntryById(id); return e ? e.label + (e.meaning ? ' (' + e.meaning + ')' : '') : id }
   const core = new Set(gate.coreIds || []), taught = (gate.introducedIds || []).filter(id => !core.has(id))
-  const L = ['GRAMMAR FOR THIS LEARNER — use ONLY this grammar. A point that is not listed here is NOT allowed yet, even when it is correct Japanese and even when the speech style above suggests it; if an idea needs one, choose a simpler idea.',
-    '  FREE from day one: ' + JA_GATE_FREE_TEXT + ((gate.coreIds || []).includes('masu') ? ' · 〜ます verbs (polite speech)' : ''),
-    '  TAUGHT ALREADY (allowed): ' + (taught.length ? taught.map(lab).join(' · ') : 'nothing yet beyond the free list'),
-    '  NEW THIS TRACK (also allowed, where a sentence naturally calls for them): ' + ((gate.planned || []).length ? gate.planned.map(x => x.label + (x.meaning ? ' (' + x.meaning + ')' : '')).join(' · ') : 'none')]
+  const free = JA_GATE_FREE_TEXT + ((gate.coreIds || []).includes('masu') ? ' · 〜ます verbs (polite speech)' : '')
+  const L = []
+  if (gate.gate) {
+    L.push('GRAMMAR FOR THIS LEARNER — use ONLY this grammar. A point that is not listed here is NOT allowed yet, even when it is correct Japanese and even when the speech style above suggests it; if an idea needs one, choose a simpler idea.')
+    L.push('  FREE from day one: ' + free)
+    L.push('  TAUGHT ALREADY (allowed): ' + (taught.length ? taught.map(lab).join(' · ') : 'nothing yet beyond the free list'))
+    L.push('  NEW THIS TRACK (also allowed, where a sentence naturally calls for them): ' + ((gate.planned || []).length ? gate.planned.map(x => x.label + (x.meaning ? ' (' + x.meaning + ')' : '')).join(' · ') : 'none'))
+  } else L.push('GRAMMAR STAGE FOR THIS LEARNER — FREE (never counted): ' + free)
+  if (gate.stage && gate.ceilings) {
+    const n = gate.introducedCount || 0, cl = gate.ceilings
+    L.push('STAGE — ' + cl.name + ': this learner has been taught ' + n + ' grammar point' + (n === 1 ? '' : 's') + ' so far, so keep every sentence short: at most ' + cl.maxChars + ' characters (punctuation not counted), and at most ' + cl.maxGated +
+      ' grammar points that are not FREE in any one sentence. Simpler is always fine.')
+  }
   return L.join('\n')
 }
 // the お / ご in お茶 or ご飯 belongs to a word, and a set phrase is not grammar: the polite prefix counts only when it is not part of a word the learner has been taught or a phrase met whole
@@ -60720,37 +60752,58 @@ function jaGrammarPrefixIsWord(text, hit, words) {
 //   problems[] = { kind: 'locked', ids, labels, text }   text is the plain reason the writer receives
 // o.words = the content words the learner has been taught (the polite prefix test), o.hits = the detector's hits for the whole sentence when the caller already has them
 function jaGrammarCheckSentence(sentence, gate, o) {
-  const opts = o || {}, ok = { ok: true, problems: [], lockedIds: [] }
-  if (!gate || !gate.gate) return ok
+  const opts = o || {}, ok = { ok: true, problems: [], lockedIds: [], text: '' }
+  if (!gate || (!gate.gate && !gate.stage)) return ok
   const norm = String(sentence == null ? '' : sentence).normalize('NFKC')
-  const hits = (opts.hits || jaGrammarDetect(norm).hits).filter(h => !h.implied && !(h.id === 'o-go' && jaGrammarPrefixIsWord(norm, h, opts.words)))
-  const allowed = new Set([...(gate.coreIds || []), ...(gate.introducedIds || []), ...(gate.plannedIds || [])])
-  const locked = []
-  hits.forEach(h => { if (!allowed.has(h.id) && !locked.includes(h.id)) locked.push(h.id) })
+  const keep = (list, text) => list.filter(h => !h.implied && !(h.id === 'o-go' && jaGrammarPrefixIsWord(text, h, opts.words)))
+  const hits = keep(opts.hits || jaGrammarDetect(norm).hits, norm)
+  const lab = id => { const e = jaGrammarEntryById(id); return e ? e.label + (e.meaning ? ' (' + e.meaning + ')' : '') : id }
   const problems = []
-  if (locked.length) {
-    const labels = locked.map(id => { const e = jaGrammarEntryById(id); return e ? e.label + (e.meaning ? ' (' + e.meaning + ')' : '') : id })
-    problems.push({ kind: 'locked', ids: locked, labels, text: 'GRAMMAR_NOT_YET_TAUGHT: ' + labels.join(', ') + (locked.length > 1 ? ' are' : ' is') + ' not taught yet for this learner — rewrite the sentence using only the grammar in the GRAMMAR FOR THIS LEARNER list' })
+  const locked = []
+  if (gate.gate) {
+    const allowed = new Set([...(gate.coreIds || []), ...(gate.introducedIds || []), ...(gate.plannedIds || [])])
+    hits.forEach(h => { if (!allowed.has(h.id) && !locked.includes(h.id)) locked.push(h.id) })
+    if (locked.length) problems.push({ kind: 'locked', ids: locked, labels: locked.map(lab), text: 'GRAMMAR_NOT_YET_TAUGHT: ' + locked.map(lab).join(', ') + (locked.length > 1 ? ' are' : ' is') + ' not taught yet for this learner — rewrite the sentence using only the grammar in the GRAMMAR FOR THIS LEARNER list' })
   }
-  return { ok: problems.length === 0, problems, lockedIds: locked }
+  // C — the stage: a line of several sentences is read one sentence at a time
+  if (gate.stage && gate.ceilings) {
+    const cl = gate.ceilings, core = new Set(gate.coreIds || [])
+    const segs = norm.split(/(?<=[。！？!?])/).map(x => x.trim()).filter(x => jaGrammarCharCount(x) > 0)
+    let worstMany = null, worstLong = null
+    segs.forEach(seg => {
+      const chars = jaGrammarCharCount(seg), sh = segs.length === 1 ? hits : keep(jaGrammarDetect(seg).hits, seg)
+      const gated = []; sh.forEach(h => { if (!core.has(h.id) && !gated.includes(h.id)) gated.push(h.id) })
+      if (gated.length > cl.maxGated && (!worstMany || gated.length > worstMany.ids.length)) worstMany = { ids: gated, sentence: seg }
+      if (chars > cl.maxChars && (!worstLong || chars > worstLong.chars)) worstLong = { chars, sentence: seg }
+    })
+    if (worstMany) problems.push({ kind: 'many', ids: worstMany.ids, labels: worstMany.ids.map(id => (jaGrammarEntryById(id) || { label: id }).label), sentence: worstMany.sentence, max: cl.maxGated,
+      text: 'GRAMMAR_STAGE: too many new grammar points in one sentence (' + worstMany.ids.length + ': ' + worstMany.ids.map(id => (jaGrammarEntryById(id) || { label: id }).label).join(', ') + ' — at most ' + cl.maxGated + ' at this stage); keep it simpler' })
+    if (worstLong) problems.push({ kind: 'long', chars: worstLong.chars, max: cl.maxChars, sentence: worstLong.sentence,
+      text: 'GRAMMAR_STAGE: too long for this stage (' + worstLong.chars + ' characters; at most ' + cl.maxChars + ' at this stage); use a shorter sentence' })
+  }
+  return { ok: problems.length === 0, problems, lockedIds: locked, text: problems.map(x => x.text).join(' · ') }
 }
 // the finished track's own report: which planned entries were used and what happened to them, and every line whose final text still uses an entry outside the allowed list
 function jaGrammarGateReport(track, gate, an, plan, words) {
   const pairs = (track && track.pairs) || []
   const taughtNow = id => (plan.new || []).some(x => x.id === id)
-  const notTaught = []
+  const notTaught = [], stageFlags = []
   pairs.forEach((p, i) => {
     const jp = (p && (p.japanese || p.thai)) || ''
     if (!jp) return
     const r = jaGrammarCheckSentence(jp, gate, { hits: (an.perPair[i] && an.perPair[i].hits) || null, words })
-    r.problems.forEach(pr => { if (pr.kind === 'locked') pr.ids.forEach(id => { const e = jaGrammarEntryById(id); notTaught.push({ n: i + 1, id, label: e ? e.label : id, meaning: e ? e.meaning : '', taughtNow: taughtNow(id) }) }) })
+    r.problems.forEach(pr => {
+      if (pr.kind === 'locked') pr.ids.forEach(id => { const e = jaGrammarEntryById(id); notTaught.push({ n: i + 1, id, label: e ? e.label : id, meaning: e ? e.meaning : '', taughtNow: taughtNow(id) }) })
+      else if (pr.kind === 'long') stageFlags.push({ n: i + 1, kind: 'long', chars: pr.chars, max: pr.max, text: 'is too long for this stage (' + pr.chars + ' characters; at most ' + pr.max + ' at this stage)' })
+      else if (pr.kind === 'many') stageFlags.push({ n: i + 1, kind: 'many', ids: pr.ids, max: pr.max, text: 'combines ' + pr.ids.length + ' new grammar points (' + pr.labels.join(', ') + '; at most ' + pr.max + ' at this stage)' })
+    })
   })
   const planned = (gate.planned || []).map(x => {
     const u = an.uses[x.id], all = u ? u.all.slice() : [], pass = (plan.passing || []).find(y => y.id === x.id)
     const outcome = taughtNow(x.id) ? 'taught NEW' : !all.length ? 'not used in any sentence' : pass ? pass.why : (u && u.target.length ? 'used, already introduced' : 'used only in greeting lines')
     return { id: x.id, label: x.label, meaning: x.meaning, cost: x.cost, pairs: all, outcome }
   })
-  return { version: 1, gate: true, introducedCount: gate.introducedCount, coreCount: (gate.coreIds || []).length, plannedIds: (gate.plannedIds || []).slice(), planned, notTaught, held: !!gate.held, overdue: gate.overdue || 0 }
+  return { version: 1, gate: !!gate.gate, stageOn: !!gate.stage, ceilings: gate.ceilings || null, introducedCount: gate.introducedCount, coreCount: (gate.coreIds || []).length, plannedIds: (gate.plannedIds || []).slice(), planned, notTaught, stageFlags, held: !!gate.held, overdue: gate.overdue || 0 }
 }
 
 // a practice objective may name a block introduced by the new path (never changes what an old block resolves to)
@@ -60774,10 +60827,19 @@ function jaGrammarExportLines(track) {
   // v774: what the writer was allowed, and every line that still uses grammar outside it (never hidden)
   if (g.gate) {
     const gt = g.gate
-    L.push('PLANNED BEFORE WRITING (the writer was allowed to use these, on top of the free core of ' + gt.coreCount + ' points and the ' + gt.introducedCount + ' already taught)' + (gt.planned.length ? '' : ': none' + (gt.held ? ' — ' + gt.overdue + ' reviews are overdue' : '')))
-    gt.planned.forEach(x => L.push('  ' + x.label + ' — ' + x.meaning + ' — ' + (x.pairs.length ? 'pairs ' + nums(x.pairs) : 'no pair') + ' — ' + x.outcome))
-    if (gt.notTaught.length) gt.notTaught.forEach(x => L.push('GRAMMAR NOT YET TAUGHT: pair ' + String(x.n).padStart(2, '0') + ' uses ' + x.label + (x.taughtNow ? ' (taught NEW at the end of this track)' : '')))
-    else L.push('GRAMMAR NOT YET TAUGHT: none')
+    if (gt.gate) {
+      L.push('PLANNED BEFORE WRITING (the writer was allowed to use these, on top of the free core of ' + gt.coreCount + ' points and the ' + gt.introducedCount + ' already taught)' + (gt.planned.length ? '' : ': none' + (gt.held ? ' — ' + gt.overdue + ' reviews are overdue' : '')))
+      gt.planned.forEach(x => L.push('  ' + x.label + ' — ' + x.meaning + ' — ' + (x.pairs.length ? 'pairs ' + nums(x.pairs) : 'no pair') + ' — ' + x.outcome))
+    }
+    if (gt.stageOn && gt.ceilings) L.push('STAGE WHEN THE SENTENCES WERE WRITTEN: ' + gt.ceilings.name + ' (' + gt.introducedCount + ' grammar points taught) — at most ' + gt.ceilings.maxChars + ' characters and ' + gt.ceilings.maxGated + ' grammar points that are not free in one sentence')
+    if (gt.gate) {
+      if (gt.notTaught.length) gt.notTaught.forEach(x => L.push('GRAMMAR NOT YET TAUGHT: pair ' + String(x.n).padStart(2, '0') + ' uses ' + x.label + (x.taughtNow ? ' (taught NEW at the end of this track)' : '')))
+      else L.push('GRAMMAR NOT YET TAUGHT: none')
+    }
+    if (gt.stageOn) {
+      if (gt.stageFlags.length) gt.stageFlags.forEach(x => L.push('GRAMMAR STAGE: pair ' + String(x.n).padStart(2, '0') + ' ' + x.text))
+      else L.push('GRAMMAR STAGE: none')
+    }
   }
   return L
 }
@@ -60824,28 +60886,41 @@ function JaGrammarInTrack({ track }) {
       {alsoUsed.length > 0 && <p style={{ fontSize: 10, color: 'var(--muted)', margin: '4px 2px' }}>Also used, already learned: <span className="jp">{alsoUsed.map(x => x.label).join(' ')}</span></p>}
       {g.gate && (
         <div data-ja-grammar-gate="1" style={{ marginTop: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '6px 2px 4px' }}>
-            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, color: '#a78bfa' }}>PLANNED BEFORE WRITING</span>
-            <span style={{ fontSize: 10, color: 'var(--muted)' }}>{g.gate.planned.length ? 'the writer could use these' : 'none' + (g.gate.held ? ' · ' + g.gate.overdue + ' reviews are overdue' : '')}</span>
-          </div>
-          {g.gate.planned.map(x => (
-            <div key={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 10px' }}>
-              <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>
-              <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>
-              <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>{x.pairs.length ? 'pairs ' + x.pairs.map(n => String(n).padStart(2, '0')).join(' ') + ' · ' : ''}{x.outcome}</span>
+          {g.gate.gate && (<>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '6px 2px 4px' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, color: '#a78bfa' }}>PLANNED BEFORE WRITING</span>
+              <span style={{ fontSize: 10, color: 'var(--muted)' }}>{g.gate.planned.length ? 'the writer could use these' : 'none' + (g.gate.held ? ' · ' + g.gate.overdue + ' reviews are overdue' : '')}</span>
             </div>
-          ))}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '10px 2px 4px' }}>
-            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, color: g.gate.notTaught.length ? '#f59e0b' : 'var(--muted)' }}>GRAMMAR NOT YET TAUGHT</span>
-            <span style={{ fontSize: 10, color: 'var(--muted)' }}>{g.gate.notTaught.length ? 'kept and listed, never hidden' : 'none'}</span>
-          </div>
-          {g.gate.notTaught.map(x => (
-            <div key={x.n + ':' + x.id} data-grammar-not-taught={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 10px' }}>
-              <span style={{ fontSize: 11, color: 'var(--muted)' }}>pair {String(x.n).padStart(2, '0')} uses</span>
-              <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>
-              <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}{x.taughtNow ? ' · taught NEW at the end of this track' : ''}</span>
+            {g.gate.planned.map(x => (
+              <div key={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 10px' }}>
+                <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>{x.pairs.length ? 'pairs ' + x.pairs.map(n => String(n).padStart(2, '0')).join(' ') + ' · ' : ''}{x.outcome}</span>
+              </div>
+            ))}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '10px 2px 4px' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, color: g.gate.notTaught.length ? '#f59e0b' : 'var(--muted)' }}>GRAMMAR NOT YET TAUGHT</span>
+              <span style={{ fontSize: 10, color: 'var(--muted)' }}>{g.gate.notTaught.length ? 'kept and listed, never hidden' : 'none'}</span>
             </div>
-          ))}
+            {g.gate.notTaught.map(x => (
+              <div key={x.n + ':' + x.id} data-grammar-not-taught={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 10px' }}>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>pair {String(x.n).padStart(2, '0')} uses</span>
+                <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}{x.taughtNow ? ' · taught NEW at the end of this track' : ''}</span>
+              </div>
+            ))}
+          </>)}
+          {g.gate.stageOn && g.gate.ceilings && (<>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '10px 2px 4px' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, color: g.gate.stageFlags.length ? '#f59e0b' : 'var(--muted)' }}>GRAMMAR STAGE — {g.gate.ceilings.name}</span>
+              <span style={{ fontSize: 10, color: 'var(--muted)' }}>{g.gate.introducedCount} points taught · at most {g.gate.ceilings.maxChars} characters and {g.gate.ceilings.maxGated} new points per sentence{g.gate.stageFlags.length ? '' : ' · none over'}</span>
+            </div>
+            {g.gate.stageFlags.map(x => (
+              <div key={x.n + ':' + x.kind} data-grammar-stage-flag={x.kind} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 10px' }}>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>pair {String(x.n).padStart(2, '0')} {x.text}</span>
+              </div>
+            ))}
+          </>)}
         </div>
       )}
     </div>
@@ -61659,12 +61734,12 @@ function strategyForRejectionClass(cls, sample) {
   if (cls === 'CUE_FORM') return 'DOMINANT REJECTION = cue / form mismatch. englishMeaning must have the SAME sentence type as the Japanese (question ↔ question, statement ↔ statement, invitation ↔ "shall we …?"), and englishCue must start with "Ask" for a question and "Tell" / "Say" for a statement.'
   if (cls === 'COMPLEXITY') return 'DOMINANT REJECTION = too long for the belt. Cut to the target plus one or two words.'
   if (cls === 'REGISTER') return 'DOMINANT REJECTION = register. Keep every sentence in the chosen speech style.'
-  if (cls === 'GRAMMAR') return 'DOMINANT REJECTION = grammar this learner has not been taught. Build the sentence ONLY from the grammar in the GRAMMAR FOR THIS LEARNER list; drop the idea that needs anything else.'
+  if (cls === 'GRAMMAR') return 'DOMINANT REJECTION = grammar this learner has not been taught, or too much grammar / too long for the stage. Build the sentence ONLY from the grammar in the GRAMMAR FOR THIS LEARNER list, inside the STAGE limits; drop the idea that needs more.'
   return ''
 }
 function rejectionClassOf(msg) {
   const m = String(msg || '')
-  if (/GRAMMAR_NOT_YET_TAUGHT/.test(m)) return 'GRAMMAR'             // v774: grammar outside the allowed list (named apart from untaught vocabulary)
+  if (/GRAMMAR_NOT_YET_TAUGHT|GRAMMAR_STAGE/.test(m)) return 'GRAMMAR'             // v774: grammar outside the allowed list or too much for the stage (named apart from untaught vocabulary)
   if (/identical sentence|already used|duplicate|DUPLICATE/i.test(m)) return 'DUPLICATE'
   if (/untaught/.test(m)) return 'UNTAUGHT'
   if (/not present|TARGET_MISSING/.test(m)) return 'TARGET_MISSING'
@@ -61769,7 +61844,7 @@ function buildJapaneseRecallPrompt(target, recallIndex, inv, vocab, registerId, 
     '\nALLOWED CONTENT (' + (inv.allContent || []).length + '): ' + allowed +
     (basics ? '\nCONVERSATION BASICS: ' + basics : '') +
     (blocks ? '\nGRAMMAR ids for "blocks": ' + blocks : '') +
-    (c.grammarGate && c.grammarGate.gate ? '\n' + jaGrammarGatePromptBlock(c.grammarGate) : '') +
+    (c.grammarGate && jaGrammarGatePromptBlock(c.grammarGate) ? '\n' + jaGrammarGatePromptBlock(c.grammarGate) : '') +
     '\nReturn ONE JSON object: {"intent","japanese","reading","romaji","englishCue","englishMeaning","blocks":[ids],"basics":[ids],"segments":[{"surface","lemma","reading","romaji","english","type"}]}'
   return { system, user }
 }
@@ -62111,7 +62186,8 @@ function jaEvaluateRecallCandidate(cand, ctx) {
   // grammarOnly tells the target-group core that this candidate may be KEPT with a flag when its attempts are used.
   { const _gg = opts && opts.grammarGate
     if (_gg) { const _gc = jaGrammarCheckSentence(c2.japanese, _gg, { words: inv && inv.allContent })
-      if (!_gc.ok) return { ...fail(_gc.problems[0].text), cand: c2, repairs, dup, grammarOnly: true, grammarProblems: _gc.problems, grammarFlag: _gc.problems.flatMap(p => (p.ids || []).map(id => ({ id, kind: p.kind }))) } } }
+      if (!_gc.ok) return { ...fail(_gc.text), cand: c2, repairs, dup, grammarOnly: true, grammarProblems: _gc.problems,
+        grammarFlag: _gc.problems.flatMap(p => p.kind === 'locked' ? p.ids.map(id => ({ id, kind: 'locked' })) : p.kind === 'many' ? [{ kind: 'many', ids: p.ids, max: p.max }] : [{ kind: 'long', chars: p.chars, max: p.max }]) } } }
   return { ok: true, cand: c2, repairs, dup }
 }
 // Punctuation never decides validity: "？" as its own segment (romaji "?" / "" / "question") is
@@ -63300,7 +63376,7 @@ function buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, o) {
     'ALLOWED CONTENT (' + (inv.allContent || []).length + '): ' + allowed +
     (basics ? '\nCONVERSATION BASICS: ' + basics : '') +
     (blocks ? '\nGRAMMAR ids for "blocks": ' + blocks : '') +
-    (c.grammarGate && c.grammarGate.gate ? '\n' + jaGrammarGatePromptBlock(c.grammarGate) : '') +
+    (c.grammarGate && jaGrammarGatePromptBlock(c.grammarGate) ? '\n' + jaGrammarGatePromptBlock(c.grammarGate) : '') +
     '\nReturn EXACTLY ' + n + ' recall(s) as ONE JSON object: {"targetConcept":"' + target.japanese + '","recalls":[{"intent","japanese","reading","romaji","englishCue","englishMeaning","blocks":[ids],"basics":[ids],"segments":[{"surface","lemma","reading","romaji","english","type"}]}]}'
   return { system, user }
 }
@@ -63602,8 +63678,9 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
     // v774 A — the grammar this track may use is fixed here, BEFORE any sentence is written: the free core + what is introduced + the entries this track will introduce (the same function the plan screen shows)
     _grammarGate = jaGrammarGateContext(vocab, _grammarStore, { register: registerId, today })
     if (_grammarGate) { _tc.grammarGate = _grammarGate
-      onLog && onLog('\u2139 GRAMMAR GATE: ' + _grammarGate.introducedCount + ' grammar point(s) taught · free core ' + _grammarGate.coreIds.length + ' · new in this track (' + _grammarGate.budget.spent + '/' + _grammarGate.budget.limit + ' points): ' +
-        (_grammarGate.planned.map(x => x.label).join(' ') || 'none') + (_grammarGate.held ? ' · none planned: ' + _grammarGate.overdue + ' reviews are overdue' : '') + ' · a sentence outside this list is refused and written again') }
+      onLog && onLog('\u2139 GRAMMAR GATE: ' + _grammarGate.introducedCount + ' grammar point(s) taught · free core ' + _grammarGate.coreIds.length + (_grammarGate.gate ? ' · new in this track (' + _grammarGate.budget.spent + '/' + _grammarGate.budget.limit + ' points): ' +
+        (_grammarGate.planned.map(x => x.label).join(' ') || 'none') + (_grammarGate.held ? ' · none planned: ' + _grammarGate.overdue + ' reviews are overdue' : '') + ' · a sentence outside this list is refused and written again' : '') +
+        (_grammarGate.stage ? ' · stage "' + _grammarGate.ceilings.name + '": at most ' + _grammarGate.ceilings.maxChars + ' characters and ' + _grammarGate.ceilings.maxGated + ' grammar points that are not free per sentence' : '')) }
     const dueBlocks = jaGrammarDue(_grammarStore, 'buildingBlock', today).map(r => jaBlockById(r.itemId)).filter(Boolean)
     const dueBasics = jaGrammarDue(_grammarStore, 'conversationBasic', today).map(r => jaBasicById(r.itemId)).filter(Boolean)
     // at most 1 genuinely NEW block per track at this level, introduced BEFORE it is used

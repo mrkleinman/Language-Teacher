@@ -133,10 +133,10 @@ const TARA = mkRecall('行ったら言ってね。', 'Tell me when you go.')
     T('A8', 'the group writer\'s prompt says "use ONLY this grammar" and lists the free core, every entry taught, and the entries new in this track (labelled as new); a later entry (〜たら) is not in it',
       /use ONLY this grammar/.test(pr1.user) && /は が を に で の と も か ね よ だ です/.test(pr1.user) && g1.introducedIds.every(id => pr1.user.includes(lab(id))) && g1.planned.every(x => pr1.user.includes(x.label)) &&
       /NEW THIS TRACK/.test(pr1.user) && /TAUGHT ALREADY/.test(pr1.user) && !pr1.user.includes(lab('tara')) && !pr1.user.includes(lab('toomou')), pr1.user.split('\n').filter(l => /GRAMMAR|FREE|TAUGHT|NEW THIS|STAGE/.test(l)))
-    T('A9', 'the old "normal inflection of allowed words is free" sentence is not left in the system prompt to contradict it, and the structure otherwise stays (the closed vocabulary line, the ids line for "blocks", the register contract)',
-      !/normal inflection of allowed words is free/i.test(pr1.system) && /CLOSED VOCABULARY/.test(pr1.system) && /GRAMMAR ids for "blocks"/.test(pr1.user) && /ALLOWED CONTENT \(/.test(pr1.user) && /REGISTER/.test(pr1.system), pr1.system.split('\n').filter(l => /GRAMMAR|inflection/i.test(l)))
+    T('A9', 'the old "normal inflection of allowed words (is|are) free" sentence is not left in the system prompt to contradict it, and the structure otherwise stays (the closed vocabulary line, the ids line for "blocks", the register contract)',
+      !/normal inflection of allowed words (is|are) free/i.test(pr1.system) && /CLOSED VOCABULARY/.test(pr1.system) && /GRAMMAR ids for "blocks"/.test(pr1.user) && /ALLOWED CONTENT \(/.test(pr1.user) && /REGISTER/.test(pr1.system), pr1.system.split('\n').filter(l => /GRAMMAR|inflection/i.test(l)))
     T('A10', 'the single-sentence writer (recovery, repair) gets the same instruction; day one lists no taught entries and says so',
-      /use ONLY this grammar/.test(pr1one.user) && g1.planned.every(x => pr1one.user.includes(x.label)) && /use ONLY this grammar/.test(pr0.user) && !/TAUGHT ALREADY:\s*[^\n]*〜/.test(pr0.user) && !/normal inflection of allowed words is free/i.test(pr1one.system + pr1one.user), pr0.user.split('\n').filter(l => /TAUGHT|NEW THIS/.test(l)))
+      /use ONLY this grammar/.test(pr1one.user) && g1.planned.every(x => pr1one.user.includes(x.label)) && /use ONLY this grammar/.test(pr0.user) && !/TAUGHT ALREADY:\s*[^\n]*〜/.test(pr0.user) && !/normal inflection of allowed words (is|are) free/i.test(pr1one.system + pr1one.user), pr0.user.split('\n').filter(l => /TAUGHT|NEW THIS/.test(l)))
     const ad = sc.japaneseTargetGroupAdapter({ vocab: S.vocab, registerId: 'natural', inv, rules: sc.scarcityRules(inv), seenMap: new Map(), trackUsed: [], apiKey: KEY, model: MODEL, onLog: null, opts: { grammarGate: g1 } })
     const req = ad.buildRequest({ target: tg, slots, accepted: [], initial: true, strategy: null }), reqNo = sc.japaneseTargetGroupAdapter({ vocab: S.vocab, registerId: 'natural', inv, rules: sc.scarcityRules(inv), seenMap: new Map(), trackUsed: [], apiKey: KEY, model: MODEL, onLog: null, opts: {} }).buildRequest({ target: tg, slots, accepted: [], initial: true, strategy: null })
     T('A11', 'the adapter that writes the track puts the instruction into every request it sends (and sends nothing extra without a gate)',
@@ -240,6 +240,95 @@ const TARA = mkRecall('行ったら言ってね。', 'Tell me when you go.')
       [27, 70, 81, 88].every(nn => rep.L0.some(x => x.n === nn) && rep.L1.some(x => x.n === nn)), { l0: rep.L0.length, l1: rep.L1.length, l2: rep.L2.length })
   } catch (e) { T('B!', 'section B stopped: ' + String(e && e.message).split('\n')[0], false, String(e && e.stack).slice(0, 500)) }
 
+  // ═══ C — SIMPLE FIRST, RICHER AS TAUGHT ════════════════════════════════════════════════════════════════════════════════════════════
+  try {
+    const S = setup('ja'); quiet(S.c); const c = S.c, ev = x => c.ev(x)
+    // the table
+    const TABLE = [[0, 'first steps', 12, 2], [5, 'first steps', 12, 2], [6, 'early', 16, 2], [14, 'early', 16, 2], [15, 'growing', 22, 3], [29, 'growing', 22, 3], [30, 'broad', 30, 3], [101, 'broad', 30, 3]]
+    T('C1', 'the stage ceilings: 0–5 introduced ⇒ 12 characters · 6–14 ⇒ 16 · 15–29 ⇒ 22 · 30+ ⇒ 30 — and at most 2 gated entries per sentence below 15 introduced, 3 from 15 on',
+      TABLE.every(([k, name, ch, g]) => { const s = c.jaGrammarStageFor(k); return s.name === name && s.maxChars === ch && s.maxGated === g }), TABLE.map(([k]) => k + ':' + JSON.stringify(c.jaGrammarStageFor(k))))
+    const storeWith = (cnt, must) => { const st = {}; must.forEach(id => c.jaGrammarIntroduce(st, 'buildingBlock', id, '2026-09-01'))
+      for (const e of ev('JA_GRAMMAR_CURRICULUM')) { if (Object.keys(st).length >= cnt) break; if (!st['buildingBlock:' + e.id]) c.jaGrammarIntroduce(st, 'buildingBlock', e.id, '2026-09-01') } return st }
+    const gateN = (cnt, must, reg) => c.jaGrammarGateContext(learner(c, 200), storeWith(cnt, must || []), { register: reg || 'natural', today: TODAY })
+    const chk = (s, g) => c.jaGrammarCheckSentence(s, g, { words: S.vocab })
+    T('C2', 'the context carries the stage that matches the number of introduced entries (day one: first steps, 10 introduced: early, 40: broad)',
+      gateOf(c, LV.L0).ceilings.name === 'first steps' && gateOf(c, LV.L1).ceilings.name === 'early' && gateOf(c, LV.L2).ceilings.name === 'broad' && gateOf(c, LV.L1).ceilings.maxChars === 16 && gateOf(c, LV.L2).ceilings.maxGated === 3)
+    // length: exactly at the ceiling passes, one more fails, at every stage boundary
+    const LEN = k => '私は' + '本'.repeat(k - 4) + 'です。'
+    const lenBad = []
+    ;[[0, 12], [5, 12], [6, 16], [14, 16], [15, 22], [29, 22], [30, 30], [60, 30]].forEach(([cnt, max]) => { const g = gateN(cnt)
+      if (!chk(LEN(max), g).ok) lenBad.push(cnt + ': ' + max + ' refused'); const r = chk(LEN(max + 1), g)
+      if (r.ok || !r.problems.some(p => p.kind === 'long' && /too long for this stage/.test(p.text) && p.text.includes(String(max + 1)) && p.text.includes('at most ' + max))) lenBad.push(cnt + ': ' + (max + 1) + ' not refused as too long: ' + JSON.stringify(r.problems.map(p => p.text))) })
+    T('C3', 'length ceiling per stage: a sentence of exactly 12 / 16 / 22 / 30 characters passes at its stage and one more is refused with "too long for this stage" (at 0, 5, 6, 14, 15, 29, 30 and 60 introduced)', lenBad.length === 0, lenBad)
+    // gated count: 2 below 15 introduced, 3 from 15 on
+    const S3 = '行きたいけど、行かない。', S4 = '行きたいけど、忙しいから行かない。', S2 = '昨日は忙しかったけど、楽しかった。'
+    const MUST = ['tai', 'kedo', 'nai', 'kara', 'past']
+    const g14 = gateN(14, MUST), g15 = gateN(15, MUST), g30 = gateN(30, MUST)
+    const many = r => r.problems.find(p => p.kind === 'many')
+    T('C4', 'complexity ceiling: three gated entries in one sentence (〜たい 〜けど 〜ない) are refused with "too many new grammar points in one sentence" while 14 entries are introduced, and pass from 15 on; two always pass',
+      !chk(S3, g14).ok && many(chk(S3, g14)) && /too many new grammar points in one sentence/.test(many(chk(S3, g14)).text) && many(chk(S3, g14)).ids.length === 3 && chk(S3, g15).ok && chk(S2, g14).ok && chk(S2, g15).ok, { s3_14: chk(S3, g14).problems.map(p => p.text), s3_15: chk(S3, g15).problems.map(p => p.text), s2: chk(S2, g14).problems.map(p => p.text) })
+    T('C5', 'four gated entries in one sentence (〜たい 〜けど 〜から 〜ない) are refused at every stage, 15 introduced and 30 introduced included (at most 3 after 15)',
+      !chk(S4, g14).ok && !chk(S4, g15).ok && !chk(S4, g30).ok && many(chk(S4, g15)) && many(chk(S4, g15)).ids.length === 4 && /at most 3/.test(many(chk(S4, g15)).text) && /at most 2/.test(many(chk(S4, g14)).text), chk(S4, g15).problems.map(p => p.text))
+    // a line of several sentences is read one sentence at a time (the ceiling is per sentence)
+    T('C6', 'a line of several sentences is judged sentence by sentence: two 11-character sentences pass at the 12-character stage (22 in all), three one-entry sentences pass where three entries in ONE sentence would not, and one sentence of 13 is still refused',
+      chk(LEN(11) + LEN(11), gateN(0)).ok && chk('行きたい。行かない。行った。', g14).ok && !chk('行きたい。行かない。行った。', g14).problems.length && !chk(LEN(13) + LEN(5), gateN(0)).ok && chk(LEN(13) + LEN(5), gateN(0)).problems[0].chars === 13)
+    // what never counts: ね / よ, the short reactions, the whole free core, the polite ます in a polite style
+    const natural = ['ねえ、行くよね？', 'えっ、本当？', 'ええと、水、飲むよ。', 'うん、いいね。', 'でも、行く？', 'だから、私は行くよ。', 'あの、これは本です。', 'へえ、だね。']
+    T('C7', 'keeping it natural: ね, よ, よね, だ, です, でも, だから and the short reactions (えっ ええと ねえ へえ あの うん) are never counted, at the strictest stage',
+      natural.every(s => chk(s, gateN(0)).ok), natural.filter(s => !chk(s, gateN(0)).ok).map(s => s + ' ' + JSON.stringify(chk(s, gateN(0)).problems.map(p => p.text))))
+    T('C8', 'in a polite speech style the ます form is the present verb: it is free and not counted (食べます。 passes on day one in a polite track and is refused in a natural one)',
+      chk('食べます。', gateN(0, [], 'polite')).ok && !chk('食べます。', gateN(0, [], 'natural')).ok && gateN(0, [], 'polite').coreIds.includes('masu') && !gateN(0, [], 'natural').coreIds.includes('masu'))
+    // the writer is told the stage in words
+    const tg = S.vocab.find(v => v.japanese === '飲む'), inv = c.japaneseLearnerInventory(S.vocab, [tg]), slots = [1, 2, 3].map(k => ({ recallIndex: k, lastFailure: '', failedSentences: [] }))
+    const pr = lv => c.buildJapaneseGroupPrompt(tg, slots, inv, S.vocab, 'natural', { initial: true, acceptedForTarget: [], usedInTrack: [], rejected: [], objectives: '', grammarProgress: {}, grammarGate: gateOf(c, LV[lv]) }).user
+    T('C9', 'the writer\'s prompt states the stage in words: day one "first steps … at most 12 characters … at most 2 grammar points that are not FREE"; 90 words "early … 16"; 200 words "broad … 30 … 3"',
+      /STAGE — first steps: this learner has been taught 0 grammar points so far[\s\S]*at most 12 characters[\s\S]*at most 2 grammar points that are not FREE/.test(pr('L0')) && /STAGE — early: this learner has been taught 10 grammar points[\s\S]*at most 16 characters/.test(pr('L1')) &&
+      /STAGE — broad: this learner has been taught 40 grammar points[\s\S]*at most 30 characters[\s\S]*at most 3 grammar points/.test(pr('L2')), pr('L0').split('\n').filter(l => /STAGE/.test(l)))
+    // through the ladder and the group core: too long ⇒ refused with a plain reason, retried through the existing path; at the cap kept and flagged
+    const g0 = gateOf(c, LV.L0)
+    const CL = { 1: mkRecall('水を飲む？', 'Do you want some water?'), 2: mkRecall('明日、飲むよ。', 'I will drink tomorrow.'), 3: mkRecall('飲むね。', 'I will drink, okay?') }
+    const LONGS = [mkRecall('今日は友達と一緒に駅で水を飲むよ。', 'I will drink water with a friend at the station today.'), mkRecall('明日の朝は友達と一緒に学校で水を飲むよ。', 'Tomorrow morning I will drink water with a friend at school.'), mkRecall('今日の昼は友達と一緒に駅の店で水を飲むよ。', 'At noon today I will drink water with a friend in a shop at the station.')]
+    const R1 = await runGroup(S, '飲む', (k, sl) => sl.map(s => s === 2 && k === 1 ? LONGS[0] : CL[s]), g0)
+    T('C10', 'too long ⇒ refused with the plain reason, written again through the existing retry (slot only), accepted the second time — 2 paid requests',
+      R1.grp.paidCalls === 2 && R1.grp.slots.every(s => s.state === 'accepted') && /PREVIOUS FAILURES[\s\S]*GRAMMAR_STAGE: too long for this stage \(16 characters; at most 12 at this stage\)/.test(R1.calls[1] || '') && /REPLACEMENT ONLY/.test(R1.calls[1] || '') && !R1.grp.slots.some(s => s.pair._grammarFlag),
+      { paid: R1.grp.paidCalls, retry: (R1.calls[1] || '').slice(0, 500), slots: R1.grp.slots.map(s => s.state) })
+    const R2 = await runGroup(S, '飲む', (k, sl) => sl.map(s => s === 2 ? LONGS[Math.min(k, 3) - 1] : CL[s]), g0)
+    const s2 = R2.grp.slots.find(s => s.recallIndex === 2)
+    T('C11', 'a line that is still too long at the cap is KEPT with its flag (the existing 3 attempts, no new loop), the other two recalls are untouched',
+      R2.grp.slots.every(s => s.state === 'accepted') && s2.paidRequests === 3 && R2.grp.paidCalls === 3 && s2.pair._grammarFlag && s2.pair._grammarFlag.some(f => f.kind === 'long') && R2.grp.slots.filter(s => s.recallIndex !== 2).every(s => !s.pair._grammarFlag),
+      { paid: R2.grp.paidCalls, flag: s2.pair && s2.pair._grammarFlag, log: R2.logs.slice(-3) })
+    // the finished track names them
+    const cf = fresh(), vocab = learner(cf, 25); await cf.jaGrammarMigrateV1(vocab)
+    const L0 = levelOf(cf, LV.L0), gate = cf.jaGrammarGateContext(L0.vocab, L0.store, { register: 'natural', today: TODAY })
+    const fin = await cf.jaGrammarFinaliseTrack(trackOf('2026-11-17T09:04:11.270Z', { trackContext: { trackId: '2026-11-17T09:04:11.270Z', language: 'ja', grammarGate: gate } }), { vocab: L0.vocab, today: TODAY })
+    const txt = exportText(cf, fin), gl = txt.split('\n').filter(l => /^GRAMMAR STAGE:/.test(l)), sf = fin.grammarInTrack.gate.stageFlags
+    const words0 = L0.vocab.filter(w => /^[おご]/.test(w.japanese))
+    T('C12', 'the export lists every line that breaks a ceiling: "GRAMMAR STAGE: pair N is too long for this stage (…)" and "… combines N new grammar points (…)" — the same set the check finds in the final sentences',
+      sf.length > 0 && gl.length === sf.length && gl.every(l => /^GRAMMAR STAGE: pair \d\d (is too long for this stage \(\d+ characters; at most 12 at this stage\)|combines \d new grammar points \(.+; at most 2 at this stage\))$/.test(l)) &&
+      FIXJ.every(l => { const r = cf.jaGrammarCheckSentence(l.ja, gate, { words: words0 }), want = r.problems.filter(p => p.kind !== 'locked').map(p => p.kind).sort().join(), got = sf.filter(x => x.n === l.n).map(x => x.kind).sort().join(); return want === got }), { n: sf.length, lines: gl.slice(0, 3) })
+    T('C13', 'a line over a ceiling never blocks the track: the same 99 pairs, 90 target pairs, 30 words, and the same readiness line as the track without any flag',
+      fin.pairs.length === 99 && fin.pairs.filter(p => cf.jaGrammarIsTargetPair(p)).length === 90 && fin.keywords.length === 30 && JSON.stringify(fin.pairs) === JSON.stringify(trackOf().pairs) &&
+      cf.trackReadinessExportLines(fin)[0] === cf.trackReadinessExportLines({ ...trackOf('2026-11-17T09:04:11.270Z'), integrity: fin.integrity, trackContext: fin.trackContext })[0])
+    T('C14', 'the same flags are on the track screen', await (async () => { let R; await TR.act(async () => { R = TR.create(React.createElement(cf.JaGrammarInTrack, { track: fin })); await flush(3) }); const j = textOf(R.toJSON()); return /pair\s+\d\d\s+is too long for this stage/.test(j) && /GRAMMAR STAGE/.test(j) })())
+    // the fixture at the three levels, with the stage (reported)
+    for (const k of ['L0', 'L1', 'L2']) {
+      const gg = gateOf(c, LV[k]), kinds = { locked: 0, many: 0, long: 0 }, lines = new Set()
+      FIXJ.forEach(l => { const r = c.jaGrammarCheckSentence(l.ja, gg, { words: S.vocab }); r.problems.forEach(p => { kinds[p.kind]++; lines.add(l.n) }) })
+      info('FIXTURE with the stage, ' + k + ' (' + LV[k].label + ', ceilings ' + gg.ceilings.maxChars + ' characters / ' + gg.ceilings.maxGated + ' gated): ' + lines.size + ' of 99 lines refused — outside the list ' + kinds.locked + ' · too many points ' + kinds.many + ' · too long ' + kinds.long)
+    }
+    // the switch is its own
+    { const cc = fresh(); cc.jaGrammarStageSetEnabled(false); const L = levelOf(cc, LV.L0), gs = cc.jaGrammarGateContext(L.vocab, L.store, { register: 'natural', today: TODAY })
+      T('C15', 'the stage switch is its own: off ⇒ a sentence of 25 characters passes, a locked entry is still refused, and the prompt has no STAGE line',
+        cc.jaGrammarStageOn() === false && cc.jaGrammarCheckSentence(LEN(25), gs, {}).ok && !cc.jaGrammarCheckSentence('行ったら言ってね。', gs, {}).ok && !/STAGE —/.test(cc.jaGrammarGatePromptBlock(gs)) && /use ONLY this grammar/.test(cc.jaGrammarGatePromptBlock(gs))) }
+    { const cc = fresh(); cc.jaGrammarGateSetEnabled(false); const L = levelOf(cc, LV.L0), gs = cc.jaGrammarGateContext(L.vocab, L.store, { register: 'natural', today: TODAY })
+      const tg2 = S.vocab.find(v => v.japanese === '飲む'), inv2 = cc.japaneseLearnerInventory(S.vocab, [tg2])
+      const p2 = cc.buildJapaneseGroupPrompt(tg2, slots, inv2, S.vocab, 'natural', { initial: true, acceptedForTarget: [], usedInTrack: [], rejected: [], objectives: '', grammarProgress: {}, grammarGate: gs })
+      T('C16', 'with only the stage on: a locked entry passes, a long sentence is refused, the prompt carries the stage but no "use ONLY" list, no planned entries, and the old grammar sentence of the system prompt is untouched',
+        gs && gs.gate === false && gs.stage === true && gs.plannedIds.length === 0 && cc.jaGrammarCheckSentence('行ったら言ってね。', gs, {}).ok && !cc.jaGrammarCheckSentence(LEN(13), gs, {}).ok && /STAGE — first steps/.test(p2.user) && !/use ONLY this grammar/.test(p2.user) && /normal inflection of allowed words (is|are) free/i.test(p2.system)) }
+    { const cc = fresh(); cc.jaGrammarGateSetEnabled(false); cc.jaGrammarStageSetEnabled(false); const L = levelOf(cc, LV.L0)
+      T('C17', 'both off ⇒ no context at all (v773 behaviour)', cc.jaGrammarGateContext(L.vocab, L.store, { register: 'natural', today: TODAY }) === null) }
+  } catch (e) { T('C!', 'section C stopped: ' + String(e && e.message).split('\n')[0], false, String(e && e.stack).slice(0, 500)) }
+
   // ═══ F — SAFETY AND SWITCHES ═════════════════════════════════════════════════════════════════════════════════════════════════════
   try {
     // values of the v773 build (TT_PROBE=1 on the unchanged build prints them)
@@ -260,8 +349,8 @@ const TARA = mkRecall('行ったら言ってね。', 'Tell me when you go.')
     const now = await probe()
     T('F1', 'all four switches off: the writer\'s prompts, a scripted target group (sentences, requests), the track\'s grammar summary and export, the due list and the stored records are exactly what v773 produced',
       Object.keys(V773).every(k => now[k] === V773[k]), { now, V773 })
-    const c = fresh(); const names = ['Gate']
-    T('F2', 'each switch has a named setter and a reader and is ON by default (jaGrammarGateSetEnabled)',
+    const c = fresh(); const names = ['Gate', 'Stage']
+    T('F2', 'each switch has a named setter and a reader and is ON by default (jaGrammarGateSetEnabled · jaGrammarStageSetEnabled)',
       names.every(nm => typeof c['jaGrammar' + nm + 'SetEnabled'] === 'function' && typeof c['jaGrammar' + nm + 'On'] === 'function' && c['jaGrammar' + nm + 'On']() === true))
     { const cc = fresh(); cc.jaGrammarGateSetEnabled(false); const L = levelOf(cc, LV.L0), g = cc.jaGrammarGateContext(L.vocab, L.store, { register: 'natural', today: TODAY }), a = typeof cc.jaGrammarStageOn === 'function' ? cc.jaGrammarStageOn() : true
       T('F3', 'the gate switch is its own: off ⇒ no allowed list, no planned entries, a locked entry is not refused (the stage and the others stay on)', (g === null || (g.plannedIds.length === 0 && g.gate === false)) && a === true && (!g || cc.jaGrammarCheckSentence('行ったら言ってね。', g, {}).ok === true)) }
@@ -281,7 +370,7 @@ const TARA = mkRecall('行ったら言ってね。', 'Tell me when you go.')
         JSON.stringify(before) === JSON.stringify(after) && JSON.stringify(L.vocab) === vocab0 && gate.plannedIds.every(id => !fin.keywords.some(k => k.japanese === id)) && (await cc.stGet('tt-ja-vocab')) == null)
     }
     { // the same words / pairs from a real generation, gate on or off
-      const run = async on => { const S = setup('ja'); quiet(S.c); const c2 = S.c; on ? 0 : c2.jaGrammarGateSetEnabled(false); mock(S, 'ja')
+      const run = async on => { const S = setup('ja'); quiet(S.c); const c2 = S.c; if (!on) { c2.jaGrammarGateSetEnabled(false); c2.jaGrammarStageSetEnabled(false) } mock(S, 'ja')
         const tc = c2.jaGeneratorTrackContext(S.targets.slice(0, 5).map(t => ({ ...t, selectionRole: 'review' })), { counts: { new: 0 } }, 'daily', 'natural', c2.aiBeginRun('ja-track'))
         const res = await c2.generateJapaneseTrack(S.targets.slice(0, 5), S.vocab, 'natural', KEY, MODEL, () => {}, () => {}, { cancelled: false }, { scene: 'Two friends at a station', characterA: 'Kenji, a man', characterB: 'Yuki, a woman', opening: '', reply: '', closing: '', closing_reply: '' }, { trackContext: tc, runId: tc.generationRunId })
         return { res, tc, S } }

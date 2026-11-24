@@ -60958,6 +60958,124 @@ const JA_GRAMMAR_PRACTISED_LINE = 'These are practised again in the next track u
 function jaGrammarNoNewText(n) { return 'No new points this track, because ' + n + ' are waiting for a rating: rate them in Words, Grammar review, or on the card at the end of a track.' }
 // end of the v776 block
 
+// ══ v777 — ALL GRAMMAR: ONE LIST OF ALL 101 POINTS, MARK WHAT YOU ALREADY KNOW (Japanese only) ═══════════════════════════════════════════════════════
+// The Japanese Words list gets one more part, "All grammar": every point of the curriculum in teaching order, one row each, laid out like the word rows of the same screen (Japanese, reading, meaning,
+// and a coloured status label on the far right). TAPPING THE STATUS LABEL marks a point the learner already knows; tapping it again takes back a mark that was made there. One switch (on; off = v776 exactly):
+//   CHECKLIST (jaGrammarChecklistSetEnabled)  needs the NEW slots rule and the Known grammar mark, because the labels are built from them (without a NEW or a known there is nothing to show).
+//   STATUS    KNOWN = knownAt is set (by a tick, by EASY, or by 3 sentences across 2 tracks) · LEARNING = introduced, rated HARD or OK (it is on the review schedule), not known ·
+//             NEW = introduced, never rated, not known · NOT TAUGHT = no record, or a record that was never introduced (only seen in passing).
+//   A TICK    makes a point known exactly the way a known point is read everywhere (knownAt): it leaves review and the due list, is still allowed in sentences, counts as introduced for prerequisites, the
+//             unlock levels and the stage ceilings, and is neither NEW nor due, so it never takes one of the 5 NEW slots (a NEW point that is ticked frees its slot). A point that has no record gets one the
+//             way an introduction makes it (jaGrammarIntroduce), with no sightings and no rating. The record carries a marker (markedKnownAt, markedKnownFrom "checklist") and markedKnownPrev, the schedule it
+//             had before (null when the tick made the record), so the tick can be taken back exactly.
+//   TAKING IT BACK  only for a point that was marked there. The record the tick made is removed again (the save merges, so the removal is asked for by key, as the reset does); otherwise the schedule is
+//             restored and the marker goes. A point the tick made that a track has used since is not removed (its counters are history): it goes back to not taught, without a slot. A point known by EASY or
+//             by sightings, or rated after the tick, is never changed here.
+const JA_GRAMMAR_CHECKLIST = { on: true }
+function jaGrammarChecklistSetEnabled(on) { JA_GRAMMAR_CHECKLIST.on = !!on }
+function jaGrammarChecklistOn() { return !!JA_GRAMMAR_CHECKLIST.on && jaGrammarSlotsOn() && jaGrammarKnownOn() }
+const JA_GRAMMAR_TICK_FROM = 'checklist'
+const JA_GRAMMAR_CHECKLIST_LABELS = Object.freeze({ known: 'KNOWN', new: 'NEW', learning: 'LEARNING', nottaught: 'NOT TAUGHT' })
+// the status colours of the word rows of the Words list (WordListView: SC); a point that is not taught is as muted as a word that is not open yet
+const JA_GRAMMAR_CHECKLIST_COLOURS = Object.freeze({ known: '#10b981', learning: '#4a90e2', new: 'var(--muted)', nottaught: 'var(--muted)' })
+const JA_GRAMMAR_CHECKLIST_FILTERS = Object.freeze([['all', null], ['known', 'known'], ['new', 'new'], ['learning', 'learning'], ['not taught', 'nottaught']])
+const JA_GRAMMAR_NOTE_RATING = 'Known by rating — change it in Grammar review'
+const JA_GRAMMAR_NOTE_TRACKS = 'Known from your tracks — it stays known'
+// the status of one point from its stored record
+function jaGrammarChecklistStatus(rec) {
+  if (!rec || !rec.introducedAt) return 'nottaught'
+  if (jaGrammarIsKnownRec(rec)) return 'known'
+  return jaGrammarIsRatedRec(rec) ? 'learning' : 'new'
+}
+// the schedule a tick leaves behind it, so a take-back can put it back
+function jaGrammarTickPrevOf(rec) {
+  if (!rec) return null
+  const v = x => x === undefined ? null : x
+  return { status: v(rec.status), interval: v(rec.interval), dueDate: v(rec.dueDate), okStreak: v(rec.okStreak), lapses: v(rec.lapses), introducedAt: v(rec.introducedAt), ratedAt: v(rec.ratedAt) }
+}
+// a point marked there and then rated (the card of an earlier track): the rating is history and is not undone
+function jaGrammarTickRatedSince(rec) {
+  const p = rec && rec.markedKnownPrev
+  if (!p) return jaGrammarIsRatedRec(rec)
+  const n = x => x == null ? 0 : x, d = x => x == null ? null : x
+  return d(rec.ratedAt) !== d(p.ratedAt) || n(rec.interval) !== n(p.interval) || n(rec.okStreak) !== n(p.okStreak) || n(rec.lapses) !== n(p.lapses) || d(rec.dueDate) !== d(p.dueDate)
+}
+// how a known point came to be known: 'tick' (marked there, can be taken back), 'rating' (EASY, or rated after the tick), 'tracks' (3 sentences across 2 tracks)
+function jaGrammarKnownRoute(rec) {
+  if (!rec || !rec.knownAt) return null
+  if (rec.markedKnownFrom === JA_GRAMMAR_TICK_FROM) return jaGrammarTickRatedSince(rec) ? 'rating' : 'tick'
+  if (rec.knownVia === 'easy') return 'rating'
+  return (rec.sightings || 0) >= JA_GRAMMAR_KNOWN_RULE.minSentences ? 'tracks' : 'rating'
+}
+// a record the tick made that has been used since (a track counted it, or it was noted): it is history and is kept
+function jaGrammarTickHistory(rec) {
+  return !!(rec && ((rec.exposures || 0) > 0 || (rec.productiveExposures || 0) > 0 || (rec.sightings || 0) > 0 || (rec.sightingTracks || []).length > 0 || rec.notShownAt || (rec.seenInPassing || 0) > 0))
+}
+// MARK KNOWN. Pure on the store it is handed (the record it holds is replaced by a copy). null when the point is not in the curriculum or is already known.
+function jaGrammarMarkKnown(store, id, today) {
+  if (!jaGrammarEntryById(id)) return null
+  const k = jaProgressKeyOf('buildingBlock', id), before = store[k] || null
+  if (before && before.introducedAt && before.knownAt) return null
+  const prev = jaGrammarTickPrevOf(before), day = today || new Date().toISOString().slice(0, 10)
+  if (before) store[k] = { ...before }
+  const rec = jaGrammarIntroduce(store, 'buildingBlock', id, day)          // the record as an introduction makes it (one that exists keeps every field it has)
+  rec.status = 'known'; rec.knownAt = day; rec.markedKnownAt = day; rec.markedKnownFrom = JA_GRAMMAR_TICK_FROM; rec.markedKnownPrev = prev
+  store[k] = rec
+  return rec
+}
+// TAKE BACK. Pure on the store it is handed. { ok, removed, record } or { ok: false, why }.
+function jaGrammarUnmarkKnown(store, id) {
+  const k = jaProgressKeyOf('buildingBlock', id), rec = store[k]
+  if (!rec || !rec.knownAt) return { ok: false, why: 'not-known' }
+  if (rec.markedKnownFrom !== JA_GRAMMAR_TICK_FROM) return { ok: false, why: jaGrammarKnownRoute(rec) === 'tracks' ? 'known-by-tracks' : 'known-by-rating' }
+  if (jaGrammarTickRatedSince(rec)) return { ok: false, why: 'known-by-rating' }
+  const prev = rec.markedKnownPrev, out = { ...rec }
+  delete out.knownAt; delete out.markedKnownAt; delete out.markedKnownFrom; delete out.markedKnownPrev
+  if (prev) {                                                                // the record was there before the tick: the schedule it had comes back
+    ;['status', 'interval', 'dueDate', 'okStreak', 'lapses', 'introducedAt'].forEach(f => { out[f] = prev[f] })
+    if (prev.ratedAt) out.ratedAt = prev.ratedAt; else delete out.ratedAt
+    store[k] = out; return { ok: true, removed: false, record: out }
+  }
+  if (!jaGrammarTickHistory(out)) { delete store[k]; return { ok: true, removed: true, record: null } }      // the tick made it and nothing has used it: back to no record
+  Object.assign(out, { status: 'new', interval: 0, dueDate: null, okStreak: 0, lapses: 0, introducedAt: null }); delete out.ratedAt      // used since: kept as history, not introduced (no slot, not due)
+  store[k] = out; return { ok: true, removed: false, record: out }
+}
+// the 101 rows, in teaching order, with the status and the route of each
+function jaGrammarChecklistRows(store) {
+  const st = store || {}
+  return JA_GRAMMAR_CURRICULUM.map(e => {
+    const rec = st[jaProgressKeyOf('buildingBlock', e.id)] || null, status = jaGrammarChecklistStatus(rec), route = status === 'known' ? jaGrammarKnownRoute(rec) : null
+    return { id: e.id, label: e.label, romaji: e.romaji || '', meaning: e.meaning, order: e.order, status, route, canUnmark: route === 'tick' }
+  })
+}
+// THE TAP. Reads what is stored now, marks or takes back, saves at once (merged, like a rating; a removal is asked for by key, as the reset does) and says what happened.
+async function jaGrammarChecklistToggle(id) {
+  const no = (reason, extra) => ({ changed: false, action: 'none', reason, ...(extra || {}) })
+  if (!jaGrammarChecklistOn()) return no('switch-off')
+  if (!jaGrammarEntryById(id)) return no('unknown-point')
+  try {
+    const store = await jaGrammarLoad(), k = jaProgressKeyOf('buildingBlock', id), rec = store[k] || null, next = { ...store }
+    if (rec && rec.introducedAt && jaGrammarIsKnownRec(rec)) {
+      const u = jaGrammarUnmarkKnown(next, id)
+      if (!u.ok) return { changed: false, action: 'blocked', reason: u.why, note: u.why === 'known-by-tracks' ? JA_GRAMMAR_NOTE_TRACKS : JA_GRAMMAR_NOTE_RATING }
+      if (u.removed) {
+        await stSyncSaveObject(JA_GRAMMAR_KEY, next, { ...ST_PROGRESS_OPTS, deleted: [k] })
+        const now = (await stGet(JA_GRAMMAR_KEY)) || {}
+        if (now[k]) return no('not-removed')
+      } else await jaGrammarSave(next)
+      return { changed: true, action: 'unmarked', removed: !!u.removed }
+    }
+    if (!jaGrammarMarkKnown(next, id)) return no('not-markable')
+    await jaGrammarSave(next)
+    return { changed: true, action: 'marked', created: !rec }
+  } catch (e) { console.error('[ja-grammar] the mark did not complete', e); return no('error') }
+}
+// the parts of the Words list that show the grammar store (Grammar review, All grammar, Known grammar) tell each other when one of them has changed it, so each shows what is stored now
+const JA_GRAMMAR_BUS = new Set()
+function jaGrammarBusOn(fn) { JA_GRAMMAR_BUS.add(fn); return () => { JA_GRAMMAR_BUS.delete(fn) } }
+function jaGrammarBusNotify(source) { if (!jaGrammarChecklistOn()) return; JA_GRAMMAR_BUS.forEach(fn => { try { fn(source) } catch (e) {} }) }
+// end of the v777 block
+
 // ROMAJI. The stored romaji of the entry. Four entries whose label has two forms keep the stored reading first and carry the second one too (the stored field itself is untouched). No romaji stored ⇒ none.
 const JA_GRAMMAR_ROMAJI_BOTH = Object.freeze({ janai: 'janai / dewa nai', kamo: 'kamo / kamo shirenai', volitional: '-you / -kou', 'nominal-no': '-no wa / -no ga' })
 function jaGrammarRomajiText(x) {

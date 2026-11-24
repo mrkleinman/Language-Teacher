@@ -60558,7 +60558,7 @@ function jaGrammarPlan(an, o) {
   const intro = (type, id) => !!(rec(type, id) && rec(type, id).introducedAt)
   const overdue = Object.values(store).filter(r => r && r.type === 'buildingBlock' && r.introducedAt && r.dueDate && r.dueDate < today && !jaGrammarIsKnownRec(r) && !jaGrammarIsNewRec(r)).length      // v775: a point still NEW is not on the schedule, so it is never overdue (the plan screen reads it the same way)
   const held = overdue > cfg.overdueStop
-  const row = (type, e, pairs) => ({ id: e.id, type, label: type === 'buildingBlock' ? e.label : e.form, romaji: e.romaji || '', meaning: type === 'buildingBlock' ? e.meaning : e.english,
+  const row = (type, e, pairs) => ({ id: e.id, type, label: type === 'buildingBlock' ? jaGrammarShownLabel(e) : e.form, romaji: e.romaji || '', meaning: type === 'buildingBlock' ? jaGrammarShownMeaning(e) : e.english,
     explain: type === 'buildingBlock' ? e.explain : ('A reaction word or set phrase: ' + e.english), pairs: pairs.slice(), cost: type === 'buildingBlock' ? e.cost : 0, minKnown: e.minKnown || 0, order: e.order })
   const plan = { today, known, overdue, held, budget: { limit: cfg.budget, spent: 0 }, new: [], review: [], alsoUsed: [], knownGrammar: [], passing: [], locked: [], basics: { new: [], review: [], alsoUsed: [], passing: [], locked: [] } }
   // v775: the grammar points still NEW take slots: new points are cut to the free ones, a NEW point used again here is practised again (stillNew), never introduced a second time, never counted twice
@@ -60591,7 +60591,7 @@ function jaGrammarPlan(an, o) {
       if (held) { bucket.passing.push({ ...x, why: 'held back: ' + overdue + ' reviews are overdue' }); return }
       if (bucket.new.length >= limitNew) { bucket.passing.push({ ...x, why: slots && type === 'buildingBlock' && limitNew < cfg.budget ? (jaGrammarClearWordingOn() && slots.newCount + bucket.new.length > slots.limit ? 'no free NEW slot: ' + (slots.newCount + bucket.new.length) + ' points are waiting for a rating (no new grammar until fewer than ' + slots.limit + ' are waiting)' : 'no free NEW slot: ' + (slots.newCount + bucket.new.length) + ' of ' + slots.limit + ' are NEW (' + slots.newCount + ' not rated yet' + (bucket.new.length ? ' + ' + bucket.new.length + ' taught now' : '') + ')') : 'no room this track' }); return }
       const missing = (e.prereq || []).filter(p => !intro(type, p) && !chosen.has(p))
-      if (missing.length) { bucket.passing.push({ ...x, why: 'needs ' + missing.map(p => (jaGrammarEntryById(p) || { label: p }).label).join(', ') + ' first' }); return }
+      if (missing.length) { bucket.passing.push({ ...x, why: 'needs ' + missing.map(p => jaGrammarShownLabel(jaGrammarEntryById(p) || { id: p, label: p })).join(', ') + ' first' }); return }
       if (budgeted && plan.budget.spent + x.cost > cfg.budget) { bucket.passing.push({ ...x, why: 'no room this track' }); return }
       chosen.add(e.id); bucket.new.push(x); if (budgeted) plan.budget.spent += x.cost
     })
@@ -60631,7 +60631,7 @@ function jaGrammarApplyPlan(store, plan, today) {
 }
 // what the track carries (and the export / screens show): plain data only
 function jaGrammarSummary(plan, an) {
-  const slim = x => { const o = { id: x.id, type: x.type, label: x.label, romaji: x.romaji, meaning: x.meaning, explain: x.explain, pairs: x.pairs, cost: x.cost }; if (x.why) o.why = x.why; if (x.dueDate) o.dueDate = x.dueDate; if (x.minKnown) o.minKnown = x.minKnown; return o }
+  const slim = x => { const o = { id: x.id, type: x.type, label: jaGrammarShownLabel(x), romaji: x.romaji, meaning: jaGrammarShownMeaning(x), explain: x.explain, pairs: x.pairs, cost: x.cost }; if (x.why) o.why = x.why; if (x.dueDate) o.dueDate = x.dueDate; if (x.minKnown) o.minKnown = x.minKnown; return o }
   const grp = b => ({ new: b.new.map(slim), review: b.review.map(slim), alsoUsed: b.alsoUsed.map(slim), passing: b.passing.map(slim), locked: b.locked.map(slim) })
   const unsure = (an.perPair || []).filter(r => r.unsure.length).map(r => r.n)
   return { version: 1, at: plan.today, known: plan.known, budget: plan.budget, overdue: plan.overdue, held: plan.held, ...grp(plan), basics: grp(plan.basics), unsureLines: unsure, recorded: true,
@@ -60657,7 +60657,7 @@ async function jaGrammarFinaliseTrack(track, o) {
     if (sum.slots) { if (sight.becameKnown.length) sum.stillNew = sum.stillNew.filter(x => !sight.becameKnown.includes(x.id)); sum.slots.after = jaGrammarSlots(store).newCount
       sum.slots.unusedIds = sum.slots.newIds.filter(id => !sum.stillNew.some(x => x.id === id) && !sight.becameKnown.includes(id)) }
     if (sight.becameKnown.length) sum.becameKnown = sight.becameKnown.map(id => { const e = jaGrammarEntryById(id), r = store[jaProgressKeyOf('buildingBlock', id)]
-      return { id, label: e ? e.label : id, romaji: e ? e.romaji : '', meaning: e ? e.meaning : '', explain: e ? e.explain : '', sightings: r.sightings || 0, tracks: (r.sightingTracks || []).length } })
+      return { id, label: e ? jaGrammarShownLabel(e) : id, romaji: e ? e.romaji : '', meaning: e ? jaGrammarShownMeaning(e) : '', explain: e ? e.explain : '', sightings: r.sightings || 0, tracks: (r.sightingTracks || []).length } })
     // v774 A/B — what the writer was allowed (planned before writing) and every line whose final text still uses an entry outside that list. Reported, never rewritten, never a reason to fail the track.
     { const _gate = (jaGrammarGateOn() || jaGrammarStageOn()) && track.trackContext && track.trackContext.grammarGate
       if (_gate && (_gate.gate || _gate.stage)) { sum.gate = jaGrammarGateReport(track, _gate, an, plan, (opts.vocab || []).filter(w => w && /^[おご]/.test(w.japanese || '')))
@@ -60777,7 +60777,7 @@ function jaGrammarKnownList(store) {
   const out = []
   JA_GRAMMAR_CURRICULUM.forEach(e => {
     const r = (store || {})[jaProgressKeyOf('buildingBlock', e.id)]
-    if (r && r.introducedAt && r.knownAt) out.push({ id: e.id, label: e.label, romaji: e.romaji || '', meaning: e.meaning, explain: e.explain, sightings: r.sightings || 0, tracks: (r.sightingTracks || []).length, knownAt: r.knownAt, order: e.order,
+    if (r && r.introducedAt && r.knownAt) out.push({ id: e.id, label: jaGrammarShownLabel(e), romaji: e.romaji || '', meaning: jaGrammarShownMeaning(e), explain: e.explain, sightings: r.sightings || 0, tracks: (r.sightingTracks || []).length, knownAt: r.knownAt, order: e.order,
       ...(r.knownVia === 'easy' ? { via: 'easy' } : r.markedKnownFrom === JA_GRAMMAR_TICK_FROM && jaGrammarChecklistOn() ? { via: 'checklist' } : {}) })
   })
   return out.sort((a, b) => String(b.knownAt).localeCompare(String(a.knownAt)) || (a.order - b.order))
@@ -61056,7 +61056,7 @@ function jaGrammarChecklistRows(store) {
   const st = store || {}
   return JA_GRAMMAR_CURRICULUM.map(e => {
     const rec = st[jaProgressKeyOf('buildingBlock', e.id)] || null, status = jaGrammarChecklistStatus(rec), route = status === 'known' ? jaGrammarKnownRoute(rec) : null
-    return { id: e.id, label: e.label, romaji: e.romaji || '', meaning: e.meaning, order: e.order, status, route, canUnmark: route === 'tick' }
+    return { id: e.id, label: jaGrammarShownLabel(e), romaji: e.romaji || '', meaning: jaGrammarShownMeaning(e), order: e.order, status, route, canUnmark: route === 'tick' }
   })
 }
 // THE TAP. Reads what is stored now, marks or takes back, saves at once (merged, like a rating; a removal is asked for by key, as the reset does) and says what happened.
@@ -61155,12 +61155,39 @@ function JaGrammarChecklist() {
 }
 // end of the v777 block
 
+// ══ v778 — SHOWN LABELS: REAL JAPANESE ON THE TWO ENGLISH-ONLY ROWS (Japanese only) ═══════════════════════════════════════════════════════════════════
+// Two of the 101 entries were named in English only, so every list showed no Japanese for them: the plain present ("plain present", no reading) and the noun-modifying clause ("noun-modifying clause", no reading).
+// What the learner (and the writer) now read for them is a Japanese example with its reading:
+//   plain-present   食べる · 行く · する    taberu · iku · suru     the meaning stays "plain present / future"
+//   noun-modify     買った本                katta hon               the meaning is "clause describing a noun (the book I bought)"
+// DISPLAY ONLY. The entries themselves (id, stored name, prerequisites, unlock level, cost, order, explanation: JA_BUILDING_BLOCKS and the curriculum made from it) are not touched, and neither is anything that finds a form in
+// a sentence, chooses a point, builds the allowed list of the gate or writes a record. Every place that shows an entry's name, reading or meaning asks these three helpers, so the new text lives in ONE table
+// (JA_GRAMMAR_SHOWN_TEXT) and no list, prompt line, refusal reason, export line or log line can be missed: the plan rows and the section a track stores are BUILT with them (a track written now carries the new name), and
+// every screen asks them again for the id of the row it draws (a track saved by v777, whose section holds the English-only words, is shown with the new text too). The reading is shown through the romaji switch only
+// (jaGrammarRomajiText asks jaGrammarShownRomaji), so with that switch off none of it is printed; the stored `romaji` field of a row stays what the entry holds (empty for these two) and no row gets a new field.
+// One switch (on; off = v777 exactly): jaGrammarShownLabelSetEnabled. A row that is only an id and a name (a stored row, an unknown id) is handed back as it is, and the conversation basics are never touched.
+const JA_GRAMMAR_SHOWN = { on: true }
+function jaGrammarShownLabelSetEnabled(on) { JA_GRAMMAR_SHOWN.on = !!on }
+function jaGrammarShownLabelOn() { return !!JA_GRAMMAR_SHOWN.on }
+const JA_GRAMMAR_SHOWN_TEXT = Object.freeze({
+  'plain-present': Object.freeze({ label: '食べる · 行く · する', romaji: 'taberu · iku · suru' }),
+  'noun-modify': Object.freeze({ label: '買った本', romaji: 'katta hon', meaning: 'clause describing a noun (the book I bought)' }),
+})
+// the table row of an entry, or of a stored row of it (by its id): null when the switch is off, for every other entry and for the conversation basics
+function jaGrammarShownOf(x) {
+  return jaGrammarShownLabelOn() && x && x.type !== 'conversationBasic' && typeof x.id === 'string' && Object.prototype.hasOwnProperty.call(JA_GRAMMAR_SHOWN_TEXT, x.id) ? JA_GRAMMAR_SHOWN_TEXT[x.id] : null
+}
+function jaGrammarShownLabel(x) { const o = jaGrammarShownOf(x); return o ? o.label : (x ? x.label : '') }
+function jaGrammarShownRomaji(x) { const o = jaGrammarShownOf(x); return o ? o.romaji : (x ? (x.romaji || '') : '') }
+function jaGrammarShownMeaning(x) { const o = jaGrammarShownOf(x); return o && o.meaning ? o.meaning : (x ? x.meaning : '') }
+// end of the v778 block
+
 // ROMAJI. The stored romaji of the entry. Four entries whose label has two forms keep the stored reading first and carry the second one too (the stored field itself is untouched). No romaji stored ⇒ none.
 const JA_GRAMMAR_ROMAJI_BOTH = Object.freeze({ janai: 'janai / dewa nai', kamo: 'kamo / kamo shirenai', volitional: '-you / -kou', 'nominal-no': '-no wa / -no ga' })
 function jaGrammarRomajiText(x) {
   if (!x) return ''
   const basic = x.type === 'conversationBasic', e = basic ? jaGrammarBasicById(x.id) : jaGrammarEntryById(x.id)
-  const stored = e ? (e.romaji || '') : (x.romaji || '')
+  const stored = basic ? (e ? (e.romaji || '') : (x.romaji || '')) : jaGrammarShownRomaji(e || x)       // v778: the reading of the two English-only entries (nothing when the switch is off)
   return (!basic && JA_GRAMMAR_ROMAJI_BOTH[x.id]) || stored
 }
 function jaGrammarRomajiShown(x) { return jaGrammarRomajiOn() ? jaGrammarRomajiText(x) : '' }
@@ -61171,7 +61198,7 @@ function jaGrammarRomajiSpan(x, style) {
 // the grammar a learner can review without generating a track: what is due (most overdue first) and, as a separate group, the points still NEW that were never rated
 function jaGrammarReviewAreaList(store, today) {
   const t = today || new Date().toISOString().slice(0, 10), st = store || {}, due = [], newUnrated = []
-  const row = (e, r) => ({ id: e.id, type: 'buildingBlock', label: e.label, romaji: e.romaji || '', meaning: e.meaning, explain: e.explain, order: e.order, dueDate: r.dueDate || null, notShownAt: r.notShownAt || null })
+  const row = (e, r) => ({ id: e.id, type: 'buildingBlock', label: jaGrammarShownLabel(e), romaji: e.romaji || '', meaning: jaGrammarShownMeaning(e), explain: e.explain, order: e.order, dueDate: r.dueDate || null, notShownAt: r.notShownAt || null })
   JA_GRAMMAR_CURRICULUM.forEach(e => {
     const r = st[jaProgressKeyOf('buildingBlock', e.id)]
     if (!r || !r.introducedAt || jaGrammarIsKnownRec(r)) return
@@ -61313,7 +61340,7 @@ function jaGrammarTrackPlan(store, known, o) {
   const today = opts.today || new Date().toISOString().slice(0, 10)
   const rec = id => st[jaProgressKeyOf('buildingBlock', id)] || null
   const intro = id => !!(rec(id) && rec(id).introducedAt)
-  const row = e => ({ id: e.id, label: e.label, romaji: e.romaji || '', meaning: e.meaning, explain: e.explain, cost: e.cost, minKnown: e.minKnown || 0, order: e.order })
+  const row = e => ({ id: e.id, label: jaGrammarShownLabel(e), romaji: e.romaji || '', meaning: jaGrammarShownMeaning(e), explain: e.explain, cost: e.cost, minKnown: e.minKnown || 0, order: e.order })
   // v775: a point that is still NEW (introduced, never rated) is not on the review schedule: it is carried as NEW, never counted as due or overdue
   const live = r => r && r.type === 'buildingBlock' && r.introducedAt && !jaGrammarIsKnownRec(r) && !jaGrammarIsNewRec(r)     // a known entry takes no review slot and is never overdue
   const overdue = Object.values(st).filter(r => live(r) && r.dueDate && r.dueDate < today).length
@@ -61352,10 +61379,10 @@ function jaGrammarGateContext(vocab, store, o) {
   const stage = jaGrammarStageFor(introducedIds.length)
   return { version: 1, at: plan.today, register, known, gate: gateOn, stage: stageOn, introducedCount: introducedIds.length, coreIds: jaGrammarCoreIds(register), introducedIds,
     ceilings: { name: stage.name, maxChars: stage.maxChars, maxGated: stage.maxGated },
-    plannedIds: gateOn ? plan.next.map(x => x.id) : [], planned: gateOn ? plan.next.map(x => ({ id: x.id, label: x.label, meaning: x.meaning, cost: x.cost })) : [],
-    review: plan.review.map(x => ({ id: x.id, label: x.label, meaning: x.meaning, dueDate: x.dueDate })), held: plan.held, overdue: plan.overdue, budget: plan.budget,
+    plannedIds: gateOn ? plan.next.map(x => x.id) : [], planned: gateOn ? plan.next.map(x => ({ id: x.id, label: jaGrammarShownLabel(x), meaning: jaGrammarShownMeaning(x), cost: x.cost })) : [],
+    review: plan.review.map(x => ({ id: x.id, label: jaGrammarShownLabel(x), meaning: jaGrammarShownMeaning(x), dueDate: x.dueDate })), held: plan.held, overdue: plan.overdue, budget: plan.budget,
     // v775: the points still NEW (introduced, not rated) are carried into this track as NEW — allowed, practised again — and the slots they leave free are what the plan above was cut to
-    ...(plan.slots ? { stillNewIds: plan.stillNew.map(x => x.id), stillNew: plan.stillNew.map(x => ({ id: x.id, label: x.label, meaning: x.meaning, cost: x.cost })), slots: plan.slots } : {}) }
+    ...(plan.slots ? { stillNewIds: plan.stillNew.map(x => x.id), stillNew: plan.stillNew.map(x => ({ id: x.id, label: jaGrammarShownLabel(x), meaning: jaGrammarShownMeaning(x), cost: x.cost })), slots: plan.slots } : {}) }
 }
 const JA_GATE_FREE_TEXT = 'は が を に で の と も か ね よ だ です · verbs in the plain present (行く, 食べる) · でも だから じゃあ · よね (ね and よ together) · the conversation basics and short reactions (うん, あの, えっ, ええと, ねえ, へえ, ほら, ああ, やった, よかった, ほんと？, そっか, なるほど, そうだね, いいね, こんにちは, またね, どうしよう)'
 // what the writer is told (both writers: the target group and the single sentence). Empty without a gate.
@@ -61431,7 +61458,7 @@ function jaGrammarGateReport(track, gate, an, plan, words) {
     if (!jp) return
     const r = jaGrammarCheckSentence(jp, gate, { hits: (an.perPair[i] && an.perPair[i].hits) || null, words })
     r.problems.forEach(pr => {
-      if (pr.kind === 'locked') pr.ids.forEach(id => { const e = jaGrammarEntryById(id); notTaught.push({ n: i + 1, id, label: e ? e.label : id, meaning: e ? e.meaning : '', taughtNow: taughtNow(id) }) })
+      if (pr.kind === 'locked') pr.ids.forEach(id => { const e = jaGrammarEntryById(id); notTaught.push({ n: i + 1, id, label: e ? jaGrammarShownLabel(e) : id, meaning: e ? jaGrammarShownMeaning(e) : '', taughtNow: taughtNow(id) }) })
       else if (pr.kind === 'long') stageFlags.push({ n: i + 1, kind: 'long', chars: pr.chars, max: pr.max, text: 'is too long for this stage (' + pr.chars + ' characters; at most ' + pr.max + ' at this stage)' })
       else if (pr.kind === 'many') stageFlags.push({ n: i + 1, kind: 'many', ids: pr.ids, max: pr.max, text: 'combines ' + pr.ids.length + ' new grammar points (' + pr.labels.join(', ') + '; at most ' + pr.max + ' at this stage)' })
     })
@@ -61439,11 +61466,11 @@ function jaGrammarGateReport(track, gate, an, plan, words) {
   const planned = (gate.planned || []).map(x => {
     const u = an.uses[x.id], all = u ? u.all.slice() : [], pass = (plan.passing || []).find(y => y.id === x.id)
     const outcome = taughtNow(x.id) ? 'taught NEW' : !all.length ? 'not used in any sentence' : pass ? pass.why : (u && u.target.length ? 'used, already introduced' : 'used only in greeting lines')
-    return { id: x.id, label: x.label, meaning: x.meaning, cost: x.cost, pairs: all, outcome }
+    return { id: x.id, label: jaGrammarShownLabel(x), meaning: jaGrammarShownMeaning(x), cost: x.cost, pairs: all, outcome }
   })
   // v775: the points that were still NEW when the writer started (carried into this track as NEW): used again here or not
   const stillNew = gate.stillNew ? gate.stillNew.map(x => { const u = an.uses[x.id], all = u ? u.all.slice() : []
-    return { id: x.id, label: x.label, meaning: x.meaning, cost: x.cost, pairs: all, outcome: !all.length ? 'still NEW, not used in any sentence' : u.target.length ? 'still NEW, used again' : 'still NEW, used only in greeting lines' } }) : null
+    return { id: x.id, label: jaGrammarShownLabel(x), meaning: jaGrammarShownMeaning(x), cost: x.cost, pairs: all, outcome: !all.length ? 'still NEW, not used in any sentence' : u.target.length ? 'still NEW, used again' : 'still NEW, used only in greeting lines' } }) : null
   return { version: 1, gate: !!gate.gate, stageOn: !!gate.stage, ceilings: gate.ceilings || null, introducedCount: gate.introducedCount, coreCount: (gate.coreIds || []).length, plannedIds: (gate.plannedIds || []).slice(), planned, notTaught, stageFlags, held: !!gate.held, overdue: gate.overdue || 0,
     ...(stillNew ? { stillNew } : {}) }
 }

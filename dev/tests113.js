@@ -55,6 +55,15 @@ const exportText = (cc, track) => { cc.Blob = class { constructor(parts) { cc.__
 
 // ── a scripted target group: the real adapter + the real generateTargetGroup, only the transport answers ──────────────────────────────
 // answer(callNo, slotsAsked, promptText) → one recall object per slot (or null to leave the request unanswered). The learner of tests14's setup('ja') has been taught every word, so only grammar differs.
+// the Japanese plan screen ("Scene Ready": Generate Track from this Scene, the target chips, the Conversation basics): the real JapaneseGenerator, only the scene call answered
+async function planScreen(cc, vocab, store) {
+  cc.generateJapaneseScene = async () => ({ scene: 'Two friends meet', setting: 'a cafe', characterA: 'Daiki', characterB: 'Mio', opening: 'こんにちは', opening_english: 'Hello', premise: 'x' })
+  await cc.stSet('tt-migrations', { 'ja-grammar-curriculum-v1': { status: 'done' } })
+  await cc.stSet('tt-ja-grammar-srs', store || {})
+  const targets = vocab.slice(0, 5).map(w => ({ ...w, selectionRole: 'review' }))
+  let R; await TR.act(async () => { R = TR.create(React.createElement(cc.JapaneseGenerator, { vocab, targets, selection: null, trackMode: 'daily', tracks: [], register: 'natural', cred: { geminiKey: 'k' }, onGenerated() {}, onBack() {} })); for (let i = 0; i < 80; i++) await new Promise(x => setImmediate(x)) })
+  return { R, text: textOf(R.toJSON()).replace(/\s+/g, ' ') }
+}
 const mkRecall = (jp, en) => ({ intent: 'say it', japanese: jp, reading: '', romaji: '', englishCue: 'Say: ' + en, englishMeaning: en, segments: [] })
 async function runGroup(S, targetWord, answer, gate, o) {
   const c = S.c, vocab = S.vocab, t = vocab.find(v => v.japanese === targetWord), inv = c.japaneseLearnerInventory(vocab, [t]), rules = c.scarcityRules(inv)
@@ -436,6 +445,49 @@ const TARA = mkRecall('行ったら言ってね。', 'Tell me when you go.')
         Object.values(stx).every(r => r.sightings === undefined && r.sightingTracks === undefined && r.knownAt === undefined) && !f1.grammarInTrack.becameKnown && !f2.grammarInTrack.becameKnown && !f2.grammarInTrack.knownUsed && !/Known grammar/.test(textOf(We.toJSON()))) }
   } catch (e) { T('D!', 'section D stopped: ' + String(e && e.message).split('\n')[0], false, String(e && e.stack).slice(0, 500)) }
 
+  // ═══ E — THE PLAN-SCREEN PREVIEW ═══════════════════════════════════════════════════════════════════════════════════════════════════
+  try {
+    const cj = fresh(), ev = x => cj.ev(x)
+    const Ldue = levelOf(cj, LV.L1, st => { ;['wa', 'ka'].forEach((id, i) => { Object.assign(st['buildingBlock:' + id], { dueDate: ['2026-01-02', '2026-01-03'][i], interval: 2, status: 'learning' }) }) })
+    const planNow = cj.jaGrammarTrackPlan(Ldue.store, cj.jaGrammarKnownCount(Ldue.vocab), {})
+    const P = await planScreen(cj, Ldue.vocab, Ldue.store), t = P.text
+    T('E1', 'the Japanese plan screen (Generate Track from this Scene, the target chips) carries a "Grammar for this track" block, labelled as a PREVIEW, that says the final list is fixed after the sentences are written',
+      /Generate Track from this Scene/.test(t) && /Grammar for this track/i.test(t) && /preview/i.test(t) && /final list is fixed after the sentences are written/i.test(t), t.slice(0, 700))
+    const iBlock = t.indexOf('Grammar for this track'), blk = iBlock >= 0 ? t.slice(iBlock) : ''
+    T('E2', 'it shows the grammar due for review (は and か here, the most overdue first) and the next entries the learner\'s level would introduce, up to 5 points — every one by its label, with the points used',
+      /due for review/i.test(blk) && blk.indexOf('は') >= 0 && planNow.review.map(x => x.label).every(l => blk.includes(l)) && planNow.next.length > 0 && planNow.next.every(x => blk.includes(x.label)) && new RegExp(planNow.budget.spent + '\\s+of\\s+5\\s+points').test(blk) && planNow.review.length === 2, blk.slice(0, 600))
+    // the same function behind the prompt: the preview lists exactly what the writer is sent
+    const vocab = Ldue.vocab, gate = cj.jaGrammarGateContext(vocab, Ldue.store, { register: 'natural' })
+    const S = setup('ja'); quiet(S.c); const tg = S.vocab.find(v => v.japanese === '行く'), inv = S.c.japaneseLearnerInventory(S.vocab, [tg]), slots = [1, 2, 3].map(k => ({ recallIndex: k, lastFailure: '', failedSentences: [] }))
+    const wp = S.c.buildJapaneseGroupPrompt(tg, slots, inv, S.vocab, 'natural', { initial: true, acceptedForTarget: [], usedInTrack: [], rejected: [], objectives: '', grammarProgress: {}, grammarGate: JSON.parse(JSON.stringify(gate)) }).user
+    const idsOf = attr => [...new Set(P.R.root.findAll(x => x.props && typeof x.props[attr] === 'string').map(x => x.props[attr]))]
+    const shownNext = idsOf('data-preview-next'), shownReview = idsOf('data-preview-review')
+    T('E3', 'the preview matches what the writer is sent: the same entries (the same function), in the same order, and the writer\'s prompt names each of them as new in this track',
+      blk.length > 0 && gate.plannedIds.join() === planNow.next.map(x => x.id).join() && planNow.next.every(x => wp.includes(x.label)) && shownNext.join() === planNow.next.map(x => x.id).join() && shownReview.join() === planNow.review.map(x => x.id).join() &&
+      gate.review.map(x => x.id).join() === planNow.review.map(x => x.id).join(), { gate: gate.plannedIds, plan: planNow.next.map(x => x.id) })
+    await TR.act(async () => { P.R.unmount() })
+    // the rule that holds new points back is shown, not hidden
+    const Lh = levelOf(cj, LV.L1, st => { ;['wa', 'ka', 'ne', 'yo', 'da', 'plain-present', 'san'].forEach(id => { Object.assign(st['buildingBlock:' + id], { dueDate: '2026-01-01', interval: 2 }) }) })
+    const H = await planScreen(cj, Lh.vocab, Lh.store), th = H.text.slice(H.text.indexOf('Grammar for this track'))
+    T('E4', 'with more than 6 reviews overdue the preview says no new points this track and why (7 reviews are overdue), and lists none',
+      /no new/i.test(th) && /7 reviews are overdue/.test(th) && cj.jaGrammarTrackPlan(Lh.store, 90, {}).next.length === 0, th.slice(0, 500))
+    await TR.act(async () => { H.R.unmount() })
+    // day one: nothing taught yet — は か ね よ だ are what a first track introduces
+    const L0 = levelOf(cj, LV.L0), Z = await planScreen(cj, L0.vocab, L0.store), tz = Z.text.slice(Z.text.indexOf('Grammar for this track'))
+    T('E5', 'day one: the preview lists は か ね よ だ as the next entries (5 points) and nothing due', ['は', 'か', 'ね', 'よ', 'だ'].every(l => tz.includes(l)) && /5\s+of\s+5\s+points/.test(tz), tz.slice(0, 400))
+    await TR.act(async () => { Z.R.unmount() })
+    // the screen is the plan screen only: the component renders nothing without progress, and the other languages' plan screens are the same functions as before (F1 holds their sha)
+    T('E6', 'it renders nothing until the progress is loaded (no flash of a wrong list) and nothing for a switched-off preview',
+      (() => { const r1 = TR.create(React.createElement(cj.JaGrammarPreview, { vocab: Ldue.vocab, store: null })); const nothing = r1.toJSON() === null
+        cj.jaGrammarPreviewSetEnabled(false); const r2 = TR.create(React.createElement(cj.JaGrammarPreview, { vocab: Ldue.vocab, store: Ldue.store })); const off = r2.toJSON() === null; cj.jaGrammarPreviewSetEnabled(true); return nothing && off })())
+    { const cc = fresh(); cc.jaGrammarPreviewSetEnabled(false); const L = levelOf(cc, LV.L1), X = await planScreen(cc, L.vocab, L.store)
+      T('E7', 'preview switch off: the plan screen has no "Grammar for this track" block, and the rest of the screen is the screen v773 showed', !/Grammar for this track/i.test(X.text) && cc.jaGrammarPreviewOn() === false, X.text.slice(0, 300))
+      await TR.act(async () => { X.R.unmount() }) }
+    { const cc = fresh(); cc.jaGrammarGateSetEnabled(false); const L = levelOf(cc, LV.L1), X = await planScreen(cc, L.vocab, L.store), tx = X.text.slice(X.text.indexOf('Grammar for this track'))
+      T('E8', 'with the gate off the preview still shows (its own switch) but says plainly that the writer is not limited to this list', /Grammar for this track/i.test(X.text) && /not limited/i.test(tx), tx.slice(0, 500))
+      await TR.act(async () => { X.R.unmount() }) }
+  } catch (e) { T('E!', 'section E stopped: ' + String(e && e.message).split('\n')[0], false, String(e && e.stack).slice(0, 500)) }
+
   // ═══ F — SAFETY AND SWITCHES ═════════════════════════════════════════════════════════════════════════════════════════════════════
   try {
     // values of the v773 build (TT_PROBE=1 on the unchanged build prints them)
@@ -449,15 +501,17 @@ const TARA = mkRecall('行ったら言ってね。', 'Tell me when you go.')
       const fin = await cf.jaGrammarFinaliseTrack(trackOf(), { vocab, today: TODAY })
       const exp = exportText(cf, fin)
       const st = await cf.jaGrammarLoad(), due = cf.jaGrammarDue({ 'buildingBlock:wa': { type: 'buildingBlock', itemId: 'wa', introducedAt: '2026-09-01', dueDate: '2026-11-20', knownAt: '2026-11-01', sightings: 5 }, 'buildingBlock:ka': { type: 'buildingBlock', itemId: 'ka', introducedAt: '2026-09-01', dueDate: '2026-11-21' } }, 'buildingBlock', TODAY).map(r => r.itemId).join()
-      return { group: sha(gp.system + '\n' + gp.user), recall: sha(rp.system + '\n' + rp.user), run: sha(R.grp.slots.map(s => s.pair.japanese).join('|') + '/' + R.grp.paidCalls + '/' + R.calls.length), summary: sha(JSON.stringify(fin.grammarInTrack)), exportText: sha(exp), due, stored: sha(JSON.stringify(Object.keys(st).sort())) }
+      const cp = fresh(); allOff(cp); const Lp = levelOf(cp, LV.L1); const ps = await planScreen(cp, Lp.vocab, Lp.store); await TR.act(async () => { ps.R.unmount() })
+      const gens = ['Generator', 'MandarinGenerator', 'CantoneseGenerator'].map(k => sha(cp.ev('(' + k + ')').toString())).join('/')
+      return { plan: sha(ps.text), gens, group: sha(gp.system + '\n' + gp.user), recall: sha(rp.system + '\n' + rp.user), run: sha(R.grp.slots.map(s => s.pair.japanese).join('|') + '/' + R.grp.paidCalls + '/' + R.calls.length), summary: sha(JSON.stringify(fin.grammarInTrack)), exportText: sha(exp), due, stored: sha(JSON.stringify(Object.keys(st).sort())) }
     }
     if (process.env.TT_PROBE) { console.log(JSON.stringify(await probe(), null, 1)); process.exit(0) }
-    const V773 = { group: '82396c1188b4a02d', recall: 'ed7a69ba464225b4', run: '8c40c4f24537ed29', summary: 'd00d840bdeb46b37', exportText: 'ccbbf305dbb0cd21', due: 'wa,ka', stored: '2269a76dcff8f5db' }
+    const V773 = { plan: 'cdbffd9b0509d9fa', gens: 'd1f42a7582826659/96f46784417b0789/944745366a992693', group: '82396c1188b4a02d', recall: 'ed7a69ba464225b4', run: '8c40c4f24537ed29', summary: 'd00d840bdeb46b37', exportText: 'ccbbf305dbb0cd21', due: 'wa,ka', stored: '2269a76dcff8f5db' }
     const now = await probe()
-    T('F1', 'all four switches off: the writer\'s prompts, a scripted target group (sentences, requests), the track\'s grammar summary and export, the due list and the stored records are exactly what v773 produced',
+    T('F1', 'all four switches off: the writer\'s prompts, a scripted target group (sentences, requests), the track\'s grammar summary and export, the due list, the stored records, the Japanese plan screen and the Thai / Mandarin / Cantonese generator screens are exactly what v773 produced',
       Object.keys(V773).every(k => now[k] === V773[k]), { now, V773 })
-    const c = fresh(); const names = ['Gate', 'Stage']
-    T('F2', 'each switch has a named setter and a reader and is ON by default (jaGrammarGateSetEnabled · jaGrammarStageSetEnabled)',
+    const c = fresh(); const names = ['Gate', 'Stage', 'Known', 'Preview']
+    T('F2', 'each switch has a named setter and a reader and is ON by default (jaGrammarGateSetEnabled · jaGrammarStageSetEnabled · jaGrammarKnownSetEnabled · jaGrammarPreviewSetEnabled)',
       names.every(nm => typeof c['jaGrammar' + nm + 'SetEnabled'] === 'function' && typeof c['jaGrammar' + nm + 'On'] === 'function' && c['jaGrammar' + nm + 'On']() === true))
     { const cc = fresh(); cc.jaGrammarGateSetEnabled(false); const L = levelOf(cc, LV.L0), g = cc.jaGrammarGateContext(L.vocab, L.store, { register: 'natural', today: TODAY }), a = typeof cc.jaGrammarStageOn === 'function' ? cc.jaGrammarStageOn() : true
       T('F3', 'the gate switch is its own: off ⇒ no allowed list, no planned entries, a locked entry is not refused (the stage and the others stay on)', (g === null || (g.plannedIds.length === 0 && g.gate === false)) && a === true && (!g || cc.jaGrammarCheckSentence('行ったら言ってね。', g, {}).ok === true)) }

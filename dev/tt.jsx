@@ -58933,8 +58933,9 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
   // Phase 3 — curriculum rows with NEW / DUE / REINFORCE / LEARNED status. Generation
   // selection is unchanged (Phase 4); this is the learner-facing view only.
   const [jaProgress, setJaProgress] = useState({})
+  const [jaProgressLoaded, setJaProgressLoaded] = useState(false)      // v774 E: the preview waits for the stored progress
   useEffect(() => { let go = true
-    ;(async () => { try { await jaGrammarMigrateV1(vocab); const s = await jaGrammarLoad(); if (go) setJaProgress(s) } catch (e) {} })()
+    ;(async () => { try { await jaGrammarMigrateV1(vocab); const s = await jaGrammarLoad(); if (go) { setJaProgress(s); setJaProgressLoaded(true) } } catch (e) {} })()
     return () => { go = false } }, [])
   const sceneRows = useMemo(() => jaSceneRows(vocab, jaProgress, sceneText, register), [vocab, jaProgress, sceneText, register])
   const shownBlocks = jaGrammarFromSentencesOn() ? [] : sceneRows.blocks      // v773: the grammar of a track is chosen after its sentences are written, so there is nothing to list before
@@ -59184,6 +59185,7 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
           </div>
         </>
       )}
+      <ErrorBoundary><JaGrammarPreview vocab={vocab} store={jaProgressLoaded ? jaProgress : null} /></ErrorBoundary>
     </div>
   )
 
@@ -60656,7 +60658,7 @@ async function jaGrammarFinaliseTrack(track, o) {
 //                         per-line limits: generateTargetGroup / generateJapaneseOneRecall). A line that still fails when its attempts are used is KEPT and carries _grammarFlag; the finished track lists it
 //                         (GRAMMAR NOT YET TAUGHT: pair N uses X) and it never blocks READY. Pure code: no model request.
 // The plan the writer receives is one plain object (jaGrammarGateContext) carried by the track context (tc.grammarGate), so recovery, the quality-check repair and the finaliser all read the same one.
-const JA_GRAMMAR_GATE = { gate: true, stage: true, known: true }
+const JA_GRAMMAR_GATE = { gate: true, stage: true, known: true, preview: true }
 function jaGrammarGateSetEnabled(on) { JA_GRAMMAR_GATE.gate = !!on }
 // the list of entries a track will introduce belongs to the picker (v773), which introduces them after writing: with the picker off there is nothing for a gate to hand out
 function jaGrammarGateOn() { return !!JA_GRAMMAR_GATE.gate && jaGrammarFromSentencesOn() }
@@ -60674,6 +60676,41 @@ function jaGrammarGateOn() { return !!JA_GRAMMAR_GATE.gate && jaGrammarFromSente
 //      entry's own progress record (sightings, sightingTracks = the ids of the tracks counted, knownAt); a track id already in the list is never counted again (finalising a track twice changes nothing).
 //      Only entries the learner has been introduced to are counted, and existing records start at 0 sightings: no history is invented, no field is overwritten or deleted. A known entry stays introduced
 //      (still allowed, still satisfies prerequisites) but leaves the NEW and REVIEW lists and takes no review slot, and is not counted as overdue. The Known grammar list is in the Japanese Words area.
+// E  PREVIEW  (jaGrammarPreviewSetEnabled)  The Japanese Daily plan screen shows "Grammar for this track": the grammar due for review and the next entries (up to 5 points) the learner's level would introduce.
+//      It is a PREVIEW — the final list is fixed after the sentences are written (v773's picker) — and it is computed by jaGrammarTrackPlan, the same function the writer's prompt uses, from the same progress.
+function jaGrammarPreviewSetEnabled(on) { JA_GRAMMAR_GATE.preview = !!on }
+function jaGrammarPreviewOn() { return !!JA_GRAMMAR_GATE.preview && jaGrammarFromSentencesOn() }
+function JaGrammarPreview({ vocab, store }) {
+  if (!jaGrammarPreviewOn() || !store) return null
+  const plan = jaGrammarTrackPlan(store, jaGrammarKnownCount(vocab), {})
+  const st = jaGrammarStageOn() ? jaGrammarStageFor(plan.introducedCount) : null
+  const when = d => { try { return new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) } catch (e) { return d } }
+  return (
+    <div data-ja-grammar-preview="1" style={{ marginTop: 4 }}>
+      <p style={{ fontSize: 11, color: 'var(--muted)', margin: '12px 0 4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Grammar for this track <span style={{ color: '#a78bfa', fontWeight: 700 }}>(preview)</span></p>
+      <p style={{ fontSize: 10, color: 'var(--muted)', margin: '0 0 8px', lineHeight: 1.5 }}>Preview only: this is what the writer is given to use. The final list is fixed after the sentences are written, from the grammar they really use.{!jaGrammarGateOn() ? ' The grammar gate is switched off, so the writer is not limited to this list.' : ''}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: '#60a5fa' }}>Due for review</div>
+          {plan.review.length === 0
+            ? <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>nothing is due</div>
+            : plan.review.map(x => <div key={x.id} data-preview-review={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 3 }}><span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span><span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span><span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>due {when(x.dueDate)}</span></div>)}
+          {plan.moreDue > 0 && <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>and {plan.moreDue} more due, for a later track</div>}
+        </div>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: '#10b981' }}>Next new points</span>
+            <span style={{ fontSize: 10, color: 'var(--muted)' }}>{plan.budget.spent} of {plan.budget.limit} points</span>
+          </div>
+          {plan.held && <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>No new points this track: {plan.overdue} reviews are overdue. Review first.</div>}
+          {!plan.held && plan.next.length === 0 && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>nothing new unlocks yet at this level</div>}
+          {plan.next.map(x => <div key={x.id} data-preview-next={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 3 }}><span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span><span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span><span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>{x.cost === 2 ? 'heavy' : 'light'}</span></div>)}
+        </div>
+        {st && <div style={{ fontSize: 10, color: 'var(--muted)', margin: '2px 2px 0' }}>Stage: {st.name} ({plan.introducedCount} points taught): sentences up to {st.maxChars} characters, at most {st.maxGated} new points in one sentence.</div>}
+      </div>
+    </div>
+  )
+}
 function jaGrammarKnownSetEnabled(on) { JA_GRAMMAR_GATE.known = !!on }
 function jaGrammarKnownOn() { return !!JA_GRAMMAR_GATE.known }
 const JA_GRAMMAR_KNOWN_RULE = Object.freeze({ minSentences: 3, minTracks: 2, keepTrackIds: 60 })

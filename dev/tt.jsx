@@ -15372,6 +15372,79 @@ const JA_BUILDING_BLOCKS = [
   { id:'houga', label:'〜ほうが', romaji:'hou ga', meaning:'comparison / better to', explain:'Compares two options.', order:330, prereq:['no'], kind:'construction', minKnown:125 },
   { id:'tte', label:'〜って', romaji:'-tte', meaning:'casual quotation / topic', explain:'Casual "…said" or "as for…".', order:340, prereq:['plain-present'], kind:'construction', minKnown:130 },
   { id:'noun-modify', label:'noun-modifying clause', romaji:'', meaning:'clause describing a noun', explain:'昨日買った本 = the book I bought yesterday.', order:350, prereq:['past'], kind:'construction', minKnown:140 },
+  // ── v773: the entries added from what finished sentences actually contain (see the curriculum comment below). `added` marks them; `cost` is 1 (light) or 2 (heavy). ──
+  // particles
+  { id:'ga', label:'が', romaji:'ga', meaning:'subject marker', explain:'Marks who or what does something, or what you like or have: コーヒーが好き = I like coffee.', prereq:['wa'], kind:'particle', minKnown:18, cost:1, added:'v773' },
+  { id:'he', label:'へ', romaji:'e', meaning:'toward', explain:'Marks the direction you head in: 駅へ行く = go toward the station (に works too).', prereq:['ni'], kind:'particle', minKnown:30, cost:1, added:'v773' },
+  { id:'made', label:'まで', romaji:'made', meaning:'until / as far as', explain:'Marks where a time or a distance ends: 駅まで = as far as the station.', prereq:[], kind:'particle', minKnown:36, cost:1, added:'v773' },
+  { id:'dake', label:'だけ', romaji:'dake', meaning:'only / just', explain:'Says "only this": これだけ = just this.', prereq:[], kind:'particle', minKnown:44, cost:1, added:'v773' },
+  { id:'gurai', label:'ぐらい', romaji:'gurai', meaning:'about / around', explain:'Says roughly how much or how long: 一時間ぐらい = about an hour.', prereq:[], kind:'particle', minKnown:52, cost:1, added:'v773' },
+  { id:'ya', label:'や', romaji:'ya', meaning:'and (a few examples)', explain:'Lists a few examples out of many: コーヒーやお茶 = coffee, tea and so on.', prereq:['to'], kind:'particle', minKnown:54, cost:1, added:'v773' },
+  { id:'toka', label:'とか', romaji:'toka', meaning:'things like / or', explain:'A casual way to give examples: コーヒーとか飲む = drink things like coffee.', prereq:['to'], kind:'particle', minKnown:58, cost:1, added:'v773' },
+  { id:'yori', label:'より', romaji:'yori', meaning:'more than / than', explain:'Compares two things: 駅より近い = closer than the station.', prereq:[], kind:'particle', minKnown:62, cost:1, added:'v773' },
+  { id:'shika', label:'しか', romaji:'shika', meaning:'nothing but (with a negative)', explain:'Always goes with a negative and means "only": 百円しかない = I have only 100 yen.', prereq:['nai'], kind:'particle', minKnown:66, cost:1, added:'v773' },
+  // is / is not
+  { id:'da', label:'だ', romaji:'da', meaning:'plain "is / am / are"', explain:'The plain way to say "it is": あれだよ = it is that one.', prereq:[], kind:'copula', minKnown:0, cost:1, added:'v773' },
+  { id:'desu', label:'です', romaji:'desu', meaning:'polite "is / am / are"', explain:'The polite way to say "it is": 学生です = I am a student.', prereq:[], kind:'copula', minKnown:12, cost:1, added:'v773' },
+  { id:'janai', label:'じゃない / ではない', romaji:'janai', meaning:'is not', explain:'Says "it is not": 好きじゃない = I do not like it (ではない is the careful form).', prereq:['da'], kind:'copula', minKnown:14, cost:1, added:'v773' },
+  { id:'deshita', label:'だった / でした', romaji:'datta / deshita', meaning:'was', explain:'Says "it was": 簡単だった = it was easy (でした is the polite form).', prereq:['da'], kind:'copula', minKnown:28, cost:1, added:'v773' },
+  { id:'janakatta', label:'じゃなかった', romaji:'janakatta', meaning:'was not', explain:'Says "it was not": 大丈夫じゃなかった = it was not okay (ではなかった is the careful form).', prereq:['janai', 'deshita'], kind:'copula', minKnown:38, cost:1, added:'v773' },
+  // endings
+  { id:'desho', label:'でしょ', romaji:'desho', meaning:'"right?" / probably', explain:'Checks that you agree, or says "probably": いいでしょ？ = nice, right?', prereq:['da'], kind:'ending', minKnown:48, cost:1, added:'v773' },
+  { id:'sa', label:'さ', romaji:'sa', meaning:'casual "you know"', explain:'A casual word that sets up what comes next: あのさ、ちょっといい？ = hey, got a moment?', prereq:['ne', 'yo'], kind:'ending', minKnown:72, cost:1, added:'v773' },
+  { id:'node', label:'ので', romaji:'node', meaning:'because (calm)', explain:'Gives a reason in a calm, neutral way: 雨なので行かない = it is raining, so I will not go.', prereq:['kara'], kind:'ending', minKnown:76, cost:1, added:'v773' },
+  { id:'na', label:'な', romaji:'na', meaning:'"…huh" (to yourself)', explain:'A soft word said to yourself or a friend: いいな = that is nice (I want that).', prereq:['ne'], kind:'ending', minKnown:80, cost:1, added:'v773' },
+  { id:'darou', label:'だろう', romaji:'darou', meaning:'probably', explain:'A plain guess: 明日は雨だろう = it will probably rain tomorrow.', prereq:['da'], kind:'ending', minKnown:84, cost:1, added:'v773' },
+  { id:'kamo', label:'かも / かもしれない', romaji:'kamo', meaning:'maybe / might', explain:'Says it might be so: 来るかも = he might come (かもしれない is the full form).', prereq:['plain-present'], kind:'ending', minKnown:86, cost:1, added:'v773' },
+  { id:'jan', label:'じゃん', romaji:'jan', meaning:'"isn’t it!"', explain:'A casual way to point out something obvious: いいじゃん = that is nice, isn’t it!', prereq:['da'], kind:'ending', minKnown:100, cost:1, added:'v773' },
+  { id:'dakke', label:'だっけ', romaji:'dakke', meaning:'"was it again?"', explain:'Asks about something you half remember: 今日、何曜日だっけ？ = what day is it today again?', prereq:['da'], kind:'ending', minKnown:104, cost:1, added:'v773' },
+  { id:'sou', label:'〜そう', romaji:'-sou', meaning:'looks like', explain:'Says how something looks: おいしそう = it looks tasty (the stem of the word, then そう).', prereq:['plain-present'], kind:'ending', minKnown:106, cost:2, added:'v773' },
+  { id:'mitai', label:'みたい', romaji:'mitai', meaning:'seems like / like', explain:'Says it looks or sounds like something: 夢みたい = like a dream.', prereq:[], kind:'ending', minKnown:108, cost:1, added:'v773' },
+  { id:'noni', label:'のに', romaji:'noni', meaning:'even though', explain:'Says the result was not what you expected: 行ったのにいなかった = I went, but he was not there.', prereq:['kedo'], kind:'ending', minKnown:112, cost:1, added:'v773' },
+  { id:'rashii', label:'らしい', romaji:'rashii', meaning:'apparently', explain:'Says you heard it or it seems so: 来るらしい = apparently he is coming.', prereq:[], kind:'ending', minKnown:116, cost:1, added:'v773' },
+  { id:'hazu', label:'はず', romaji:'hazu', meaning:'should be', explain:'Says you expect it: 来るはずだ = he should be coming.', prereq:['plain-present'], kind:'ending', minKnown:118, cost:1, added:'v773' },
+  // verb and adjective forms and constructions
+  { id:'masen', label:'〜ません', romaji:'-masen', meaning:'polite negative', explain:'The polite way to say you do not do it: 行きません (and 行きませんでした = did not go).', prereq:['masu'], kind:'form', minKnown:30, cost:1, added:'v773' },
+  { id:'mashou', label:'〜ましょう', romaji:'-mashou', meaning:'let’s (polite)', explain:'The polite way to say "let’s": 行きましょう = let’s go.', prereq:['masu'], kind:'construction', minKnown:40, cost:1, added:'v773' },
+  { id:'masenka', label:'〜ませんか', romaji:'-masen ka', meaning:'would you like to…?', explain:'A polite invitation: 行きませんか = would you like to go?', prereq:['masen'], kind:'construction', minKnown:46, cost:1, added:'v773' },
+  { id:'tekudasai', label:'〜てください', romaji:'-te kudasai', meaning:'please do…', explain:'A polite request: 見てください = please look.', prereq:['te'], kind:'construction', minKnown:52, cost:1, added:'v773' },
+  { id:'naide', label:'〜ないで', romaji:'-naide', meaning:'without / please don’t', explain:'Says "without doing" or "please don’t": 食べないで = please don’t eat.', prereq:['nai', 'te'], kind:'construction', minKnown:58, cost:2, added:'v773' },
+  { id:'temiru', label:'〜てみる', romaji:'-te miru', meaning:'try doing', explain:'Says you try something out: 食べてみる = try eating it.', prereq:['te'], kind:'construction', minKnown:86, cost:1, added:'v773' },
+  { id:'sugiru', label:'〜すぎる', romaji:'-sugiru', meaning:'too much', explain:'Says it is too much: 高すぎる = too expensive.', prereq:['plain-present'], kind:'construction', minKnown:88, cost:2, added:'v773' },
+  { id:'to-cond', label:'〜と (if / when)', romaji:'-to', meaning:'whenever / if', explain:'Says what always follows: 押すと開く = when you push, it opens.', prereq:['plain-present'], kind:'construction', minKnown:90, cost:1, added:'v773' },
+  { id:'chau', label:'〜ちゃう', romaji:'-chau', meaning:'end up doing / do completely', explain:'Says you did it all or by mistake: 食べちゃった = I ate it all (oops).', prereq:['te'], kind:'construction', minKnown:92, cost:2, added:'v773' },
+  { id:'nagara', label:'〜ながら', romaji:'-nagara', meaning:'while doing', explain:'Says two things happen at once: 歩きながら話す = talk while walking.', prereq:['masu'], kind:'construction', minKnown:94, cost:2, added:'v773' },
+  { id:'nominal-no', label:'〜のは / 〜のが', romaji:'-no wa', meaning:'the act of doing', explain:'Turns a verb into a thing you can talk about: 来るのはいい = coming is fine.', prereq:['no'], kind:'construction', minKnown:95, cost:1, added:'v773' },
+  { id:'temorau', label:'〜てもらう', romaji:'-te morau', meaning:'get someone to do', explain:'Says someone did it for you: 教えてもらった = I was taught (someone taught me).', prereq:['te'], kind:'construction', minKnown:96, cost:2, added:'v773' },
+  { id:'nakutemoii', label:'〜なくてもいい', romaji:'-nakute mo ii', meaning:'you do not have to', explain:'Says it is not needed: 行かなくてもいい = you do not have to go.', prereq:['nai', 'temoii'], kind:'construction', minKnown:98, cost:2, added:'v773' },
+  { id:'temo', label:'〜ても', romaji:'-te mo', meaning:'even if', explain:'Says "even if": 高くても買う = I will buy it even if it is dear.', prereq:['te'], kind:'construction', minKnown:99, cost:1, added:'v773' },
+  { id:'ninaru', label:'〜になる', romaji:'-ni naru', meaning:'become', explain:'Says something becomes something: 元気になる = get well.', prereq:[], kind:'construction', minKnown:100, cost:1, added:'v773' },
+  { id:'tewaikenai', label:'〜てはいけない', romaji:'-te wa ikenai', meaning:'must not', explain:'Says it is not allowed: 食べてはいけない = you must not eat.', prereq:['te'], kind:'construction', minKnown:102, cost:1, added:'v773' },
+  { id:'tsumori', label:'〜つもり', romaji:'-tsumori', meaning:'intend to', explain:'Says what you plan: 行くつもり = I intend to go.', prereq:['plain-present'], kind:'construction', minKnown:104, cost:1, added:'v773' },
+  { id:'kunaru', label:'〜くなる', romaji:'-ku naru', meaning:'become (adjective)', explain:'Says something becomes more so: 高くなる = become expensive.', prereq:[], kind:'construction', minKnown:105, cost:1, added:'v773' },
+  { id:'nara', label:'〜なら', romaji:'-nara', meaning:'if it is…', explain:'Says "if that is so": 行くなら教えて = if you are going, tell me.', prereq:[], kind:'construction', minKnown:106, cost:1, added:'v773' },
+  { id:'teageru', label:'〜てあげる', romaji:'-te ageru', meaning:'do for someone', explain:'Says you do it for someone: 買ってあげる = I will buy it for you.', prereq:['te'], kind:'construction', minKnown:108, cost:2, added:'v773' },
+  { id:'tari', label:'〜たり〜たり', romaji:'-tari -tari', meaning:'things like A and B', explain:'Lists actions as examples: 見たり食べたりする = do things like looking and eating.', prereq:['past'], kind:'construction', minKnown:110, cost:2, added:'v773' },
+  { id:'tameni', label:'〜ために', romaji:'-tame ni', meaning:'in order to / for', explain:'Says the purpose: 食べるために行く = go in order to eat.', prereq:['plain-present'], kind:'construction', minKnown:112, cost:1, added:'v773' },
+  { id:'yasui', label:'〜やすい', romaji:'-yasui', meaning:'easy to', explain:'Says it is easy to do: 食べやすい = easy to eat.', prereq:['masu'], kind:'construction', minKnown:114, cost:2, added:'v773' },
+  { id:'koto-ga-dekiru', label:'〜ことができる', romaji:'-koto ga dekiru', meaning:'can do', explain:'Says you are able to: 行くことができる = I can go.', prereq:['plain-present'], kind:'construction', minKnown:116, cost:1, added:'v773' },
+  { id:'koto-ga-aru', label:'〜ことがある', romaji:'-koto ga aru', meaning:'it sometimes happens', explain:'Says it happens at times: 行くことがある = I sometimes go.', prereq:['plain-present'], kind:'construction', minKnown:118, cost:1, added:'v773' },
+  { id:'potential', label:'〜られる / 〜れる', romaji:'-rareru / -reru', meaning:'can do', explain:'Says you can do it: 食べられる = can eat, 行ける = can go.', prereq:['plain-present'], kind:'construction', minKnown:120, cost:2, added:'v773' },
+  { id:'nikui', label:'〜にくい', romaji:'-nikui', meaning:'hard to', explain:'Says it is hard to do: 食べにくい = hard to eat.', prereq:['yasui'], kind:'construction', minKnown:120, cost:2, added:'v773' },
+  { id:'ba', label:'〜ば', romaji:'-ba', meaning:'if (condition)', explain:'Says "if this happens": 行けば分かる = if you go, you will see.', prereq:['plain-present'], kind:'construction', minKnown:122, cost:2, added:'v773' },
+  { id:'youni-suru', label:'〜ようにする', romaji:'-you ni suru', meaning:'make a point of', explain:'Says you try to make it a habit: 早く寝るようにする = I try to go to bed early.', prereq:['plain-present'], kind:'construction', minKnown:130, cost:1, added:'v773' },
+  // connectors
+  { id:'demo', label:'でも', romaji:'demo', meaning:'but / even / or something', explain:'Starts a sentence with "but", and after a noun it means "even" or "or something": お茶でも飲む？', prereq:[], kind:'connector', minKnown:20, cost:1, added:'v773' },
+  { id:'dakara', label:'だから', romaji:'dakara', meaning:'so / that is why', explain:'Gives a result after a reason: 忙しい。だから行けない。 = I am busy, so I cannot go.', prereq:[], kind:'connector', minKnown:40, cost:1, added:'v773' },
+  { id:'sorede', label:'それで', romaji:'sorede', meaning:'and so / then', explain:'Moves a story on, or asks what happened next: それで、どうなった？', prereq:[], kind:'connector', minKnown:56, cost:1, added:'v773' },
+  { id:'soreni', label:'それに', romaji:'soreni', meaning:'besides', explain:'Adds one more point: 安いし、それに、おいしい。 = it is cheap, and it is tasty too.', prereq:[], kind:'connector', minKnown:58, cost:1, added:'v773' },
+  { id:'datte', label:'だって', romaji:'datte', meaning:'because / but / even', explain:'Gives a reason you feel is obvious, or pushes back: だって、本当に好きなんだもん。', prereq:[], kind:'connector', minKnown:60, cost:1, added:'v773' },
+  { id:'maa', label:'まあ', romaji:'maa', meaning:'well / so-so', explain:'A softener meaning "well…" or "it is okay": まあ、いいよ。', prereq:[], kind:'connector', minKnown:66, cost:1, added:'v773' },
+  { id:'shikashi', label:'しかし', romaji:'shikashi', meaning:'however', explain:'A firm "but" used in writing and careful speech: しかし、高い。', prereq:[], kind:'connector', minKnown:70, cost:1, added:'v773' },
+  // names and politeness
+  { id:'san', label:'さん', romaji:'san', meaning:'Mr / Ms', explain:'Goes after a name to be polite: 田中さん. Never use it for yourself.', prereq:[], kind:'name', minKnown:6, cost:1, added:'v773' },
+  { id:'chan-kun', label:'ちゃん / くん', romaji:'chan / kun', meaning:'friendly name endings', explain:'ちゃん is for close friends and children, くん for boys and younger men: ゆいちゃん, ケンくん.', prereq:[], kind:'name', minKnown:14, cost:1, added:'v773' },
+  { id:'o-go', label:'お / ご', romaji:'o / go', meaning:'polite prefix', explain:'Goes before a noun to make it polite or soft: お茶, ご飯, お名前.', prereq:[], kind:'name', minKnown:44, cost:1, added:'v773' },
 ]
 // Conversation Basics: fixed/semi-fixed chunks with their own mastery (never belt slots).
 const JA_CONVERSATION_BASICS = [
@@ -15385,9 +15458,90 @@ const JA_CONVERSATION_BASICS = [
   { id:'sokka', form:'そっか', romaji:'sokka', english:'I see', order:80, minKnown:35 },
   { id:'naruhodo', form:'なるほど', romaji:'naruhodo', english:'I see / makes sense', order:90, minKnown:45 },
   { id:'doushiyou', form:'どうしよう', romaji:'dou shiyou', english:'what should I do?', order:100, minKnown:60 },
+  // v773: reaction words, read from finished sentences like the blocks. `reaction` marks them: the generation side (jaBasicsAvailable, jaBasicById, the prompt) never sees them.
+  { id:'nee', form:'ねえ', romaji:'nee', english:'hey (getting attention)', order:110, minKnown:20, reaction:true },
+  { id:'e', form:'えっ', romaji:'e', english:'huh? / what?', order:120, minKnown:25, reaction:true },
+  { id:'ano', form:'あの', romaji:'ano', english:'um / excuse me', order:130, minKnown:28, reaction:true },
+  { id:'eeto', form:'ええと', romaji:'eeto', english:'um… (thinking; also えっと)', order:140, minKnown:30, reaction:true },
+  { id:'hee', form:'へえ', romaji:'hee', english:'oh, really?', order:150, minKnown:35, reaction:true },
+  { id:'hora', form:'ほら', romaji:'hora', english:'look / see?', order:160, minKnown:40, reaction:true },
+  { id:'aa', form:'ああ', romaji:'aa', english:'oh / ah', order:170, minKnown:40, reaction:true },
+  { id:'yokatta', form:'よかった', romaji:'yokatta', english:'what a relief / good', order:180, minKnown:45, reaction:true },
+  { id:'yatta', form:'やった', romaji:'yatta', english:'I did it! / yay', order:190, minKnown:50, reaction:true },
 ]
-const jaBlockById = id => JA_BUILDING_BLOCKS.find(b => b.id === id) || null
-const jaBasicById = id => JA_CONVERSATION_BASICS.find(b => b.id === id) || null
+// ══ v773 — ONE ORDERED GRAMMAR CURRICULUM (Japanese) ═══════════════════════════════════════════════════════════════════════════
+// Three lists described the same thing and none was complete: JA_BUILDING_BLOCKS (35, the one the track export printed), JAPANESE_GRAMMAR_SCAFFOLD + JAPANESE_MORPHOLOGY_SCAFFOLD (what the
+// closed-vocabulary check lets a sentence use, with が へ まで だ that the blocks lacked) and JA_GRAMMAR_MARKERS (17 forms, what japaneseGrammarUsed reports). This is the merge:
+// JA_BUILDING_BLOCKS now holds EVERY entry (the 35 that were there, untouched, and 66 added, each marked `added`), JA_GRAMMAR_SEQUENCE puts them in teaching order, JA_GRAMMAR_CURRICULUM is
+// the ordered result (order 10, 20, 30 …), and JA_CONVERSATION_BASICS holds the reaction words beside the old basics.
+// What stays as it was, on purpose: the two scaffold lists (they decide what a sentence may CONTAIN — grammar entries never touch that check), JA_GRAMMAR_MARKERS / japaneseGrammarUsed
+// (the generation-time gate), the stored progress (records `buildingBlock:<id>` in JA_GRAMMAR_KEY, ids unchanged) and jaGrammarMigrateV1. The generation side (jaBlocksAvailable, jaBlockById, the
+// prompt, jaBasicsAvailable) reads the *_LEGACY views, so it sees exactly the 35 blocks and 10 basics it always saw. The new list is read only by the code that runs after the sentences are
+// written (jaGrammarFromSentences…). Switch: jaGrammarFromSentencesSetEnabled(false) puts everything back as it was.
+//
+// THE LIST (entries 101 + 19 conversation basics = 120). cost: 1 light, 2 heavy. minKnown is the number of known or learning words that unlocks it (the measure jaBlocksAvailable always used).
+//   particles (14)    は か を に の で と も が へ まで だけ ぐらい や とか より しか                       (wa ka wo ni no de to mo · ga he made dake gurai ya toka yori shika)
+//   is / is not (5)   だ です じゃない だった/でした じゃなかった
+//   endings (16)      ね よ よね · でしょ さ ので な だろう かも/かもしれない じゃん だっけ 〜そう みたい のに らしい はず · かな
+//   forms (11)        plain present · 〜た 〜ない 〜なかった 〜ます 〜ません 〜て · 〜てる 〜たい · 〜よう/〜こう
+//   constructions (46) 〜ない？ 〜の？ 〜んだ 〜から 〜けど 〜と思う 〜てくれる 〜てもいい 〜なきゃ 〜たことある 〜たら 〜ほうが 〜って noun-modifying clause · 〜ましょう 〜ませんか 〜てください 〜ないで 〜てみる
+//                     〜すぎる 〜と(if) 〜ちゃう 〜ながら 〜のは 〜てもらう 〜なくてもいい 〜ても 〜になる 〜てはいけない 〜つもり 〜くなる 〜なら 〜てあげる 〜たり〜たり 〜ために 〜やすい
+//                     〜ことができる 〜ことがある 〜られる/〜れる 〜にくい 〜ば 〜ようにする
+//   connectors (7)    でも だから それで それに だって まあ しかし
+//   names (3)         さん ちゃん/くん お/ご
+//   conversation basics (19): こんにちは うん またね じゃあ そうだね いいね ほんと？ そっか なるほど どうしよう · ねえ えっ あの ええと/えっと へえ ほら ああ よかった やった
+// Order = how much everyday conversation each unlocks, and no entry unlocks before its prerequisites (jaGrammarCurriculumCheck proves both).
+const JA_BUILDING_BLOCKS_LEGACY = JA_BUILDING_BLOCKS.filter(b => !b.added)                 // the 35 of before v773, byte for byte
+const JA_CONVERSATION_BASICS_LEGACY = JA_CONVERSATION_BASICS.filter(b => !b.reaction)      // the 10 of before v773
+const JA_GRAMMAR_LEGACY_COST = Object.freeze({ past: 2, nai: 2, 'past-nai': 2, te: 2, volitional: 2, nakya: 2, takotoaru: 2, tara: 2, houga: 2, 'noun-modify': 2 })
+const JA_GRAMMAR_SEQUENCE = Object.freeze([
+  'wa', 'ka', 'ne', 'yo', 'da', 'plain-present',          // 0
+  'san', 'wo', 'ni', 'no', 'desu', 'janai', 'chan-kun', 'de', 'ga', 'to', 'demo', 'mo', 'masu',   // 6 – 25
+  'deshita', 'yone', 'he', 'masen', 'nai', 'made', 'janakatta', 'past', 'mashou', 'dakara',       // 28 – 40
+  'dake', 'o-go', 'te', 'masenka', 'desho', 'teru', 'gurai', 'tekudasai', 'ya', 'past-nai', 'tai', // 44 – 55
+  'sorede', 'toka', 'naide', 'soreni', 'nai-invite', 'datte', 'yori', 'volitional', 'shika', 'maa', // 56 – 66
+  'no-question', 'shikashi', 'sa', 'kara', 'node', 'kedo', 'nda', 'na', 'kana', 'darou',          // 70 – 84
+  'kamo', 'temiru', 'toomou', 'sugiru', 'to-cond', 'tekureru', 'chau', 'nagara', 'temoii', 'nominal-no',   // 86 – 95
+  'temorau', 'nakutemoii', 'temo', 'nakya', 'jan', 'ninaru', 'tewaikenai', 'dakke', 'tsumori', 'kunaru',  // 96 – 105
+  'sou', 'nara', 'mitai', 'teageru', 'takotoaru', 'tari', 'noni', 'tameni', 'yasui', 'rashii',    // 106 – 116
+  'koto-ga-dekiru', 'hazu', 'koto-ga-aru', 'tara', 'nikui', 'potential', 'ba', 'houga', 'tte', 'youni-suru', 'noun-modify',   // 116 – 140
+])
+// the ordered curriculum: every entry, with its place in the teaching order (order), cost, kind as group; legacyOrder is the number the entry had in the old list
+const JA_GRAMMAR_CURRICULUM = Object.freeze(JA_GRAMMAR_SEQUENCE.map((id, i) => {
+  const b = JA_BUILDING_BLOCKS.find(x => x.id === id)
+  return Object.freeze({ ...b, legacyOrder: b.order, order: (i + 1) * 10, cost: b.cost || JA_GRAMMAR_LEGACY_COST[id] || 1, group: b.kind })
+}))
+const jaGrammarEntryById = id => JA_GRAMMAR_CURRICULUM.find(b => b.id === id) || null
+const jaGrammarBasicById = id => JA_CONVERSATION_BASICS.find(b => b.id === id) || null
+// the merged list is internally consistent: every id once, every prerequisite exists and comes first and unlocks no later, every old scaffold id and marker id resolves, old entries keep their old fields
+function jaGrammarCurriculumCheck() {
+  const problems = [], seen = new Set()
+  JA_GRAMMAR_SEQUENCE.forEach(id => { if (seen.has(id)) problems.push('duplicate id in the sequence: ' + id); seen.add(id) })
+  JA_BUILDING_BLOCKS.forEach(b => { if (!seen.has(b.id)) problems.push('entry missing from the sequence: ' + b.id) })
+  const pos = new Map(JA_GRAMMAR_CURRICULUM.map((e, i) => [e.id, i]))
+  let last = -1
+  JA_GRAMMAR_CURRICULUM.forEach((e, i) => {
+    if ((e.minKnown || 0) < last) problems.push('level goes down at ' + e.id + ' (' + e.minKnown + ' after ' + last + ')')
+    last = Math.max(last, e.minKnown || 0)
+    ;(e.prereq || []).forEach(p => {
+      if (!pos.has(p)) problems.push(e.id + ' needs ' + p + ', which does not exist')
+      else {
+        if (pos.get(p) >= i) problems.push(e.id + ' comes before its prerequisite ' + p)
+        if ((JA_GRAMMAR_CURRICULUM[pos.get(p)].minKnown || 0) > (e.minKnown || 0)) problems.push(e.id + ' unlocks (' + e.minKnown + ') before its prerequisite ' + p)
+      }
+    })
+    if (![1, 2].includes(e.cost)) problems.push(e.id + ' has no cost of 1 or 2')
+    for (const f of ['label', 'romaji', 'meaning', 'explain', 'kind']) if (e[f] === undefined || e[f] === null || (f !== 'romaji' && e[f] === '')) problems.push(e.id + ' has no ' + f)
+  })
+  // the old scaffold ids (what the closed-vocabulary check knows) and the marker ids (what japaneseGrammarUsed reports) all resolve to an entry
+  const ALIAS = { teiru: 'teru', 'te-form': 'te', 'da-yo': 'da', ta: 'past', desu: 'desu' }
+  ;[...JAPANESE_GRAMMAR_SCAFFOLD, ...JAPANESE_MORPHOLOGY_SCAFFOLD].forEach(g => { if (!pos.has(g.id) && !pos.has(ALIAS[g.id])) problems.push('scaffold id ' + g.id + ' is not in the curriculum') })
+  JA_GRAMMAR_MARKERS.forEach(m => { if (!pos.has(m.id) && !pos.has(ALIAS[m.id])) problems.push('marker id ' + m.id + ' is not in the curriculum') })
+  return { ok: problems.length === 0, problems, entries: JA_GRAMMAR_CURRICULUM.length, basics: JA_CONVERSATION_BASICS.length }
+}
+// the generation side reads the LEGACY views: exactly the 35 blocks and 10 basics it always read
+const jaBlockById = id => JA_BUILDING_BLOCKS_LEGACY.find(b => b.id === id) || null
+const jaBasicById = id => JA_CONVERSATION_BASICS_LEGACY.find(b => b.id === id) || null
 // Surface form for the learner's current register — realisation only, never mastery.
 function jaBlockRealisation(block, register) {
   if (!block) return ''
@@ -15441,12 +15595,12 @@ function jaGrammarDue(store, type, today) {
 // Curriculum unlock: available when its word gate is met AND every prerequisite is introduced.
 function jaBlocksAvailable(vocab, store) {
   const known = (vocab || []).filter(w => w.status === 'known' || w.status === 'learning').length
-  return JA_BUILDING_BLOCKS.filter(b => known >= (b.minKnown || 0) &&
+  return JA_BUILDING_BLOCKS_LEGACY.filter(b => known >= (b.minKnown || 0) &&
     (b.prereq || []).every(p => (jaGrammarGet(store, 'buildingBlock', p).introducedAt)))
 }
 function jaBasicsAvailable(vocab) {
   const known = (vocab || []).filter(w => w.status === 'known' || w.status === 'learning').length
-  return JA_CONVERSATION_BASICS.filter(b => known >= (b.minKnown || 0))
+  return JA_CONVERSATION_BASICS_LEGACY.filter(b => known >= (b.minKnown || 0))
 }
 // One-time, idempotent, additive: seeds progress records for anything the learner has
 // already been exposed to through the legacy scaffolds. No learner data is overwritten.

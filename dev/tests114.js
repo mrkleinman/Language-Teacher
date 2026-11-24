@@ -173,6 +173,9 @@ const SLOTS_LEVEL = 200                       // known words: everything is unlo
       const fo = await cf.jaGrammarFinaliseTrack(trackOf('2026-11-24T08:00:00.000Z'), { vocab: learner(cf, 90), today: TODAY }), go = fo.grammarInTrack
       T('A15', 'the picker after writing agrees with the plan on those 7 old unrated points: they are not "overdue reviews" (nothing is held back for reviews), nothing new is introduced because no NEW slot is free, and the unrated points are practised again as STILL NEW',
         go.held === false && go.overdue === 0 && go.new.length === 0 && go.passing.some(x => /no free NEW slot/.test(x.why || '')) && !go.passing.some(x => /held back/.test(x.why || '')) && (go.stillNew || []).length > 0 && go.slots && go.slots.free === 0, { held: go.held, overdue: go.overdue, new: ids(go.new), still: ids(go.stillNew || []) }) }
+    { const st = storeOf(c, IDS(c).slice(0, 3)); ;['konnichiwa', 'un', 'matane', 'jaa'].forEach(id => { st['conversationBasic:' + id] = { ...V774REC(id), key: 'conversationBasic:' + id, type: 'conversationBasic' } })
+      const p = planOf(c, st, 200)
+      T('A16', 'only grammar points take slots: 3 grammar points and 4 conversation basics (greetings, reaction words), all introduced and never rated, are 3 NEW — 2 slots free, the next track brings 2', !!p.slots && p.slots.newCount === 3 && p.slots.free === 2 && p.next.length === 2, p.slots) }
     // known entries and rated entries take no slot; known-by-3 leaves NEW
     const stK = storeOf(c, FIRST5); stK['buildingBlock:wa'] = { ...stK['buildingBlock:wa'], knownAt: '2026-11-23', sightings: 3, sightingTracks: ['a', 'b'] }
     T('A14', 'a known point is not NEW: 5 introduced, none rated, one of them known after 3 sentences across 2 tracks → 4 NEW, 1 slot free, the next track brings 1', planOf(c, stK, 200).next.length === 1 && (planOf(c, stK, 200).stillNew || []).length === 4)
@@ -220,6 +223,11 @@ const SLOTS_LEVEL = 200                       // known words: everything is unlo
       T('B7', 'a rating does not touch the stored sightings fields (sightings, sightingTracks) or the exposures and the introduction date', wa.sightings === 2 && wa.sightingTracks.join() === 't1,t2' && wa.exposures === 2 && wa.productiveExposures === 2 && wa.introducedAt === '2026-11-20' && !wa.knownAt, wa) }
     { const st = storeOf(c, FIRST5), snap = JSON.stringify(st)
       T('B8', 'rating a point that was never introduced still introduces it at that moment (as before) and rating changes no other record', (() => { const s2 = clone(st); c.jaGrammarApplyRating(s2, 'buildingBlock', 'san', 'ok'); return s2['buildingBlock:san'].introducedAt === NOW && FIRST5.every(id => JSON.stringify(s2['buildingBlock:' + id]) === JSON.stringify(st['buildingBlock:' + id])) })() && JSON.stringify(st) === snap) }
+    { const st = storeOf(c, FIRST5); st['buildingBlock:wa'] = { ...st['buildingBlock:wa'], knownAt: '2026-11-10', sightings: 4, sightingTracks: ['a', 'b'] }
+      c.jaGrammarApplyRating(st, 'buildingBlock', 'wa', 'easy'); const wa = st['buildingBlock:wa']
+      const sb = { 'conversationBasic:un': { ...V774REC('un'), key: 'conversationBasic:un', type: 'conversationBasic' } }; c.jaGrammarApplyRating(sb, 'conversationBasic', 'un', 'easy')
+      T('B12', 'EASY on a point that is already known keeps its known date and its counters (nothing is overwritten); EASY on a conversation basic is only a rating (basics are never known)',
+        wa.knownAt === '2026-11-10' && wa.sightings === 4 && wa.sightingTracks.join() === 'a,b' && !sb['conversationBasic:un'].knownAt && sb['conversationBasic:un'].interval === 4, { wa, un: sb['conversationBasic:un'] }) }
     // NOT SHOWN (the function under the button; the button itself is D)
     { const st = storeOf(c, FIRST5, ['ka']), snap = clone(st), r = has(c, 'jaGrammarRateAndSave') ? await c.jaGrammarRateAndSave(st, 'buildingBlock', 'wa', 'notshown') : null
       const after = r && (await c.jaGrammarLoad())
@@ -520,6 +528,8 @@ const SLOTS_LEVEL = 200                       // known words: everything is unlo
     { const c1 = fresh(); c1.jaGrammarNotShownSetEnabled && c1.jaGrammarNotShownSetEnabled(false); c1.jaGrammarRomajiSetEnabled && c1.jaGrammarRomajiSetEnabled(false); c1.jaGrammarReviewAreaSetEnabled && c1.jaGrammarReviewAreaSetEnabled(false)
       const st = storeOf(c1, IDS(c1).slice(0, 5)), p = c1.jaGrammarTrackPlan(st, 200, { today: TODAY })
       T('G3', 'the other three off, slots on: the slot rules still hold (5 unrated points → none new) — each switch is its own', p.next.length === 0 && (p.stillNew || []).length === 5 && has(c1, 'jaGrammarSlotsOn') && c1.jaGrammarSlotsOn() === true) }
+    { const c1 = fresh(); c1.jaGrammarFromSentencesSetEnabled(false); const st = storeOf(c1, IDS(c1).slice(0, 5)), p = c1.jaGrammarTrackPlan(st, 200, { today: TODAY })
+      T('G7', 'the sentence-based picker is the master of the slots rule: with the picker switched off (the v773 switch) nothing of the slots applies, whatever the slots switch says', c1.jaGrammarSlotsOn() === false && !p.slots && !p.stillNew && p.next.length === 5) }
     // grammar never changes the words, the pairs or the closed-vocabulary check
     {
       const cc = fresh(), vocab = learner(cc, 90), st = storeOf(cc, IDS(cc).slice(0, 8)); await cc.stSet(KS, st)

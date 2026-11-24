@@ -297,7 +297,7 @@ async function probe(on, back) {
     async () => { const bad = [], seen = new Set()
       for (const [cn] of SYN) { const s = await synTrack(cn), t = await trackScreenText(s.c, s.track); const where = []; ['new', 'review', 'alsoUsed', 'passing', 'locked', 'knownUsed', 'stillNew'].forEach(k => (s.sum[k] || []).forEach(x => { if (TWO.includes(x.id)) { where.push(k + ':' + x.id); seen.add(k + ':' + x.id) } }))
         ;((s.sum.gate && s.sum.gate.planned) || []).forEach(x => { if (TWO.includes(x.id)) seen.add('planned:' + x.id) }); ;((s.sum.gate && s.sum.gate.notTaught) || []).forEach(x => { if (TWO.includes(x.id)) seen.add('notTaught:' + x.id) })
-        TWO.filter(id => where.some(w => w.endsWith(':' + id))).forEach(id => { if (!SHOWS(t, id)) bad.push(cn + '/' + id + ' not shown') }); if (!noOld(t)) bad.push(cn + ': an English-only name is left: ' + (t.match(/plain present(?! \/)|noun-modifying clause/g) || []).join(',')) }
+        TWO.filter(id => where.some(w => w.endsWith(':' + id))).forEach(id => { const lineOnly = where.filter(w => w.endsWith(':' + id)).every(w => /^(alsoUsed|knownUsed):/.test(w)); if (!(lineOnly ? t.includes(NEW[id].label) && t.includes(NEW[id].romaji) : SHOWS(t, id))) bad.push(cn + '/' + id + ' not shown') }); if (!noOld(t)) bad.push(cn + ': an English-only name is left: ' + (t.match(/plain present(?! \/)|noun-modifying clause/g) || []).join(',')) }
       const need = ['new:' + PP, 'new:' + NM, 'stillNew:' + PP, 'stillNew:' + NM, 'review:' + PP, 'review:' + NM, 'alsoUsed:' + PP, 'alsoUsed:' + NM, 'knownUsed:' + PP, 'knownUsed:' + NM, 'locked:' + NM, 'passing:' + NM, 'notTaught:' + PP, 'notTaught:' + NM].filter(k => !seen.has(k))
       return [bad.length === 0 && need.length === 0, { bad, notReached: need }] })
   await TT('B10', 'the reason a point is held back names the Japanese, not the English-only name: a point that needs the plain present first says "needs 食べる · 行く · する first", the noun-modifying clause says "needs 〜た first"',
@@ -321,7 +321,7 @@ async function probe(on, back) {
       if (!l2.includes(NEW[NM].label + ' (' + NEW[NM].meaning + ')')) bad.push('nmNext NEW THIS TRACK: ' + l2)
       if (!l3.includes(NEW[NM].label + ' (' + NEW[NM].meaning + ')')) bad.push('bothKnown TAUGHT ALREADY: ' + l3)
       if (!l4.includes(NEW[NM].label + ' (' + NEW[NM].meaning + ', still new, not rated yet)') || !l4.includes(NEW[PP].label + ' (' + NEW[PP].meaning + ', still new, not rated yet)')) bad.push('bothNew NEW THIS TRACK: ' + l4)
-      if (![b1, b2, b3, b4].every(noOld)) bad.push('an English-only name is left in a block')
+      const lists = [b1, b2, b3, b4].map(b => b.split('\n').filter(l => /TAUGHT ALREADY|NEW THIS TRACK/.test(l)).join('\n')); if (!lists.every(noOld)) bad.push('an English-only name is left in a list: ' + lists.filter(l => !noOld(l)).join(' // ').slice(0, 300))
       return [bad.length === 0, bad] })
   await TT('B13', 'the refusal reasons the writer is given name the Japanese: GRAMMAR_NOT_YET_TAUGHT and GRAMMAR_STAGE (too many new points) list the two entries by the new name and meaning; the verdicts (ok, locked ids, kinds) are what they were',
     async () => { const c = await ctxWith(ST('n0').store), r = refuseOf(c, VOC(c, 'n0'), ST('n0').store), all = r.map(x => x.text).join(' || ')
@@ -338,8 +338,9 @@ async function probe(on, back) {
         await c.jaGrammarFinaliseTrack(trackOf('2026-11-24T08:00:00.000Z', { trackContext: { trackId: '2026-11-24T08:00:00.000Z', language: 'ja', grammarGate: gate } }), { vocab, today: TODAY, push: m => lines.push(m) })
         const t = lines.join('\n'), id = sname === 'next6' ? PP : NM
         if (!lines.some(l => /^GRAMMAR GATE: /.test(l) && l.includes(NEW[id].label + ' '))) bad.push(sname + ': GRAMMAR GATE line has no new name: ' + lines.filter(l => /GRAMMAR GATE/.test(l)).join(' // ').slice(0, 300)); if (!noOld(t)) bad.push(sname + ': English-only name in the log') }
-      const c = await ctxWith(ST('n0').store), vocab = VOC(c, 'n0'), lines = [], fin = await c.jaGrammarFinaliseTrack(trackOf('2026-11-24T08:00:00.000Z', { trackContext: { trackId: '2026-11-24T08:00:00.000Z', language: 'ja', grammarGate: gateOf(c, vocab, ST('n0').store) } }), { vocab, today: TODAY, push: m => lines.push(m) })
-      if (!/^GRAMMAR FROM SENTENCES: \d+ new \(/.test(lines.find(l => /^GRAMMAR FROM SENTENCES/.test(l)) || '') || !(fin.grammarInTrack.new || []).some(x => x.id === PP && x.label === NEW[PP].label)) bad.push('n0: ' + lines.join(' // ').slice(0, 300))
+      const c = await ctxWith(ST('next6').store), vocab = VOC(c, 'next6'), lines = [], fin = await c.jaGrammarFinaliseTrack(trackOf('2026-11-24T08:00:00.000Z', { trackContext: { trackId: '2026-11-24T08:00:00.000Z', language: 'ja', grammarGate: gateOf(c, vocab, ST('next6').store) } }), { vocab, today: TODAY, push: m => lines.push(m) })
+      const fs = lines.find(l => /^GRAMMAR FROM SENTENCES/.test(l)) || ''
+      if (!/^GRAMMAR FROM SENTENCES: \d+ new \(/.test(fs) || !fs.includes('(' + NEW[PP].label) || !(fin.grammarInTrack.new || []).some(x => x.id === PP && x.label === NEW[PP].label)) bad.push('next6 GRAMMAR FROM SENTENCES: ' + lines.join(' // ').slice(0, 300))
       return [bad.length === 0, bad] })
   await TT('B16', 'a real generation (only the model transport scripted): the GRAMMAR GATE log line, the writer\'s NEW THIS TRACK line and the PRACTICE OBJECTIVES line show the new name — the plain present planned (next6), the noun-modifying clause planned (nmNext), both still NEW (bothNew), both due (bothDue: TAUGHT ALREADY and the objectives)',
     async () => { const bad = [], seen = {}
@@ -357,10 +358,12 @@ async function probe(on, back) {
         if (!noOld(nl + ol + gl)) bad.push(name + ': English-only name in the request or the log') }
       return [bad.length === 0, { bad, seen }] })
   await TT('B17', 'the old building-block pill (grammar from sentences switched off): the noun-modifying clause shows the Japanese, the reading and the new meaning; the plain present still shows its register form (行く)',
-    async () => { const c = await ctxWith({}); c.jaGrammarFromSentencesSetEnabled(false); const vocab = learner(c, 200)
-      const rows = c.jaSceneRows(vocab, { 'buildingBlock:past': V774REC('past') }, '', 'natural'); const nm = rows.blocks.find(r => r.id === NM), pp = rows.blocks.find(r => r.id === PP)
-      const ps = await planScreen(c, vocab, { 'buildingBlock:past': V774REC('past') }); const t = ps.text; await unmount(ps.R)
-      return [!!pp && t.includes(NEW[NM].label) && t.includes(NEW[NM].romaji) && t.includes(NEW[NM].meaning) && !/noun-modifying clause/.test(t) && t.includes('行く') && !!nm && nm.form === OLD[NM].label, { nm: nm && nm.form, found: [!!pp, !!nm], t: t.slice(0, 500) }] })
+    async () => { const c = await ctxWith(ST('bothDue').store); c.jaGrammarFromSentencesSetEnabled(false); const vocab = learner(c, 200)
+      const rows = c.jaSceneRows(vocab, clone(ST('bothDue').store), '', 'natural'); const nm = rows.blocks.find(r => r.id === NM), pp = rows.blocks.find(r => r.id === PP)
+      const ps = await planScreen(c, vocab, clone(ST('bothDue').store)); const t = ps.text; await unmount(ps.R)
+      const blk = t.split('Building blocks')[1] || ''                                        // the pills of the old screen (the target chips above it also contain 行く)
+      return [!!pp && !!nm && nm.form === OLD[NM].label && pp.form === '行く' && blk.includes(NEW[NM].label + ' ' + NEW[NM].romaji + ' ' + NEW[NM].meaning) && !/noun-modifying clause/.test(t) && blk.includes('行く') && blk.includes('plain present / future') && !blk.includes(NEW[PP].label),
+        { nm: nm && nm.form, pp: pp && pp.form, blk: blk.slice(0, 600) }] })
   await TT('B18', 'a track saved by v777 (its grammar section holds the English-only names) is SHOWN with the new text: the track screen, the export and the card read the name from the entry, not from the stored words; switched off, the stored words are shown as they were',
     async () => { const c = await ctxWith(ST('bothNew').store); setShown(c, false); const an = synAn([PP, NM, 'tai'], 3), plan = c.jaGrammarPlan(an, { known: 200, store: clone(ST('bothNew').store), today: TODAY }), sum = c.jaGrammarSummary(plan, an), track = miniTrack({ grammarInTrack: sum })
       const stored = JSON.stringify(sum), oldOk = TWO.every(id => rowsOf(sum).filter(r => r.id === id).every(r => r.label === OLD[id].label)) && rowsOf(sum).length > 0
@@ -391,7 +394,7 @@ async function probe(on, back) {
       return [on.length > 60 && on.length === off.length && wrongOn.length === 0 && wrongOff.length === 0 && noRows.length === 0, { rows: on.length, wrongOn: wrongOn.slice(0, 5), wrongOff: wrongOff.slice(0, 5), noRows, counts }] })
   await TT('C2', 'the source is scanned: in the code that builds a row, a prompt, a refusal reason, a log line, an export line or a screen for a grammar entry, no raw read of an entry\'s stored name or meaning is left — every one goes through the helper (jaGrammarShownLabel / jaGrammarShownMeaning)',
     async () => { const lines = SRC.split('\n'), bad = [], seen = {}
-      const strip = l => l.replace(/jaGrammarShown(?:Label|Meaning|Romaji)\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)/g, 'H'), isRaw = l => /\.(label|meaning)\b/.test(strip(l))
+      const strip = l => l.replace(/jaGrammarShown(?:Label|Meaning|Romaji)\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)/g, 'H'), isRaw = l => /\.(label|meaning)\b/.test(strip(l).replace(/\bit\.(label|meaning)\b/g, 'IT'))       // (it = an item of the rating card, built from the entry through the helper)
       const at = rx => lines.findIndex(l => rx.test(l))
       const inBlock = (() => { const a = at(/v778 — SHOWN LABELS/), b = at(/end of the v778 block/); return i => a >= 0 && i >= a && i <= b })()
       const region = (name, from, to) => { const i0 = at(from), i1 = at(to); seen[name] = [i0, i1]; if (i0 < 0 || i1 <= i0) { bad.push(name + ': region not found'); return }

@@ -36031,7 +36031,7 @@ async function _jaRecoverTargetPairs(kw, need, ctx) {
   const _purpose = (c.coherenceRepair && c.coherenceRepair.purpose) || (_planSc && _planSc.purpose) || null
   const _local = (c.coherenceRepair && c.coherenceRepair.localPremise) || (_planSc && _planSc.localPremise) || null
   const adapter = japaneseTargetGroupAdapter({ vocab: c.vocab, registerId, inv, rules, seenMap, trackUsed, apiKey: c.apiKey, model: c.model, onLog: log,
-    opts: { previousRecalls: prev.concat((c.coherenceRepair && c.coherenceRepair.replacing) || []), scenePremise: _sc && _sc.premise } })
+    opts: { previousRecalls: prev.concat((c.coherenceRepair && c.coherenceRepair.replacing) || []), scenePremise: _sc && _sc.premise, grammarGate: (track.trackContext && track.trackContext.grammarGate) || null } })
   aiTagNextCall((c.coherenceRepair ? 'coherence repair ' : 'quota recovery ') + t.japanese + ' recall ' + missingSlots.join('+'))
   const grp = await generateTargetGroup({ language: 'ja', target: _purpose || _local ? { ...t, _scenePurpose: _purpose, _sceneLocalPremise: _local } : t, recallCount: missingSlots.length, recallIndices: missingSlots, adapter,
     paidMaxPerRecall: Math.max(1, Math.min(JA_GENERATION_BUDGET.maxPaidAttemptsPerRecall, (rules.maxTiers || 4) - 1)),
@@ -60623,10 +60623,134 @@ async function jaGrammarFinaliseTrack(track, o) {
     const changed = jaGrammarApplyPlan(store, plan, today)
     if (changed) await jaGrammarSave(store)
     const sum = jaGrammarSummary(plan, an)
+    // v774 A/B — what the writer was allowed (planned before writing) and every line whose final text still uses an entry outside that list. Reported, never rewritten, never a reason to fail the track.
+    { const _gate = jaGrammarGateOn() && track.trackContext && track.trackContext.grammarGate
+      if (_gate && _gate.gate) { sum.gate = jaGrammarGateReport(track, _gate, an, plan, (opts.vocab || []).filter(w => w && /^[おご]/.test(w.japanese || '')))
+        if (opts.push) opts.push('GRAMMAR GATE: ' + sum.gate.planned.length + ' planned before writing (' + sum.gate.planned.map(x => x.label + ' ' + x.outcome).join(' · ') + ') · ' + sum.gate.notTaught.length + ' use(s) of grammar not yet taught kept and listed' + (sum.gate.notTaught.length ? ': pair ' + [...new Set(sum.gate.notTaught.map(x => x.n))].join(', ') : '')) } }
     if (opts.push) opts.push('GRAMMAR FROM SENTENCES: ' + plan.new.length + ' new (' + plan.new.map(x => x.label).join(' ') + ') · ' + plan.review.length + ' review · ' + plan.alsoUsed.length + ' also used · ' +
       plan.passing.length + ' seen in passing · ' + plan.locked.length + ' not yet unlocked · budget ' + plan.budget.spent + '/' + plan.budget.limit + (plan.held ? ' · HELD BACK: ' + plan.overdue + ' overdue' : ''))
     return { ...track, grammarInTrack: sum }
   } catch (e) { console.error('[ja-grammar] could not choose grammar from the sentences — the track is unchanged', e); return track }
+}
+
+// ══ v774 — THE GRAMMAR A TRACK MAY USE (Japanese only) ═════════════════════════════════════════════════════════════════════════
+// v773 read the finished sentences and reported the grammar they used. It did not stop the writer from using grammar the learner had never been taught (the owner's 17 Nov export used
+// 〜たら, 〜と思う and 〜てもいい long before their unlock levels). This block makes the writer's grammar a list, and checks the sentences against it. Each part has its own switch (all on;
+// all off = v773 exactly):
+//   A  ALLOWED GRAMMAR   (jaGrammarGateSetEnabled)  the writer is told to use ONLY: the FREE CORE (は が を に で の と も か ね よ だ です, the plain present, でも, だから — and よね, which is ね and よ
+//                         together; the conversation basics and the short reaction words are never grammar entries) + every entry already introduced (the progress records in JA_GRAMMAR_KEY)
+//                         + the entries THIS track will introduce. Those are chosen BEFORE writing by jaGrammarTrackPlan: the next entries in curriculum order whose unlock level and prerequisites are met and
+//                         that are not introduced yet, up to the same budget the picker uses (5 points: light 1, heavy 2). The picker after writing (jaGrammarPlan) is unchanged: it still reports what was
+//                         actually used, so an entry planned up front and never used twice is reported as such. In a polite speech style the present-tense verb IS the ます form, so 〜ます joins the free core there.
+//   B  CHECK AFTER WRITING  (same switch)  every candidate sentence is read by jaGrammarDetect inside the per-sentence ladder (jaEvaluateRecallCandidate, the last check, so a candidate that reaches it is
+//                         otherwise good). An entry outside the allowed set refuses the candidate with a plain reason naming it (GRAMMAR_NOT_YET_TAUGHT); the refusal goes through the existing retry path (the same
+//                         per-line limits: generateTargetGroup / generateJapaneseOneRecall). A line that still fails when its attempts are used is KEPT and carries _grammarFlag; the finished track lists it
+//                         (GRAMMAR NOT YET TAUGHT: pair N uses X) and it never blocks READY. Pure code: no model request.
+// The plan the writer receives is one plain object (jaGrammarGateContext) carried by the track context (tc.grammarGate), so recovery, the quality-check repair and the finaliser all read the same one.
+const JA_GRAMMAR_GATE = { gate: true }
+function jaGrammarGateSetEnabled(on) { JA_GRAMMAR_GATE.gate = !!on }
+// the list of entries a track will introduce belongs to the picker (v773), which introduces them after writing: with the picker off there is nothing for a gate to hand out
+function jaGrammarGateOn() { return !!JA_GRAMMAR_GATE.gate && jaGrammarFromSentencesOn() }
+const JA_GRAMMAR_CORE = Object.freeze(['wa', 'ga', 'wo', 'ni', 'de', 'no', 'to', 'mo', 'ka', 'ne', 'yo', 'yone', 'da', 'desu', 'plain-present', 'demo', 'dakara'])
+const JA_GRAMMAR_CORE_POLITE = Object.freeze(['masu'])
+function jaGrammarCoreIds(register) { return canonicalJapaneseSpeechStyle(register) === 'polite' ? JA_GRAMMAR_CORE.concat(JA_GRAMMAR_CORE_POLITE) : JA_GRAMMAR_CORE.slice() }
+// the curriculum entries the learner has been introduced to (a progress record with introducedAt), in curriculum order
+function jaGrammarIntroducedIds(store) {
+  const out = []
+  JA_GRAMMAR_CURRICULUM.forEach(e => { const r = (store || {})[jaProgressKeyOf('buildingBlock', e.id)]; if (r && r.introducedAt) out.push(e.id) })
+  return out
+}
+// THE ONE SELECTION FUNCTION. Pure: reads the progress and the learner's level and changes nothing. It gives (1) the entries this track would introduce — the NEXT ones in curriculum order, unlocked for this
+// learner, not introduced yet, prerequisites introduced or chosen just before, up to the picker's budget, none while more than 6 reviews are overdue — and (2) the grammar due for review (the most overdue first).
+// The writer's prompt, the track context and the plan screen all read this, so they cannot disagree.
+function jaGrammarTrackPlan(store, known, o) {
+  const cfg = JA_GRAMMAR_FROM_SENTENCES, st = store || {}, opts = o || {}
+  const today = opts.today || new Date().toISOString().slice(0, 10)
+  const rec = id => st[jaProgressKeyOf('buildingBlock', id)] || null
+  const intro = id => !!(rec(id) && rec(id).introducedAt)
+  const row = e => ({ id: e.id, label: e.label, romaji: e.romaji || '', meaning: e.meaning, explain: e.explain, cost: e.cost, minKnown: e.minKnown || 0, order: e.order })
+  const overdue = Object.values(st).filter(r => r && r.type === 'buildingBlock' && r.introducedAt && r.dueDate && r.dueDate < today).length
+  const held = overdue > cfg.overdueStop
+  const dueAll = Object.values(st).filter(r => r && r.type === 'buildingBlock' && r.introducedAt && r.dueDate && r.dueDate <= today).map(r => ({ r, e: jaGrammarEntryById(r.itemId) })).filter(x => x.e)
+    .sort((a, b) => String(a.r.dueDate).localeCompare(String(b.r.dueDate)) || (a.e.order - b.e.order))
+  const review = dueAll.slice(0, cfg.maxReview).map(x => ({ ...row(x.e), dueDate: x.r.dueDate }))
+  const next = []; let spent = 0, stopped = null
+  if (!held) {
+    const chosen = new Set()
+    for (const e of JA_GRAMMAR_CURRICULUM) {
+      if (intro(e.id)) continue
+      if ((known || 0) < (e.minKnown || 0)) { stopped = 'locked'; break }                          // levels never go down along the curriculum: nothing later is unlocked either
+      if (!(e.prereq || []).every(p => intro(p) || chosen.has(p))) continue
+      if (spent + e.cost > cfg.budget) { stopped = 'budget'; break }                                  // strict order: an entry that does not fit ends the list
+      chosen.add(e.id); spent += e.cost; next.push(row(e))
+      if (spent >= cfg.budget) { stopped = 'budget'; break }
+    }
+  }
+  return { today, known: known || 0, introducedCount: jaGrammarIntroducedIds(st).length, held, overdue, budget: { limit: cfg.budget, spent }, next, review, moreDue: Math.max(0, dueAll.length - review.length), stopped }
+}
+// the plain object the writer, the repair paths and the finaliser share. null when nothing is switched on.
+function jaGrammarGateContext(vocab, store, o) {
+  if (!jaGrammarGateOn()) return null
+  const opts = o || {}, st = store || {}, known = jaGrammarKnownCount(vocab)
+  const plan = jaGrammarTrackPlan(st, known, { today: opts.today })
+  const introducedIds = jaGrammarIntroducedIds(st), register = canonicalJapaneseSpeechStyle(opts.register)
+  return { version: 1, at: plan.today, register, known, gate: true, introducedCount: introducedIds.length, coreIds: jaGrammarCoreIds(register), introducedIds,
+    plannedIds: plan.next.map(x => x.id), planned: plan.next.map(x => ({ id: x.id, label: x.label, meaning: x.meaning, cost: x.cost })),
+    review: plan.review.map(x => ({ id: x.id, label: x.label, meaning: x.meaning, dueDate: x.dueDate })), held: plan.held, overdue: plan.overdue, budget: plan.budget }
+}
+const JA_GATE_FREE_TEXT = 'は が を に で の と も か ね よ だ です · verbs in the plain present (行く, 食べる) · でも だから じゃあ · よね (ね and よ together) · the conversation basics and short reactions (うん, あの, えっ, ええと, ねえ, へえ, ほら, ああ, やった, よかった, ほんと？, そっか, なるほど, そうだね, いいね, こんにちは, またね, どうしよう)'
+// what the writer is told (both writers: the target group and the single sentence). Empty without a gate.
+function jaGrammarGatePromptBlock(gate) {
+  if (!gate || !gate.gate) return ''
+  const lab = id => { const e = jaGrammarEntryById(id); return e ? e.label + (e.meaning ? ' (' + e.meaning + ')' : '') : id }
+  const core = new Set(gate.coreIds || []), taught = (gate.introducedIds || []).filter(id => !core.has(id))
+  const L = ['GRAMMAR FOR THIS LEARNER — use ONLY this grammar. A point that is not listed here is NOT allowed yet, even when it is correct Japanese and even when the speech style above suggests it; if an idea needs one, choose a simpler idea.',
+    '  FREE from day one: ' + JA_GATE_FREE_TEXT + ((gate.coreIds || []).includes('masu') ? ' · 〜ます verbs (polite speech)' : ''),
+    '  TAUGHT ALREADY (allowed): ' + (taught.length ? taught.map(lab).join(' · ') : 'nothing yet beyond the free list'),
+    '  NEW THIS TRACK (also allowed, where a sentence naturally calls for them): ' + ((gate.planned || []).length ? gate.planned.map(x => x.label + (x.meaning ? ' (' + x.meaning + ')' : '')).join(' · ') : 'none')]
+  return L.join('\n')
+}
+// the お / ご in お茶 or ご飯 belongs to a word, and a set phrase is not grammar: the polite prefix counts only when it is not part of a word the learner has been taught or a phrase met whole
+function jaGrammarPrefixIsWord(text, hit, words) {
+  const at = hit.at
+  if (JA_DET_FIXED.some(f => text.startsWith(f, at))) return true
+  return (words || []).some(w => { const j = w && (w.japanese || w.lemma); return !!j && j.length >= 2 && /^[おご]/.test(j) && text.startsWith(j, at) })
+}
+// THE CHECK. Pure code, no request. Reads one sentence (or one line of several sentences) and says whether it stays inside the allowed grammar.
+//   problems[] = { kind: 'locked', ids, labels, text }   text is the plain reason the writer receives
+// o.words = the content words the learner has been taught (the polite prefix test), o.hits = the detector's hits for the whole sentence when the caller already has them
+function jaGrammarCheckSentence(sentence, gate, o) {
+  const opts = o || {}, ok = { ok: true, problems: [], lockedIds: [] }
+  if (!gate || !gate.gate) return ok
+  const norm = String(sentence == null ? '' : sentence).normalize('NFKC')
+  const hits = (opts.hits || jaGrammarDetect(norm).hits).filter(h => !h.implied && !(h.id === 'o-go' && jaGrammarPrefixIsWord(norm, h, opts.words)))
+  const allowed = new Set([...(gate.coreIds || []), ...(gate.introducedIds || []), ...(gate.plannedIds || [])])
+  const locked = []
+  hits.forEach(h => { if (!allowed.has(h.id) && !locked.includes(h.id)) locked.push(h.id) })
+  const problems = []
+  if (locked.length) {
+    const labels = locked.map(id => { const e = jaGrammarEntryById(id); return e ? e.label + (e.meaning ? ' (' + e.meaning + ')' : '') : id })
+    problems.push({ kind: 'locked', ids: locked, labels, text: 'GRAMMAR_NOT_YET_TAUGHT: ' + labels.join(', ') + (locked.length > 1 ? ' are' : ' is') + ' not taught yet for this learner — rewrite the sentence using only the grammar in the GRAMMAR FOR THIS LEARNER list' })
+  }
+  return { ok: problems.length === 0, problems, lockedIds: locked }
+}
+// the finished track's own report: which planned entries were used and what happened to them, and every line whose final text still uses an entry outside the allowed list
+function jaGrammarGateReport(track, gate, an, plan, words) {
+  const pairs = (track && track.pairs) || []
+  const taughtNow = id => (plan.new || []).some(x => x.id === id)
+  const notTaught = []
+  pairs.forEach((p, i) => {
+    const jp = (p && (p.japanese || p.thai)) || ''
+    if (!jp) return
+    const r = jaGrammarCheckSentence(jp, gate, { hits: (an.perPair[i] && an.perPair[i].hits) || null, words })
+    r.problems.forEach(pr => { if (pr.kind === 'locked') pr.ids.forEach(id => { const e = jaGrammarEntryById(id); notTaught.push({ n: i + 1, id, label: e ? e.label : id, meaning: e ? e.meaning : '', taughtNow: taughtNow(id) }) }) })
+  })
+  const planned = (gate.planned || []).map(x => {
+    const u = an.uses[x.id], all = u ? u.all.slice() : [], pass = (plan.passing || []).find(y => y.id === x.id)
+    const outcome = taughtNow(x.id) ? 'taught NEW' : !all.length ? 'not used in any sentence' : pass ? pass.why : (u && u.target.length ? 'used, already introduced' : 'used only in greeting lines')
+    return { id: x.id, label: x.label, meaning: x.meaning, cost: x.cost, pairs: all, outcome }
+  })
+  return { version: 1, gate: true, introducedCount: gate.introducedCount, coreCount: (gate.coreIds || []).length, plannedIds: (gate.plannedIds || []).slice(), planned, notTaught, held: !!gate.held, overdue: gate.overdue || 0 }
 }
 
 // a practice objective may name a block introduced by the new path (never changes what an old block resolves to)
@@ -60647,6 +60771,14 @@ function jaGrammarExportLines(track) {
   if (all('alsoUsed').length) L.push('ALSO USED (already learned): ' + all('alsoUsed').map(x => x.label).join(' '))
   sect('SEEN IN PASSING (not taught yet)', all('passing'), x => x.why || '')
   sect('NOT YET UNLOCKED but used (listed only; the sentences are not rewritten)', all('locked'), x => x.minKnown ? 'unlocks at ' + x.minKnown + ' words' : '')
+  // v774: what the writer was allowed, and every line that still uses grammar outside it (never hidden)
+  if (g.gate) {
+    const gt = g.gate
+    L.push('PLANNED BEFORE WRITING (the writer was allowed to use these, on top of the free core of ' + gt.coreCount + ' points and the ' + gt.introducedCount + ' already taught)' + (gt.planned.length ? '' : ': none' + (gt.held ? ' — ' + gt.overdue + ' reviews are overdue' : '')))
+    gt.planned.forEach(x => L.push('  ' + x.label + ' — ' + x.meaning + ' — ' + (x.pairs.length ? 'pairs ' + nums(x.pairs) : 'no pair') + ' — ' + x.outcome))
+    if (gt.notTaught.length) gt.notTaught.forEach(x => L.push('GRAMMAR NOT YET TAUGHT: pair ' + String(x.n).padStart(2, '0') + ' uses ' + x.label + (x.taughtNow ? ' (taught NEW at the end of this track)' : '')))
+    else L.push('GRAMMAR NOT YET TAUGHT: none')
+  }
   return L
 }
 // the same section on screen: each entry opens to its explanation
@@ -60690,6 +60822,32 @@ function JaGrammarInTrack({ track }) {
         </div>
       ))}
       {alsoUsed.length > 0 && <p style={{ fontSize: 10, color: 'var(--muted)', margin: '4px 2px' }}>Also used, already learned: <span className="jp">{alsoUsed.map(x => x.label).join(' ')}</span></p>}
+      {g.gate && (
+        <div data-ja-grammar-gate="1" style={{ marginTop: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '6px 2px 4px' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, color: '#a78bfa' }}>PLANNED BEFORE WRITING</span>
+            <span style={{ fontSize: 10, color: 'var(--muted)' }}>{g.gate.planned.length ? 'the writer could use these' : 'none' + (g.gate.held ? ' · ' + g.gate.overdue + ' reviews are overdue' : '')}</span>
+          </div>
+          {g.gate.planned.map(x => (
+            <div key={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 10px' }}>
+              <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>
+              <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}</span>
+              <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>{x.pairs.length ? 'pairs ' + x.pairs.map(n => String(n).padStart(2, '0')).join(' ') + ' · ' : ''}{x.outcome}</span>
+            </div>
+          ))}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '10px 2px 4px' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, color: g.gate.notTaught.length ? '#f59e0b' : 'var(--muted)' }}>GRAMMAR NOT YET TAUGHT</span>
+            <span style={{ fontSize: 10, color: 'var(--muted)' }}>{g.gate.notTaught.length ? 'kept and listed, never hidden' : 'none'}</span>
+          </div>
+          {g.gate.notTaught.map(x => (
+            <div key={x.n + ':' + x.id} data-grammar-not-taught={x.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 10px' }}>
+              <span style={{ fontSize: 11, color: 'var(--muted)' }}>pair {String(x.n).padStart(2, '0')} uses</span>
+              <span className="jp" style={{ fontSize: 14, fontWeight: 700 }}>{x.label}</span>
+              <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.meaning}{x.taughtNow ? ' · taught NEW at the end of this track' : ''}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -61501,10 +61659,12 @@ function strategyForRejectionClass(cls, sample) {
   if (cls === 'CUE_FORM') return 'DOMINANT REJECTION = cue / form mismatch. englishMeaning must have the SAME sentence type as the Japanese (question ↔ question, statement ↔ statement, invitation ↔ "shall we …?"), and englishCue must start with "Ask" for a question and "Tell" / "Say" for a statement.'
   if (cls === 'COMPLEXITY') return 'DOMINANT REJECTION = too long for the belt. Cut to the target plus one or two words.'
   if (cls === 'REGISTER') return 'DOMINANT REJECTION = register. Keep every sentence in the chosen speech style.'
+  if (cls === 'GRAMMAR') return 'DOMINANT REJECTION = grammar this learner has not been taught. Build the sentence ONLY from the grammar in the GRAMMAR FOR THIS LEARNER list; drop the idea that needs anything else.'
   return ''
 }
 function rejectionClassOf(msg) {
   const m = String(msg || '')
+  if (/GRAMMAR_NOT_YET_TAUGHT/.test(m)) return 'GRAMMAR'             // v774: grammar outside the allowed list (named apart from untaught vocabulary)
   if (/identical sentence|already used|duplicate|DUPLICATE/i.test(m)) return 'DUPLICATE'
   if (/untaught/.test(m)) return 'UNTAUGHT'
   if (/not present|TARGET_MISSING/.test(m)) return 'TARGET_MISSING'
@@ -61572,10 +61732,13 @@ function parseJaRecallReply(raw) {
 // carries only this recall's context. The allowed vocabulary is sent once, as compact word=gloss
 // items (it used to be resent with reading + romaji + usage note for every one of ~100 words, plus
 // a conversation-shaped example that contradicted "ONE object").
+const JA_RECALL_POLICY_GRAMMAR = 'Particles, the copula and normal inflection of allowed words are free. If an idea needs another word, choose a simpler idea.'
+// v774: with a gate the grammar is the list in the user message — nothing is free beyond it
+const JA_GATE_SYSTEM_GRAMMAR = 'GRAMMAR is limited to the list under "GRAMMAR FOR THIS LEARNER" in the next message: nothing else is free, not even normal inflection of allowed words. If an idea needs another word or grammar point, choose a simpler idea.\n'
 const JA_RECALL_POLICY =
   'LANGUAGE: Japanese. Write ONE sentence a real person would say, for a learner doing productive recall.\n' +
   'CLOSED VOCABULARY: content words (nouns, verbs, adjectives, lexical adverbs, times, places) MUST come from ALLOWED CONTENT. ' +
-  'Particles, the copula and normal inflection of allowed words are free. If an idea needs another word, choose a simpler idea.\n' +
+  JA_RECALL_POLICY_GRAMMAR + '\n' +
   'Fields: englishMeaning = what the sentence means; englishCue = an instruction a learner can act on without seeing the Japanese ' +
   '(never quote Japanese or romaji); reading = kana for the sentence as written; romaji = Hepburn, spaced by word, matching the reading; ' +
   'segments = every word in order with surface, lemma (dictionary form), reading, romaji, english, type ("content" or "grammar").'
@@ -61588,7 +61751,7 @@ function buildJapaneseRecallPrompt(target, recallIndex, inv, vocab, registerId, 
   let blocks = ''
   try { const av = jaBlocksAvailable(vocab, c.grammarProgress || {}); blocks = av.map(b => b.id + '=' + jaBlockRealisation(b, registerId)).join(' · ') } catch (e) {}
   const role = (() => { try { return targetRoleLine(targetLinguisticRole(target, 'ja'), target, 'ja').trim() } catch (e) { return '' } })()
-  const system = 'You are a Japanese teacher writing natural spoken Japanese for a learner.\n' + JA_RECALL_POLICY + (cueClarityOn() ? '\nenglishCue: ' + DAILY_CUE_CONTRACT.replace(/^prompt = /, '') : '') + (cueClarityOn() ? '\n' + JA_ZH_CUE_ADDRESSEE_RULE : '') + '\n' + japaneseRegisterContract(registerId)
+  const system = 'You are a Japanese teacher writing natural spoken Japanese for a learner.\n' + (c.grammarGate && c.grammarGate.gate ? JA_RECALL_POLICY.replace(JA_RECALL_POLICY_GRAMMAR, JA_GATE_SYSTEM_GRAMMAR.replace(/\n$/, '')) : JA_RECALL_POLICY) + (cueClarityOn() ? '\nenglishCue: ' + DAILY_CUE_CONTRACT.replace(/^prompt = /, '') : '') + (cueClarityOn() ? '\n' + JA_ZH_CUE_ADDRESSEE_RULE : '') + '\n' + japaneseRegisterContract(registerId)
   const user =
     'JAPANESE TARGET: ★ ' + target.japanese + (target.reading ? ' [' + target.reading + ']' : '') + ' = ' + (target.english || '') +
       (target.note ? ' — use when ' + target.note : '') + (role && !teachingPlanOn() ? '\n  ' + role : '') + '\n' +
@@ -61606,6 +61769,7 @@ function buildJapaneseRecallPrompt(target, recallIndex, inv, vocab, registerId, 
     '\nALLOWED CONTENT (' + (inv.allContent || []).length + '): ' + allowed +
     (basics ? '\nCONVERSATION BASICS: ' + basics : '') +
     (blocks ? '\nGRAMMAR ids for "blocks": ' + blocks : '') +
+    (c.grammarGate && c.grammarGate.gate ? '\n' + jaGrammarGatePromptBlock(c.grammarGate) : '') +
     '\nReturn ONE JSON object: {"intent","japanese","reading","romaji","englishCue","englishMeaning","blocks":[ids],"basics":[ids],"segments":[{"surface","lemma","reading","romaji","english","type"}]}'
   return { system, user }
 }
@@ -61943,6 +62107,11 @@ function jaEvaluateRecallCandidate(cand, ctx) {
   // v682 — a set phrase (大丈夫, ありがとう …) was exempt from the variety rule altogether, so 大丈夫？/ 大丈夫だよ。/ うん、大丈夫。 counted as
   // three applications. It now needs a different FUNCTION (asking vs answering) or different content around it (明日は大丈夫？).
   else if (dup.ok && (jaSemanticClass(target.japanese) || {}).standalone && !JA_LIMITED_VARIETY_WORDS.includes(target.japanese)) dup = japaneseFormulaVariationVerdict(c2.japanese, target.id, seenMap, target.japanese)
+  // v774 B — the LAST check, so a candidate that reaches it is right in every other way: grammar outside the allowed list refuses it (a plain reason naming the entry; pure code, no request).
+  // grammarOnly tells the target-group core that this candidate may be KEPT with a flag when its attempts are used.
+  { const _gg = opts && opts.grammarGate
+    if (_gg) { const _gc = jaGrammarCheckSentence(c2.japanese, _gg, { words: inv && inv.allContent })
+      if (!_gc.ok) return { ...fail(_gc.problems[0].text), cand: c2, repairs, dup, grammarOnly: true, grammarProblems: _gc.problems, grammarFlag: _gc.problems.flatMap(p => (p.ids || []).map(id => ({ id, kind: p.kind }))) } } }
   return { ok: true, cand: c2, repairs, dup }
 }
 // Punctuation never decides validity: "？" as its own segment (romaji "?" / "" / "question") is
@@ -62037,6 +62206,27 @@ async function generateTargetGroup(o) {
     guard && guard.noteFailure(msg)
     log && log('  ❌ recall ' + s.recallIndex + ': ' + msg + ' [' + s.lastCls + ' · ' + generationFailureCategory(msg) + ']' + (cand && adapter.textOf(cand) ? ' — "' + String(adapter.textOf(cand)).slice(0, 60) + '"' : ''))
   }
+  // v774 B — a candidate that failed ONLY the grammar check (every other gate passed, not a duplicate) is remembered, the one with the fewest entries outside the list first. If the slot's
+  // attempts are then used up it is KEPT with a flag (acceptKeptGrammar) instead of being lost: a line outside the list is shown and listed, never hidden and never a reason to fail a track.
+  const keepGrammar = (s, ev, kind) => {
+    if (!ev || ev.ok || !ev.grammarOnly || !ev.cand) return
+    if (ev.dup && !ev.dup.ok && !(adapter.allowDuplicate && adapter.allowDuplicate(ev))) return
+    const nOut = (ev.grammarFlag || []).length
+    if (!s.grammarKept || nOut < s.grammarKept.n) s.grammarKept = { cand: ev.cand, flag: ev.grammarFlag || [], n: nOut, index: s.openCheck, kind: kind || 'model', reason: ev.failure }
+  }
+  const acceptKeptGrammar = () => {
+    if (o.stopSignal && o.stopSignal.cancelled) return
+    pending().forEach(s => {
+      const k = s.grammarKept
+      if (!k) return
+      L.settle(tid, s.recallIndex, 'accepted', 'kept with a grammar flag: ' + String(k.reason || '').slice(0, 100), k.index)
+      s.state = 'accepted'; s.pair = L.stamp({ ...k.cand, _grammarFlag: k.flag, ...(k.kind === 'fallback' ? { _fallback: true } : {}) }, tid, s.recallIndex)
+      s.checkTier = cnt(s) || 1; s.outcome = 'accepted'
+      if (s.acceptedOnCall == null) s.acceptedOnCall = tel.paid || null
+      adapter.onAccept && adapter.onAccept(k.cand, s.recallIndex, target)
+      log && log('  ⚠ recall ' + s.recallIndex + ' kept with a grammar flag after ' + s.paidRequests + ' paid request(s) — ' + String(k.reason || '').slice(0, 120) + ' — "' + String(adapter.textOf(k.cand)).slice(0, 60) + '" (listed in the export, never hidden)')
+    })
+  }
   // one candidate against one slot: the adapter's gates, then (if only a derived field is wrong) a derived-field repair
   // that never regenerates the sentence — all inside the slot's open check
   const tryCandidate = async (s, cand, how) => {
@@ -62056,6 +62246,7 @@ async function generateTargetGroup(o) {
       failSlot(s, ev.failure + ' (derived-field repair did not resolve it)', GEN_FAILURE_CLASS.DETERMINISTIC_REPAIRABLE, ev.cand); return false
     }
     if (ev.untaught && adapter.noteUntaught) adapter.noteUntaught(ev.untaught)
+    keepGrammar(s, ev, 'model')
     failSlot(s, ev.failure, ev.cls, ev.cand); return false
   }
   // ── a gap-fill module first (no request): its three lines are the three recalls, each judged by the adapter like a model reply ──
@@ -62122,6 +62313,8 @@ async function generateTargetGroup(o) {
       if (keys.length >= 2 && keys[keys.length - 1] === keys[keys.length - 2]) { s.lastCls = GEN_FAILURE_CLASS.NON_RECOVERABLE; log && log('  ⚠ recall ' + s.recallIndex + ': the same rejected sentence came back — no further paid attempt (strategy: deterministic fallback)') }
     })
   }
+  // v774 B — the per-line attempts are used: a line that failed only the grammar check is kept with its flag (no further attempt, no new loop)
+  acceptKeptGrammar()
   // ── deterministic fallback candidates (no request): each candidate judged is ONE check of this recall, up to check 11.
   // The fallback passes the SAME evaluation as a model recall (no privilege; a duplicate is only allowed by the explicit
   // scarcity policy). A deterministic candidate costs nothing, so it is tried even after a whole-track cost limit.
@@ -62138,11 +62331,13 @@ async function generateTargetGroup(o) {
         const dupOk = ev.dup && !ev.dup.ok && adapter.allowDuplicate && adapter.allowDuplicate(ev)
         if (ev.ok && (!ev.dup || ev.dup.ok || dupOk)) { acceptSlot(s, { ...ev.cand, _fallback: true }, 'deterministic fallback (no model request)', { outcome: 'fallback', onCall: false }); break }
         const why = !ev.ok ? ev.failure : ev.dup.reason
+        keepGrammar(s, ev, 'fallback')
         settle(s, 'rejected', 'fallback: ' + why); s.lastFailure = 'fallback rejected: ' + why
         log && log('  ❌ fallback rejected for recall ' + s.recallIndex + ': ' + why + ' — "' + String(adapter.textOf(fb)).slice(0, 50) + '"')
       }
     }
   }
+  acceptKeptGrammar()
   // ── no further attempt: UNRESOLVED (this is a decision, not a check) ──
   const _unres = pending()
   _unres.forEach(s => {
@@ -63065,7 +63260,10 @@ function buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, o) {
   const system = 'You are a Japanese teacher writing natural spoken Japanese for a learner.\n' +
     'LANGUAGE: Japanese. Write ' + (n === 1 ? 'ONE sentence' : n + ' DIFFERENT sentences') + ' a real person would say, for a learner doing productive recall. Each sentence is one recall.\n' +
     'CLOSED VOCABULARY: content words (nouns, verbs, adjectives, lexical adverbs, times, places) MUST come from ALLOWED CONTENT. ' +
-    (teachingPlanOn()
+    (c.grammarGate && c.grammarGate.gate
+      // v774: the grammar is a LIST (GRAMMAR FOR THIS LEARNER, in the user message); nothing is free beyond it, not even normal inflection
+      ? JA_GATE_SYSTEM_GRAMMAR
+      : teachingPlanOn()
       // v683 teaching plan: the instruction states the SAME grammar permissions the validator applies (v682 said "particles are
       // free" while the grammar check rejected かな / な / だけ)
       ? 'Normal inflection of allowed words is free. GRAMMAR you may use: ' + [...new Set((inv.grammarScaffold || []).map(g => g.form))].join(' ') + '. ' + jaTpPermissionLine() + 'If an idea needs another word or particle, choose a simpler idea.\n'
@@ -63102,6 +63300,7 @@ function buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, o) {
     'ALLOWED CONTENT (' + (inv.allContent || []).length + '): ' + allowed +
     (basics ? '\nCONVERSATION BASICS: ' + basics : '') +
     (blocks ? '\nGRAMMAR ids for "blocks": ' + blocks : '') +
+    (c.grammarGate && c.grammarGate.gate ? '\n' + jaGrammarGatePromptBlock(c.grammarGate) : '') +
     '\nReturn EXACTLY ' + n + ' recall(s) as ONE JSON object: {"targetConcept":"' + target.japanese + '","recalls":[{"intent","japanese","reading","romaji","englishCue","englishMeaning","blocks":[ids],"basics":[ids],"segments":[{"surface","lemma","reading","romaji","english","type"}]}]}'
   return { system, user }
 }
@@ -63137,7 +63336,7 @@ function japaneseTargetGroupAdapter(ctx) {
     buildRequest({ target, slots, accepted, initial, strategy }) {
       const { system, user: user0 } = buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, {
         initial, acceptedForTarget: accepted.map(a => a.text).concat(opts.previousRecalls || []), usedInTrack: trackUsed.slice(),
-        rejected: [...rejected], objectives, grammarProgress: opts.grammarProgress, scenePremise: opts.scenePremise })
+        rejected: [...rejected], objectives, grammarProgress: opts.grammarProgress, scenePremise: opts.scenePremise, grammarGate: opts.grammarGate })
       // v672 §3 — STRATEGY_CHANGE: the efficiency guard turns the dominant rejection class into a construction change
       const user = strategy && strategy.promptLines && strategy.promptLines.length
         ? 'STRATEGY CHANGE (level ' + strategy.level + ': ' + strategy.label + '):\n' + strategy.promptLines.map(x => '  \u2022 ' + x).join('\n') + '\n' + user0 : user0
@@ -63186,7 +63385,7 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
   // canonical budget is the ceiling for every inventory size
   const paidMax = Math.max(1, Math.min(budget.maxPaidAttemptsPerRecall, (rules && rules.maxTiers ? rules.maxTiers - 1 : budget.maxPaidAttemptsPerRecall)))
   const guard = o.costGuard || null
-  let dupOnlyCandidate = null
+  let dupOnlyCandidate = null, grammarKept = null
   let lastFailure = ''
   const rejected = new Set(), failedSentences = [], usedHere = new Set()
   const ORD = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th']
@@ -63219,7 +63418,7 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
       previousRecalls: [...new Set([...(o.previousRecalls || []), ...usedHere])].filter(Boolean),
       usedInTrack: [...seenMap.entries()].map(([k, v]) => (v && v.text) || k),
       rejected: [...rejected], failedSentences: failedSentences.slice(-4), lastFailure,
-      extra: tier > 1 ? jaEscalationInstruction(tier, target, inv, rules) : '', objectives: _objLine, grammarProgress: o.grammarProgress })
+      extra: tier > 1 ? jaEscalationInstruction(tier, target, inv, rules) : '', objectives: _objLine, grammarProgress: o.grammarProgress, grammarGate: o.grammarGate })
     let raw = ''
     paid++
     try {
@@ -63254,6 +63453,8 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
     repairs += ev.repairs || 0
     if (!ev.ok) {
       lastFailure = ev.failure
+      // v774 B — a candidate that failed ONLY the grammar check is remembered (the one with the fewest entries outside the list); kept with a flag when the attempts are used up
+      if (ev.grammarOnly && ev.cand && (!ev.dup || ev.dup.ok) && (!grammarKept || (ev.grammarFlag || []).length < grammarKept.flag.length)) grammarKept = { cand: ev.cand, flag: ev.grammarFlag || [], reason: ev.failure }
       onLog && onLog('  ❌ ' + lastFailure + ' [' + ev.cls + ']')
       guard && guard.noteFailure(lastFailure)
       if (ev.untaught) ev.untaught.forEach(w => w && rejected.add(w))
@@ -63275,6 +63476,11 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
     } else if (ev.dup && ev.dup.note) onLog && onLog('  ℹ ' + ev.dup.note)
     const out = accept(ev.cand, tier)
     return record('accepted', out)
+  }
+  // v774 B — the attempts are used: a line that failed only the grammar check is kept with its flag
+  if (grammarKept && !(o.stopSignal && o.stopSignal.cancelled)) {
+    onLog && onLog('  ⚠ kept with a grammar flag after ' + paid + ' paid attempt(s) — ' + String(grammarKept.reason).slice(0, 120) + ' — "' + String(grammarKept.cand.japanese).slice(0, 60) + '" (listed in the export, never hidden)')
+    return record('accepted', accept({ ...grammarKept.cand, _grammarFlag: grammarKept.flag }, Math.min(11, Math.max(1, paid)), 'kept with a grammar flag'))
   }
   // E. approved deterministic fallback — no model request
   if (!(guard && guard.triggered)) {
@@ -63388,11 +63594,16 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
   // ── Phase 4: grammar/basics practice objectives ──────────────────────────────────
   // Due and newly introduced Building Blocks / Conversation Basics shape generation but
   // NEVER consume one of the 30 vocabulary target slots: they are a separate list.
-  let _grammarStore = {}, _objectives = { buildingBlocks: [], conversationBasics: [] }
+  let _grammarStore = {}, _objectives = { buildingBlocks: [], conversationBasics: [] }, _grammarGate = null
   try {
     await jaGrammarMigrateV1(vocab)
     _grammarStore = await jaGrammarLoad()
     const today = new Date().toISOString().slice(0, 10)
+    // v774 A — the grammar this track may use is fixed here, BEFORE any sentence is written: the free core + what is introduced + the entries this track will introduce (the same function the plan screen shows)
+    _grammarGate = jaGrammarGateContext(vocab, _grammarStore, { register: registerId, today })
+    if (_grammarGate) { _tc.grammarGate = _grammarGate
+      onLog && onLog('\u2139 GRAMMAR GATE: ' + _grammarGate.introducedCount + ' grammar point(s) taught · free core ' + _grammarGate.coreIds.length + ' · new in this track (' + _grammarGate.budget.spent + '/' + _grammarGate.budget.limit + ' points): ' +
+        (_grammarGate.planned.map(x => x.label).join(' ') || 'none') + (_grammarGate.held ? ' · none planned: ' + _grammarGate.overdue + ' reviews are overdue' : '') + ' · a sentence outside this list is refused and written again') }
     const dueBlocks = jaGrammarDue(_grammarStore, 'buildingBlock', today).map(r => jaBlockById(r.itemId)).filter(Boolean)
     const dueBasics = jaGrammarDue(_grammarStore, 'conversationBasic', today).map(r => jaBasicById(r.itemId)).filter(Boolean)
     // at most 1 genuinely NEW block per track at this level, introduced BEFORE it is used
@@ -63405,7 +63616,8 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
     freshBasics.forEach(b => jaGrammarIntroduce(_grammarStore, 'conversationBasic', b.id))
     if (fresh.length || freshBasics.length) await jaGrammarSave(_grammarStore)
     jaSetCurriculumAllowed(_grammarStore)          // curriculum is now authoritative for the gate
-    _objectives = { buildingBlocks: [...dueBlocks, ...fresh].slice(0, 3), conversationBasics: [...dueBasics, ...freshBasics].slice(0, 2) }
+    // v774: with a gate the entries to practise again are the ones the plan screen shows as due (every curriculum entry, the most overdue first), not only the 35 of the old list
+    _objectives = { buildingBlocks: _grammarGate ? _grammarGate.review.map(x => jaGrammarEntryById(x.id)).filter(Boolean) : [...dueBlocks, ...fresh].slice(0, 3), conversationBasics: [...dueBasics, ...freshBasics].slice(0, 2) }
     onProgress && onProgress(0, totalRecall, { apiError:
       'Content targets: ' + targets.length + ' · Building Blocks due: ' + dueBlocks.length +
       ' · new: ' + fresh.map(b => b.label).join(' ') + ' · Conversation Basics due: ' + dueBasics.length +
@@ -63431,7 +63643,7 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
   }
   orderTargetsByPlan(targets, scenePlan)
   const groupAdapter = japaneseTargetGroupAdapter({ vocab, registerId, inv, rules, seenMap, trackUsed, apiKey, model, onLog,
-    opts: { objectives: _objectives, grammarProgress: _grammarStore, scenePremise: _jaContract && _jaContract.premise } })
+    opts: { objectives: _objectives, grammarProgress: _grammarStore, scenePremise: _jaContract && _jaContract.premise, grammarGate: _grammarGate } })
   let groupCalls = 0, groupChecks = 0
   onLog && onLog('\u2139 CHECKS: up to 11 per RECALL \u2014 one check = one candidate attempt for that recall (one group request is check n for each recall it asks for). Validation stages inside every attempt: ' + JA_QUALITY_CHECK_MAP.map(c => c[0]).join(' · '))
   for (let i = 0; i < targets.length; i++) {
@@ -63474,6 +63686,7 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
         checkTier: sl.checkTier, _checkCount: sl.checkTier, _checkHistory: (l._checkHistory || []).slice(),   // v671 §B1 — this recall's own history
         _source: JA_TIER_SOURCE(sl.checkTier), _framing: false,
         ...(l._fallback ? { _fallback: true } : {}), ...(l._acceptedRepetition ? { _acceptedRepetition: true } : {}),
+        ...(l._grammarFlag && l._grammarFlag.length ? { _grammarFlag: l._grammarFlag } : {}),     // v774: kept with a flag — it still uses grammar outside the allowed list after its attempts
         ...(l._module ? { _module: true, _moduleId: l._moduleId } : {}),     // came from a gap-fill module (no request); assembleRecallsByScene keeps such an exchange together
       }
       // v651 §6 — provenance from birth; the IDs are injected here, never taken from the model
@@ -63649,7 +63862,7 @@ async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId,
   const trackUsed = (partial.perTarget || []).flat().map(p => String(p && p.japanese || '').trim()).filter(Boolean)
   const prevForT = ((partial.perTarget || [])[missing.targetIdx] || []).map(p => p.japanese)
   const adapter = japaneseTargetGroupAdapter({ vocab, registerId, inv, rules, seenMap, trackUsed, apiKey, model, onLog,
-    opts: { previousRecalls: prevForT, scenePremise: partial.scene && partial.scene.scene, grammarProgress: _ro.grammarProgress } })
+    opts: { previousRecalls: prevForT, scenePremise: partial.scene && partial.scene.scene, grammarProgress: _ro.grammarProgress, grammarGate: (_tc && _tc.grammarGate) || null } })
   const grp = await generateTargetGroup({ language: 'ja', target: t, recallCount: 1, recallIndices: [missing.recallIndex], adapter, ledger: _L,
     paidMaxPerRecall: Math.max(1, Math.min(JA_GENERATION_BUDGET.maxPaidAttemptsPerRecall, 2)), apiKey, model, onLog, costGuard: _ro.costGuard || null,
     runId: _ro.runId, stage: 'H_recovery', phase: 'recovery',
@@ -63679,6 +63892,7 @@ async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId,
     recallIndex: missing.recallIndex, sourceCheck: got.checkTier, checkTier: got.checkTier, _checkCount: got.checkTier,
     _checkHistory: _L.history(t.id, missing.recallIndex),             // v672 §1 — the recall's continued history (entries)
     ...(l._fallback ? { _fallback: true } : {}), _source: JA_TIER_SOURCE(got.checkTier), _framing: false,
+    ...(l._grammarFlag && l._grammarFlag.length ? { _grammarFlag: l._grammarFlag } : {}),
   }
   // v651 §6 — a recovered recall is born with the same authoritative provenance as a generated one
   const _prov = _tc ? jaPairProvenance(_tc, t, missing.recallIndex, 'generation-recovery') : null

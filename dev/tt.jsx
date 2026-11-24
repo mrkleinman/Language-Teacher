@@ -60203,6 +60203,285 @@ function validateJapaneseGrammarInventory(pair, allowedIds) {
     : { ok: true, problems: [] }
 }
 
+// ══ v773 — GRAMMAR FROM SENTENCES: the detector ═════════════════════════════════════════════════════════════════════════════
+// Reads ONE Japanese sentence and says which curriculum entries it uses (JA_BUILDING_BLOCKS ids and the reaction words of
+// JA_CONVERSATION_BASICS), with the position of the first use and a count of uses. japaneseGrammarUsed (17 forms) stays as it was:
+// it feeds the closed-grammar check at generation time and is not touched. This detector only READS finished sentences.
+//
+// How it reads (plain steps, in this order):
+//   1. reaction words and set phrases (えっ, ええと, ねえ, またね, いただきます …) are credited and cut out;
+//   2. connectors (だから, それで, それに, しかし, だって, でも at the start) are credited and cut out;
+//   3. CONTENT WORDS ARE MASKED before any particle is looked for — every word of the Japanese word bank, longest first, so that
+//      分からない does not contain から and 何 does not contain か. A verb or adjective is masked as a STEM (食べ, 行, 高) and as a
+//      whole dictionary form (食べる, 高い); what is left after a stem is the ending, which the rules read (行 + った, 食べ + たい);
+//   4. the rules run from the most specific to the least ("longest match first"): てもいい before て, たら before た, でしょ before で …
+//      A rule that matches cuts its text out, so a shorter rule can never claim the same letters;
+//   5. one entry is reported once per sentence (the position of its first use) together with how many times it occurred.
+// The working text always has the length of the sentence, so a hit position is a real position in the sentence.
+const JA_DET = Object.freeze({ PAD: '\uE0FF', N: '\uE000', V: '\uE001', D: '\uE002', A: '\uE003', J: '\uE004', X: '\uE005', W: '\uE006', Z: '\uE007' })
+// grammar words, not vocabulary: never masked as content, even where the word bank holds the same letters
+const JA_DET_NOMASK = new Set(['より', 'そう', 'ため', 'つもり', 'こと', 'もの', 'ほう', 'はず', 'みたい', 'らしい', 'だけ', 'しか', 'など', 'ばかり', 'くらい', 'ぐらい', 'から', 'まで', 'けど',
+  'ので', 'のに', 'とか', 'でも', 'だって', 'だから', 'それで', 'それに', 'しかし', 'かも', 'かな', 'です', 'ます', 'ない', 'たい', 'まあ', 'って', 'じゃん', 'だっけ', 'でしょう', 'でしょ', 'だろう'])
+// verbs that follow a て-form as a helper (食べてもらう, 食べている, 見ている): masked only AFTER the て-constructions have read them
+const JA_DET_LATE_VERBS = new Set(['いる', 'ある', 'もらう', 'あげる', 'くれる', 'やる', 'くる', 'いく', 'おく', 'しまう', 'みる', 'いただく', 'くださる', 'なる', 'する', 'できる'])
+// phrases the learner meets whole: cut out, never read for grammar
+const JA_DET_FIXED = [
+  'ありがとうございました', 'ありがとうございます', 'ごちそうさまでした', 'お疲れ様でした', 'お疲れさまでした', 'よろしくお願いします', 'お願いします', 'おはようございます', 'いらっしゃいませ', 'どういたしまして',
+  'ごめんなさい', 'すみませんでした', '失礼しました', '失礼します', 'お邪魔します', 'いただきます', 'ごちそうさま', 'こんばんは', 'こんにちは', 'おやすみなさい', 'おやすみ', 'ただいま', 'おかえり', 'いってきます', 'いってらっしゃい',
+  'ううん', 'うーん', 'そうですね', 'そうか', 'そっか', 'なるほど', 'どうしよう', 'それとも', 'それから', 'そして', 'ところで', 'または']
+// conversation basics and reaction words (ids of JA_CONVERSATION_BASICS): [id, regex]. A chunk such as いいね counts as the basic, not as ね.
+const JA_DET_BASICS = [
+  ['konnichiwa', /こんにちは/g], ['matane', /またね/g], ['jaa', /(?<![ぁ-ん])じゃあ/g], ['sokka', /そっか|そうか/g], ['naruhodo', /なるほど/g], ['doushiyou', /どうしよう/g],
+  ['eeto', /(?<![ぁ-ん])(?:ええと|えっと)/g], ['e', /(?<![ぁ-ん])えっ(?!と)/g], ['nee', /(?<![ぁ-ん])ね[えぇ]/g], ['hee', /(?<![ぁ-ん])へ[えぇ]/g],
+  ['hora', /(?<![ぁ-ん])ほら/g], ['aa', /(?<![ぁ-ん])ああ(?=[、，,…！!。]|$)/g], ['yatta', /(?<![ぁ-ん])やった(?=[！!、，,。]|$)/g], ['yokatta', /(?<![ぁ-ん])よかった(?=[！!、，,。]|$)/g],
+  ['ano', /(?<![ぁ-んァ-ヶ一-龯])あの(?=[、，,…ー]|さ|$)/g], ['soudane', /(?<=^|[、，,。！？!?\s])そうだね(?=[。！？!?、，,]|$)/g],
+  ['iine', /(?<=^|[、，,。！？!?\s])いいね(?=[。！？!?、，,]|$)/g], ['honto', /(?<![ぁ-ん])ほんと(?:う)?(?=[？?])/g], ['un', /(?<![ぁ-んう])うん(?=[、，,。！？!?]|$)/g],
+]
+// macros for the rule sources: <V> verb stem · <D> verb dictionary form · <A> i-adjective stem · <J> adjective dictionary form · <N> any other content word ·
+// <P> a letter that was already read · <TE> て-endings · <TA> た-endings · <NEG> the a-row before ない · <I> the i-row before ます / たい · <CJK> kanji and katakana.
+// {word} matches that word either as written or as a masked content word of the same length (rules that need a content word, like 思う in と思う).
+const JA_DET_MACRO = {
+  '<V>': JA_DET.V + JA_DET.W + JA_DET.Z, '<V1>': JA_DET.V + JA_DET.Z, '<V5>': JA_DET.W + JA_DET.Z, '<D>': JA_DET.D, '<A>': JA_DET.A + JA_DET.Z, '<J>': JA_DET.J, '<N>': JA_DET.N, '<P>': JA_DET.PAD,
+  '<TE>': '(?:って|んで|いて|いで|して|て)', '<TA>': '(?:った|んだ|いた|いだ|した|た)', '<NEG>': '[あかがさたなばまらわ]?', '<I>': '[いきぎしちにびみり]?',
+  '<CJK>': '\\u4e00-\\u9fff\\u30a1-\\u30f6',
+}
+function jaDetRx(src) {
+  return new RegExp(String(src).replace(/<[A-Z][A-Z0-9]*>/g, m => JA_DET_MACRO[m] !== undefined ? JA_DET_MACRO[m] : m)
+    .replace(/\{([^}]+)\}/g, (m, w) => '(?:' + w + '|' + JA_DET.PAD + '{' + (w.length - 1) + '}[\\uE000-\\uE007])'), 'g')
+}
+// [ids credited, source, ids implied (also counted: the form is visibly inside the construction)]
+// The order is the priority: the first rule to match a stretch of text owns it. The first block runs before the helper verbs
+// (いる, ある, もらう …) are masked; the second block after.
+const JA_DET_RULES = [
+  // constructions built on a て-form, ない or ます (the longest ones first)
+  [['temoii'], '(?:(?<=[<V>])<TE>|(?<=[<A>])くて)(?:も(?:{いい}|{よい}|{大丈夫}|かまわない)|{いい}|{よい})', ['te'], x => /(?:も(?:いい|よい|大丈夫|かまわない)|いい|よい)$/.test(x)],
+  [['tewaikenai'], '(?<=[<V>])(?:<TE>は|ちゃ|じゃ)(?:いけ|だめ|駄目|ならな)', ['te']],
+  [['nakutemoii'], '(?<=[<V>])<NEG>なくても(?:{いい}|{よい}|{大丈夫})', ['nai'], x => /なくても(?:いい|よい|大丈夫)$/.test(x)],
+  [['nakya'], '(?<=[<V>])<NEG>(?:なきゃ|なくちゃ|なければ(?:ならない|いけない)?|なくてはいけない|なくてはならない|ないと(?=いけ|なら|だめ|駄目|[。！？!?、，,…]|$))', ['nai']],
+  [['tekudasai'], '(?<=[<V>])<TE>ください', ['te']],
+  [['temorau'], '(?<=[<V>])<TE>(?:もら|いただ)(?:う|った|える|えない|いたい|います|いました|いた)', ['te']],
+  [['teageru'], '(?<=[<V>])<TE>(?:あげ|やっ(?=た|て)|やる|さしあげ)(?:る|た|ます|よう|たい|て|ない)?', ['te']],
+  [['tekureru'], '(?<=[<V>])<TE>て?(?:くれ|くださ)(?:る|た|ない|ます|ませんか|て)', ['te']],
+  [['temiru'], '(?<=[<V>])<TE>み(?:る|た|ます|ました|ません|よう|たい|て|ない|れば)', ['te']],
+  [['chau'], '(?<=[<V>])(?:ん(?=じゃ))?(?:ちゃ|じゃ)(?:う|った|って|います|いました|いたい|わない)', ['te']],
+  [['sugiru'], '(?:(?<=[<V>])<I>|(?<=[<A><N>]))すぎ(?:る|た|て|ます|ない|ちゃ|だ|です)'],
+  [['yasui'], '(?<=[<V>])<I>やす(?:い|く|かった|そう)'],
+  [['nikui'], '(?<=[<V>])<I>にく(?:い|く|かった|そう)'],
+  [['nagara'], '(?<=[<V>])<I>ながら'],
+  [['takotoaru'], '(?<=[<V>])<TA>こと(?:が)?(?:ある|あった|あります|ない|ありません|ありました)'],
+  [['tari'], '(?:(?<=[<V>])<TA>|(?<=[<A>])かった|だっ(?=た))り'],
+  [['tara'], '(?:(?<=[<V>])<TA>|(?<=[<A>])かった|だった)ら'],
+  [['ba'], '(?:(?<=[<V>])[えけげせてねべめれ]|(?<=[<A>])けれ)ば'],
+  [['temo'], '(?:(?<=[<V>])<TE>|(?<=[<A>])くて)も', ['te'], (x, o, a, b) => !/^(?:いい|よい|大丈夫|かまわない)/.test(o.slice(b))],
+  [['toomou'], 'と(?:{思う}|{思}(?:い|った|って|います|いました))', [], x => /^と(?:思|おも)/.test(x)],
+  [['koto-ga-dekiru'], 'ことが(?:できる|できた|できない|できます|できません|できました|出来る|出来ない)'],
+  [['koto-ga-aru'], '(?<=[<D><J>])ことが(?:ある|あった|あります|ありました)'],
+  [['tsumori'], 'つもり'],
+  [['tameni'], 'ために|ための|ためには'],
+  [['youni-suru'], 'ように(?:する|し(?:て|た|ま)|している|しよう)'],
+  [['ninaru'], '(?<=[<N><P><CJK>]|よう)に(?:なる|なっ(?=た|て)|なり(?=ま|た)|ならない|なれ)'],
+  [['kunaru'], '(?<=[<A>])く(?:なる|なっ(?=た|て)|なり(?=ま|た)|ならない|なれ)'],
+  [['potential'], '(?:(?<=[<V5>])[えけげせてねべめれ]|(?<=[<V1>])られ|(?<=[<V1>])れ)(?:る|ない|なかった|た|ます|ません|ました)'],
+  [['naide'], '(?<=[<V>])<NEG>ないで(?!しょ)', ['nai']],
+  [['teru', 'masen', 'masu'], '(?<=[<V>])<TE>い?(?:ませんでした|ません)', ['te']],
+  [['teru', 'masu'], '(?<=[<V>])<TE>い?(?:ました|ます)', ['te']],
+  [['teru'], '(?<=[<V>])<TE>(?:い(?:る|た|ない|なかった)|る|た|ない|なかった)', ['te']],
+  [['janakatta'], '(?:じゃ|では)なかった|(?:じゃ|では)ありませんでした'],
+  [['janai'], '(?:じゃ|では)(?:ない|ありません)'],
+  // ---- second block: after the helper verbs (いる, ある, もらう …) are masked ----
+  [['masenka', 'masen', 'masu'], 'ませんか', []],
+  [['mashou', 'masu'], 'ましょう', []],
+  [['masen', 'masu'], 'ませんでした|ません', []],
+  [['masu'], 'ました|ます'],
+  [['sou'], '(?:(?<=[<V1>])|(?<=[<V5>])[いきぎしちにびみり]|(?<=[<A><N>]))そう(?:だ|です|な|に|で)?'],
+  [[], 'そう'],
+  [['volitional'], '(?<=[<V>])(?:[おこごそとのぼもろ]う|よう)'],
+  [['tai'], '(?<=[<V>])<I>(?:たかった|たく(?:ない|なかった|て|なる|ありません)?|たい(?:です)?)'],
+  [['past-nai'], '(?:(?<=[<V>])<NEG>|(?<=[<A>])く)なかった', ['past', 'nai']],
+  [['nai-invite'], '(?<=[<V>])<NEG>ない(?=[？?])', ['nai']],
+  [['dake'], 'だけ'],
+  [['shika'], 'しか(?!し|た|も|っ)'],
+  [['nai'], '(?:(?<=[<V>])<NEG>|(?<=[<A>])く|(?<=[<N><J><P>がをはもに、]))ない'],
+  [['past'], '(?:(?<=[<V>])<TA>|(?<=[<A>])かった)'],
+  [['te'], '(?:(?<=[<V>])<TE>|(?<=[<A>])くて)'],
+  // endings that carry their own meaning
+  [['nda', 'desu'], 'ん(?:です|でした)', []],
+  [['nda', 'darou'], 'んだろ(?:う)?', []],
+  [['nda'], 'ん(?:だ|だった)'],
+  [['node'], '(?<=[<D><J><P>]|な|だ)ので'],
+  [['noni'], '(?<=[<D><J><P>]|な|だ)のに'],
+  [['nominal-no'], '(?<=[<D><J><P>])の(?=[はがをにで])'],
+  [['no-question'], '(?<=[<D><J><P>])の(?=[？?])'],
+  [['nda'], '(?<=[<D><J><P>])の(?=[。！!]|$)'],
+  [['kamo'], 'かもしれ(?:ない|ません|なかった)|かも(?=[。！？!?、，,…ね]|$)'],
+  [['dakke'], 'だっけ|でしたっけ'],
+  [['jan'], 'じゃん'],
+  [['desho'], 'でしょ(?:う)?'],
+  [['darou'], 'だろ(?:う)?'],
+  [['hazu'], 'はず'],
+  [['mitai'], 'みたい'],
+  [['rashii'], '(?<=[<N><D><J><P>])らしい'],
+  [['kana'], 'かな(?=[？?。…ぁあ]|[、，,]|$)'],
+  [['yone'], 'よね'],
+  // names
+  [['san'], '(?<=[ぁ-んァ-ヶー一-龯<N>])さん(?!ざ|ぽ)'],
+  [['chan-kun'], '(?<=[ぁ-んァ-ヶー一-龯<N>])(?:ちゃん|くん)(?!と|に)'],
+  // the copula
+  [['deshita'], 'でした|だった'],
+  [['desu'], 'です'],
+  [['da'], 'だ(?=[よねぞわさ。！？!?、，,…\\s|]|<P>|$|か[らも]?|けど|けれど|が|と|し|って|の|な|ろ)'],
+  // particles that are words of their own (longest first)
+  [['kedo'], 'けれども|けれど|けども|けど'],
+  [['kara'], 'から'],
+  [['made'], 'まで'],
+  [['yori'], 'より'],
+  [['toka'], 'とか'],
+  [['gurai'], 'ぐらい|くらい'],
+  [['ya'], '(?<=[<N><CJK>])や(?=[<N><P><CJK>])'],
+  [['demo'], 'でも'],
+  [['tte'], '(?<![<V>])って'],
+  [['to-cond'], '(?<=[<D><J>])と(?![思おいっ言])'],
+  [['nara'], '(?<=[<N><D><J><P><CJK>])なら(?:ば)?(?!ない|なかっ|なく|ず|ぶ|べ|び)'],
+  [['houga'], '(?:ほう|{方})が(?:{いい}|{よい}|好き|早い|安い|高い|{大丈夫})', [], x => /^(?:ほう|方)が(?:いい|よい|好き|早い|安い|高い|大丈夫)/.test(x)],
+  // single particles and endings
+  [['ne'], 'ね(?=[。！？!?、，,…～〜~]|$)'],
+  [['yo'], 'よ(?=[。！？!?、，,…～〜~ね]|$)'],
+  [['sa'], '(?<![<V><A>])さ(?=[。！？!?、，,…]|$)'],
+  [['na'], '(?<![<D><V><A>])な(?=[。！？!?…]|$)'],
+  [['ka'], '(?<![<V><A>])か'],
+  [['ga'], '(?<![<V><A>])が'],
+  [['wo'], '(?<![<V><A>])を'],
+  [['ni'], '(?<![<V><A>])に'],
+  [['he'], '(?<![<V><A>])へ'],
+  [['de'], '(?<![<V><A>])で'],
+  [['to'], '(?<![<V><A>])と'],
+  [['mo'], '(?<![<V><A>])も'],
+  [['no'], '(?<![<V><A>])の'],
+  [['wa'], '(?<![<V><A>])は'],
+]
+const JA_DET_FIRST_BLOCK = JA_DET_RULES.findIndex(r => r[0][0] === 'masenka')
+const JA_DET_RULES_RX = JA_DET_RULES.map(r => ({ ids: r[0], rx: jaDetRx(r[1]), implies: r[2] || [], chk: r[3] || null }))
+// connectors are read BEFORE the content words are masked (それ + に would otherwise be read as a particle)
+const JA_DET_CONNECTORS = [
+  ['kamo', /かもしれ(?:ない|ません|なかった|ませんでした)/g],
+  ['dakara', /(?<=^|[、，,。！？!?\s])だから/g], ['sorede', /(?<=^|[、，,。！？!?\s])それで(?=[、，,])/g], ['soreni', /(?<=^|[、，,。！？!?\s])それに(?=[、，,])/g],
+  ['shikashi', /(?<=^|[、，,。！？!?\s])しかし/g], ['datte', /だって/g], ['maa', /(?<=^|[、，,。！？!?\s])ま[あぁ]/g],
+  ['demo', /(?<=^|[、，,。！？!?\s])でも(?=[、，,]|[ぁ-んァ-ヶ一-龯])/g],
+]
+// The word bank as a mask list (built once). A word written with kanji is masked by its kanji spelling only (its kana reading would hide です, ます, います …);
+// a kana word is masked by its kana, but not directly after a verb stem (行 + こう is the volitional, not the word こう).
+let _JA_DET_LEX = null
+function jaDetBuildLexicon(bank) {
+  const early = new Map(), late = new Map()      // surface → { cls, kana }
+  const STEM = new Set([JA_DET.V, JA_DET.W, JA_DET.A])
+  const put = (m, s, cls, force, expr) => {
+    if (!s || JA_DET_NOMASK.has(s)) return
+    const old = m.get(s)
+    if (old && STEM.has(old.cls) && STEM.has(cls) && old.cls !== cls) cls = JA_DET.Z     // 楽し is the stem of 楽しい and of 楽しむ: it may take either set of endings
+    else if (old && !force) return
+    m.set(s, { cls, kana: /^[ぁ-んー]+$/.test(s), expr: !!expr })
+  }
+  const kana = s => /^[ぁ-んー]+$/.test(s), hasKanji = s => /[\u4e00-\u9fff]/.test(s)
+  // verb stems: a noun that is a stem plus an i-row letter (行き, 読み, 休み) is NOT masked as a noun: the stem is masked and the letter stays, so 行きたい is read as 行 + き + たい
+  const stems = new Set(); (bank || []).forEach(w => { if (w && w.partOfSpeech === 'verb' && hasKanji(w.japanese || '') && w.conjugationClass !== 'irregular-suru') stems.add(String(w.japanese).slice(0, -1)) })
+  ;(bank || []).forEach(w => {
+    if (!w) return
+    const jp = String(w.japanese || '').trim(), cls = w.conjugationClass || '', pos = w.partOfSpeech || ''
+    if (!jp) return
+    if (pos === 'verb') {
+      put(JA_DET_LATE_VERBS.has(jp) ? late : early, jp, JA_DET.D)
+      if (hasKanji(jp) && cls !== 'irregular-suru' && jp.length >= 2) put(early, jp.slice(0, -1), /^godan/.test(cls) ? JA_DET.W : JA_DET.V, true)   // 食べる → 食べ (V, ichidan) · 行く → 行 (W, godan) · 来る → 来
+      else if (cls === 'irregular-suru' && jp.length > 2) put(early, jp.slice(0, -2), JA_DET.N)                              // 勉強する → 勉強 (the し-endings are read by the rules)
+      return
+    }
+    if (pos === 'i-adjective') {
+      put(early, jp, JA_DET.J)
+      if (cls !== 'irregular-ii' && jp.length >= 2 && (hasKanji(jp) || jp.length >= 4)) put(early, jp.slice(0, -1), JA_DET.A, true)
+      return
+    }
+    // an adverb that ends in に (一緒に, 本当に): the に is the particle, the rest is the word
+    if (pos === 'adverb' && jp.length >= 3 && /に$/.test(jp) && hasKanji(jp)) { put(early, jp.slice(0, -1), JA_DET.N); return }
+    if (jp.length >= 2 && /[いきぎしちにびみり]$/.test(jp) && stems.has(jp.slice(0, -1))) return
+    // a short kana noun (あり, いけ) would hide ありません / いけない: only pronouns, replies and adverbs are masked at two letters
+    if (kana(jp) && jp.length <= 2 && !/^(pronoun|expression|adverb|conjunction)$/.test(pos)) return
+    // a reply (はい, うん) is a word only at the start of a clause: は + いけない must not contain はい
+    if (kana(jp) ? jp.length >= 2 : jp.length >= 1) put(early, jp, JA_DET.N, false, pos === 'expression' && jp.length <= 2)
+  })
+  const order = (m, kanaPass) => [...m.entries()].filter(([s, v]) => v.kana === kanaPass).sort((a, b) => b[0].length - a[0].length)
+    .map(([s, v]) => ({ s, cls: v.cls, rx: v.kana ? new RegExp((v.expr ? '(?<=^|[、，,。！？!?\\s\\uE005\\uE0FF])' : '(?<![\\uE001\\uE003\\uE006\\uE007])') + s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g') : null }))
+  // phase 1: words with kanji (and verb / adjective stems), phase 2: kana words — so that 行 is already a stem when こう is looked at
+  return { early: order(early, false), earlyKana: order(early, true), late: order(late, false).concat(order(late, true)) }
+}
+function jaDetLexicon(extra) {
+  if (!_JA_DET_LEX) { try { _JA_DET_LEX = jaDetBuildLexicon(typeof RAW_JAPANESE_VOCAB !== 'undefined' ? RAW_JAPANESE_VOCAB : []) } catch (e) { _JA_DET_LEX = { early: [], earlyKana: [], late: [] } } }
+  if (!extra || !extra.length) return _JA_DET_LEX
+  const x = jaDetBuildLexicon(extra)             // words the bank does not hold (a learner's own entries) join the mask list
+  const merge = (a, b) => { const seen = new Set(a.map(e => e.s)); return a.concat(b.filter(e => !seen.has(e.s))).sort((p, q) => q.s.length - p.s.length) }
+  return { early: merge(_JA_DET_LEX.early, x.early), earlyKana: merge(_JA_DET_LEX.earlyKana, x.earlyKana), late: merge(_JA_DET_LEX.late, x.late) }
+}
+function jaDetMaskAll(s, list) {
+  for (const e of list) {
+    if (s.indexOf(e.s) < 0) continue
+    if (e.rx) { e.rx.lastIndex = 0; s = s.replace(e.rx, JA_DET.PAD.repeat(e.s.length - 1) + e.cls) }
+    else s = s.split(e.s).join(JA_DET.PAD.repeat(e.s.length - 1) + e.cls)
+  }
+  return s
+}
+// The detector. Returns { ids, hits:[{id, at, text, n, implied}], counts, basics:[{id, at, text, n}], unsure:[…] }
+//   ids      the entry ids used, in order of first use
+//   hits     one per entry: at = where its first use starts, text = the letters, n = how many times, implied = only seen inside a construction that contains it (て inside てもいい)
+//   basics   reaction words / basics found (ids of JA_CONVERSATION_BASICS)
+//   unsure   kana the rules could not explain (an unknown word or an ending no rule reads): a person should look at the line
+function jaGrammarDetect(sentence, opts) {
+  const o = opts || {}
+  const orig = String(sentence == null ? '' : sentence).normalize('NFKC')
+  let s = orig
+  const hits = new Map(), basics = new Map(), unsure = []
+  const credit = (id, at, text, implied) => {
+    const h = hits.get(id)
+    if (h) { h.n++; if (h.implied && !implied) { h.implied = false; h.at = at; h.text = text } }
+    else hits.set(id, { id, at, text, n: 1, implied: !!implied })
+  }
+  const cut = (at, len, cls) => { s = s.slice(0, at) + JA_DET.PAD.repeat(len - 1) + (cls || JA_DET.PAD) + s.slice(at + len) }
+  const trace = tag => { if (o.trace) o.trace.push(tag + ': ' + s.replace(/[\uE000-\uE006\uE0FF]/g, ch => ({ '\uE0FF': '_', '\uE000': 'N', '\uE001': 'V', '\uE002': 'D', '\uE003': 'A', '\uE004': 'J', '\uE005': 'X', '\uE006': 'W' })[ch])) }
+  // honorific お / ご before a kanji word (read on the raw sentence: お茶 and ご飯 are words, but the prefix is the point)
+  { const rx = /(?<=^|[^ぁ-んァ-ヶー]|[のはがをにでともへや])[おご](?=[一-鿿])/g; let m; while ((m = rx.exec(orig))) credit('o-go', m.index, orig.slice(m.index, m.index + 2)) }
+  // 1. set phrases and reaction words
+  JA_DET_FIXED.forEach(f => { let i; while ((i = s.indexOf(f)) >= 0) cut(i, f.length, JA_DET.X) })
+  JA_DET_BASICS.forEach(([id, rx]) => { const r = new RegExp(rx.source, rx.flags); let m
+    while ((m = r.exec(orig))) { if (!m[0].length) { r.lastIndex++; continue } const b = basics.get(id); if (b) b.n++; else basics.set(id, { id, at: m.index, text: m[0], n: 1 }) } })
+  JA_DET_BASICS.forEach(([id, rx]) => { const r = new RegExp(rx.source, rx.flags); let m; while ((m = r.exec(s))) { if (!m[0].length) { r.lastIndex++; continue } cut(m.index, m[0].length, JA_DET.X) } })
+  // 2. connectors
+  JA_DET_CONNECTORS.forEach(([id, rx]) => { const r = new RegExp(rx.source, rx.flags); let m; while ((m = r.exec(s))) { credit(id, m.index, m[0]); cut(m.index, m[0].length) } })
+  // 3. content words, longest first
+  const lex = o.lexicon || jaDetLexicon(o.words)
+  s = jaDetMaskAll(jaDetMaskAll(s, lex.early), lex.earlyKana)
+  trace('masked')
+  // 4. the rules
+  const run = list => list.forEach(r => {
+    const rx = new RegExp(r.rx.source, r.rx.flags); let m
+    while ((m = rx.exec(s))) {
+      if (!m[0].length) { rx.lastIndex++; continue }
+      // a rule that names a content word matches ANY masked word of that length; chk then tests the letters of the sentence itself
+      if (r.chk && !r.chk(orig.slice(m.index, m.index + m[0].length), orig, m.index, m.index + m[0].length)) { rx.lastIndex = m.index + 1; continue }
+      r.ids.forEach(id => credit(id, m.index, orig.slice(m.index, m.index + m[0].length), false)); r.implies.forEach(id => credit(id, m.index, orig.slice(m.index, m.index + m[0].length), true))
+      cut(m.index, m[0].length); rx.lastIndex = m.index + m[0].length; trace('  rule ' + (r.ids.join('+') || '(filler)'))
+    }
+  })
+  run(JA_DET_RULES_RX.slice(0, JA_DET_FIRST_BLOCK))
+  s = jaDetMaskAll(s, lex.late)
+  // する written in kana before an ending: し is the verb stem
+  s = s.replace(/(?<=^|[^ぁ-ん]|[にをがはもでとへ])し(?=ない|なかった|なく|た|て|ます|ました|ません|ましょう|よう|たい|ちゃ|ながら|たら|たり|ても|ろ|すぎ|なきゃ)/g, JA_DET.V).replace(/す(?=れば)/g, JA_DET.V)
+  trace('late')
+  run(JA_DET_RULES_RX.slice(JA_DET_FIRST_BLOCK))
+  // plain-present: a verb in its dictionary form (食べる, 行く, する)
+  { const rx = new RegExp(JA_DET.D, 'g'); let m; while ((m = rx.exec(s))) { let a = m.index; while (a > 0 && s[a - 1] === JA_DET.PAD) a--; credit('plain-present', a, orig.slice(a, m.index + 1), false) } }
+  // unsure: kana left over that nothing explained (an unknown word, or an ending the rules do not read)
+  { const rx = /[ぁ-ゖー]{2,}/g; let m; while ((m = rx.exec(s))) unsure.push('unread kana "' + m[0] + '" at ' + m.index) }
+  const counts = {}; hits.forEach(h => { counts[h.id] = h.n })
+  return { ids: [...hits.values()].sort((a, b) => a.at - b.at).map(h => h.id), hits: [...hits.values()].sort((a, b) => a.at - b.at), counts, basics: [...basics.values()], unsure }
+}
+
 // ── Final Japanese QC: five questions, in order ─────────────────────────────
 // Asked for EVERY pair, and asked in this order. Stylistic English differences are
 // judged LAST and only once the Japanese is known to be sound, so QC can never

@@ -3,6 +3,7 @@
 // Real application functions throughout (the curriculum, the detector, the picker, the finaliser, the export, the screens); the only thing scripted is the model transport,
 // and only in the one test (C12) that runs the real finaliser. The 99 Japanese lines are in fixtures/ja-grammar-lines-2026-11-17.json (pair number, line, and whether it is a target pair).
 //   A  ONE CURRICULUM   the three lists merged: 101 entries + 19 basics, ordered, no entry before its prerequisites, the old 35 / 10 untouched, migration and progress keys unchanged
+//   B  THE DETECTOR     reads sentences: masks content words first, conjugation-aware, longest match first, one hit per entry per sentence with its position; the 99 lines; the hard cases
 //   node tests112.js            (current build: tt.compiled.js, or TT_FILE)
 'use strict'
 const fs = require('fs')
@@ -137,6 +138,44 @@ const CASES = [
     T('A11', 'jaGrammarMigrateV1 still works and seeds the same records (keys buildingBlock:<id> / conversationBasic:<id>); a record the learner already had (known, interval 30, 9 exposures) is not overwritten',
       JSON.stringify(keys) === JSON.stringify(MIG) && mig.store['buildingBlock:wo'].interval === 30 && mig.store['buildingBlock:wo'].exposures === 9 && mig.store['buildingBlock:wo'].status === 'known', keys)
   } catch (e) { T('A!', 'section A stopped: ' + String(e && e.message).split('\n')[0], false, String(e && e.stack).slice(0, 400)) }
+
+  // ═══ B — THE DETECTOR ════════════════════════════════════════════════════════════════════════════════════════════════
+  try {
+    const c = fresh()
+    const det = s => c.jaGrammarDetect(s)
+    const gotLine = l => { const r = det(l.ja); return r.ids.slice().sort().join(' ') + (r.basics.length ? ' | ' + r.basics.map(b => b.id).sort().join(' ') : '') }
+    const wrong = FIXJ.filter(l => gotLine(l) !== GOLD[l.n]).map(l => l.n + ' ' + l.ja + ' → ' + gotLine(l) + '  (expected ' + GOLD[l.n] + ')')
+    T('B1', 'all 99 lines of the export are read as recorded (every entry and reaction word per line)', wrong.length === 0 && FIXJ.length === 99, wrong.slice(0, 4))
+    // the 12 trickiest lines, set by hand BEFORE the detector was run on them
+    const HAND = {
+      5: ['nai', 'no-question'], 22: ['te', 'teru', 'yo'], 27: ['te', 'temoii'], 40: ['nai', 'nai-invite'], 42: ['o-go', 'wa', 'janai', 'nda'],
+      44: ['past-nai', 'past', 'nai', 'yo'], 58: ['no', 'ka', 'nai', 'kedo', 'plain-present', 'nominal-no', 'wa', 'ne'], 64: ['demo', 'ga', 'plain-present', 'to-cond', 'yo'],
+      69: ['datte', 'ni', 'tai', 'nda'], 73: ['masu', 'ka'], 76: ['ga', 'plain-present', 'nda', 'desu', 'kedo', 'ka'], 81: ['da', 'toomou', 'yo'],
+    }
+    const hw = Object.entries(HAND).filter(([k, ids]) => !setEq(idsOf(c, FIXJ[+k - 1].ja), ids)).map(([k, ids]) => k + ': ' + idsOf(c, FIXJ[+k - 1].ja).join(' ') + ' ≠ ' + ids.join(' '))
+    T('B2', 'the 12 trickiest lines (5 来ないの？ · 22 食べてない · 27 飲んでもいい · 40 飲まない？ · 42 好きじゃないんだ · 44 行かなかった · 58 どっちの店か分からないけど · 64 分かると · 69 分かりたいの · 73 いますか · 76 あるんですけど · 81 だと思う) come out as checked by hand', hw.length === 0, hw)
+    const A = s => det(s).ids
+    T('B3', 'content words are masked first: 分からない does not contain から, 何 does not contain か, 大丈夫 does not contain だ, ありがとう does not contain と, どっち does not contain か',
+      !A('分からない。').includes('kara') && !A('分からない。').includes('ka') && A('分からない。').includes('nai') && !A('何？').includes('ka') && !A('大丈夫？').includes('da') && !A('ありがとう。').includes('to') && !A('どっち？').includes('ka'), A('分からない。'))
+    T('B4', 'conjugation-aware: 来たくない is 〜たい (negative), 行ったら is 〜たら (not 〜た), 好きじゃないんだ is じゃない and 〜んだ, どっちの店か分からないけど is の, か, けど (and not から)',
+      setEq(A('来たくない。'), ['tai']) && A('行ったら言ってね。').includes('tara') && !A('行ったら言ってね。').includes('past') && setEq(A('好きじゃないんだ。'), ['janai', 'nda']) &&
+      ['no', 'ka', 'kedo'].every(id => A('どっちの店か分からないけど。').includes(id)) && !A('どっちの店か分からないけど。').includes('kara'), { a: A('来たくない。'), b: A('行ったら言ってね。'), c: A('好きじゃないんだ。'), d: A('どっちの店か分からないけど。') })
+    const badCases = CASES.map(([s, must, not]) => { const g = new Set(A(s)); const miss = (must || []).filter(x => !g.has(x)), extra = (not || []).filter(x => g.has(x)); return miss.length || extra.length ? s + ' → ' + [...g].join(' ') + (miss.length ? ' | missing ' + miss.join(' ') : '') + (extra.length ? ' | unexpected ' + extra.join(' ') : '') : null }).filter(Boolean)
+    T('B5', 'each entry is read from its own sentence (' + CASES.length + ' sentences: the polite forms, constructions, endings, copula, connectors, names) and not from look-alikes', badCases.length === 0, badCases.slice(0, 5))
+    const wholly = FIXJ.every(l => { const r = det(l.ja); const ids = r.hits.map(h => h.id); return new Set(ids).size === ids.length && r.hits.every(h => h.n >= 1 && Number.isInteger(h.at) && h.at >= 0 && h.at < Math.max(1, l.ja.length)) })
+    T('B6', 'longest match first and one hit per entry per sentence: every entry appears once per sentence with the position of its first use and a count (たくさん in one line is n = 2, not two hits)',
+      wholly && det('お茶の店の場所が分かりたいの？').hits.find(h => h.id === 'no').n === 2 && det('お茶の店の場所が分かりたいの？').hits.filter(h => h.id === 'no').length === 1)
+    const pos = det('ここで食べようか。'), p = pos.hits.find(h => h.id === 'volitional')
+    T('B7', 'positions are real positions in the sentence (ようか: the 〜よう of 食べよう starts at its own letters)', p && 'ここで食べようか。'.slice(p.at, p.at + p.text.length) === p.text && p.text === 'よう', pos.hits)
+    T('B8', 'reaction words are read as basics, not as grammar: ええと ねえ えっ へえ ほら ああ やった よかった あの; いいね is the chunk, not ね; またね is the chunk, not ね',
+      det('ええと、すみません。').basics.some(b => b.id === 'eeto') && det('ねえ、何飲む？').basics.some(b => b.id === 'nee') && det('えっ、本当？').basics.some(b => b.id === 'e') && det('へえ、いいね。').basics.some(b => b.id === 'hee') && det('ほら、見て。').basics.some(b => b.id === 'hora') &&
+      det('ああ、そうか。').basics.some(b => b.id === 'aa') && det('やった！').basics.some(b => b.id === 'yatta') && det('よかった。').basics.some(b => b.id === 'yokatta') && det('あのさ、いい？').basics.some(b => b.id === 'ano') &&
+      !A('いいね。').includes('ne') && !A('じゃあ、またね。').includes('ne'))
+    T('B9', 'the old japaneseGrammarUsed (the generation gate, 17 forms) is exactly as it was', ['どれか分かる？', '好きじゃないんだ。', 'ここは楽しいから。', '何食べる？'].map(s => c.japaneseGrammarUsed(s, null).join(',')).join('|') === 'ka|nda|kara,wa|')
+    const lonely = det('ぺろぺろ。')
+    T('B10', 'a line the rules cannot explain is flagged (unsure), and the 99 lines of the export are not', lonely.unsure.length > 0 && FIXJ.every(l => det(l.ja).unsure.length === 0), FIXJ.filter(l => det(l.ja).unsure.length).map(l => l.n))
+    const t0 = Date.now(); FIXJ.forEach(l => det(l.ja)); T('B11', 'the whole export (99 lines) is read in well under a second', Date.now() - t0 < 1500, Date.now() - t0)
+  } catch (e) { T('B!', 'section B stopped: ' + String(e && e.message).split('\n')[0], false, String(e && e.stack).slice(0, 400)) }
 
   out.forEach(l => console.log(l))
   console.log('\n' + (n - fails) + '/' + n + ' passed' + (fails ? ' · ' + fails + ' FAILED' : ' — ALL PASS'))
